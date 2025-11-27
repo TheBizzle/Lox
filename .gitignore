@@ -1,0 +1,12 @@
+*.exe
+*.dll
+*.hi
+*.log
+*.o
+
+/.ghci
+/.projections.json
+/stack.yaml.lock
+
+/.stack-work/
+/target/
