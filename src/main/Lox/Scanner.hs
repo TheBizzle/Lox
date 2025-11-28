@@ -22,11 +22,10 @@ scan_ =
     isAtEnd <- checkForEnd
     if not isAtEnd then do
       modify $ \s -> s { start = s.current }
-      result <- scanToken
-      forM_ result $ \e -> modify $ \s -> s { errors = s.errors ++ [e] }
+      scanToken
       scan_
     else do
-      modify $ \s -> s { tokens = s.tokens ++ [TokenPlus EOF s.lineNumber] }
+      modify $ \s -> s { tokens = s.tokens ++ [TokenPlus EOF s.sLineNumber] }
       state <- get
       let errorsMaybe = nonEmpty state.errors
       return $ maybe (_Success # state.tokens) (_Failure #) errorsMaybe
@@ -37,24 +36,35 @@ checkForEnd =
     state <- get
     return $ state.current >= (Text.length state.source)
 
-scanToken :: State ScannerState (Maybe ParserError)
+scanToken :: State ScannerState ()
 scanToken =
   do
     char <- slurpNextChar
     case char of
-      '(' -> safelyAddToken LeftParen
-      ')' -> safelyAddToken RightParen
-      '{' -> safelyAddToken LeftBrace
-      '}' -> safelyAddToken RightBrace
-      ',' -> safelyAddToken Comma
-      '.' -> safelyAddToken Dot
-      '-' -> safelyAddToken Minus
-      '+' -> safelyAddToken Plus
-      ';' -> safelyAddToken Semicolon
-      '*' -> safelyAddToken Star
+      '('  -> addToken LeftParen
+      ')'  -> addToken RightParen
+      '{'  -> addToken LeftBrace
+      '}'  -> addToken RightBrace
+      ','  -> addToken Comma
+      '.'  -> addToken Dot
+      '-'  -> addToken Minus
+      '+'  -> addToken Plus
+      ';'  -> addToken Semicolon
+      '*'  -> addToken Star
+      '!'  -> ((matches '=') <&> (\c -> if c then BangEqual    else Bang   )) >>= addToken
+      '='  -> ((matches '=') <&> (\c -> if c then EqualEqual   else Equal  )) >>= addToken
+      '<'  -> ((matches '=') <&> (\c -> if c then LessEqual    else Less   )) >>= addToken
+      '>'  -> ((matches '=') <&> (\c -> if c then GreaterEqual else Greater)) >>= addToken
+      '/'  -> (matches '/') >>= (\c -> if c then dumpLine else addToken Slash)
+      ' '  -> skip
+      '\t' -> skip
+      '\r' -> skip
+      '\n' -> (modify $ \s -> s { sLineNumber = s.sLineNumber + 1 }) >> skip
       x -> do
-        state <- get
-        return $ Just $ ParserError (UnknownToken $ asText [x]) state.lineNumber
+        let err = \sln -> ParserError (UnknownToken $ asText [x]) sln
+        modify $ \s -> s { errors = s.errors ++ [err s.sLineNumber] }
+  where
+    skip = return ()
 
 slurpNextChar :: State ScannerState Char
 slurpNextChar =
@@ -64,18 +74,43 @@ slurpNextChar =
     put (state { current = state.current + 1 })
     return char
 
-safelyAddToken :: Token -> State ScannerState (Maybe ParserError)
-safelyAddToken token = (addToken token) $> Nothing
-
 addToken :: Token -> State ScannerState ()
 addToken token =
   do
     state <- get
-    let tplus = TokenPlus { token = token, lineNumber = state.lineNumber }
+    let tplus = TokenPlus { token = token, lineNumber = state.sLineNumber }
     put (state { tokens = state.tokens ++ [tplus] })
 
+matches :: Char -> State ScannerState Bool
+matches c =
+  do
+    isAtEnd <- checkForEnd
+    state   <- get
+    let char      = Text.index state.source state.current
+    let doesMatch = (not isAtEnd) && char == c
+    when doesMatch $ modify $ \s -> s { current = s.current + 1 }
+    return doesMatch
+
+dumpLine :: State ScannerState ()
+dumpLine =
+  do
+    c       <- peek
+    isAtEnd <- checkForEnd
+    if c /= '\n' && (not isAtEnd) then do
+      _ <- slurpNextChar
+      dumpLine
+    else
+      return ()
+
+peek :: State ScannerState Char
+peek =
+  do
+    isAtEnd <- checkForEnd
+    state   <- get
+    return $ if isAtEnd then '\0' else Text.index state.source state.current
+
 data ScannerState
-  = SState { source :: Text, tokens :: [TokenPlus], errors :: [ParserError], current :: Int, start :: Int, lineNumber :: Int }
+  = SState { source :: Text, tokens :: [TokenPlus], errors :: [ParserError], current :: Int, start :: Int, sLineNumber :: Int }
 
 type ParserResult a = Validation (NonEmpty ParserError) a
 

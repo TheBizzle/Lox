@@ -8,7 +8,7 @@ import System.Environment(getArgs)
 import System.Exit(exitWith, ExitCode(ExitFailure))
 import System.IO(hFlush, stdout)
 
-import Lox.Scanner(ParserError(lineNumber, ParserError, typ), ParserErrorType(UnknownToken), scan, TokenPlus(token))
+import Lox.Scanner(ParserError(lineNumber, typ), ParserErrorType(UnknownToken), scan, TokenPlus(token))
 
 import qualified Data.Text.IO as TIO
 
