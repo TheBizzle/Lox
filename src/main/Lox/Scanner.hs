@@ -55,14 +55,14 @@ scanToken =
       '='  -> ((matches '=') <&> (\c -> if c then EqualEqual   else Equal  )) >>= addToken
       '<'  -> ((matches '=') <&> (\c -> if c then LessEqual    else Less   )) >>= addToken
       '>'  -> ((matches '=') <&> (\c -> if c then GreaterEqual else Greater)) >>= addToken
-      '/'  -> (matches '/') >>= (\c -> if c then dumpLine else addToken Slash)
+      '/'  -> (matches '/') >>= (\c -> if c then skipToEOL else addToken Slash)
       ' '  -> skip
       '\t' -> skip
       '\r' -> skip
       '\n' -> (modify $ \s -> s { sLineNumber = s.sLineNumber + 1 }) >> skip
       '"'  -> slurpString
       x -> do
-        let err = \sln -> ParserError (UnknownToken $ asText [x]) sln
+        let err = \lNum -> ParserError (UnknownToken $ asText [x]) lNum
         modify $ \s -> s { errors = s.errors ++ [err s.sLineNumber] }
   where
     skip = return ()
@@ -92,14 +92,14 @@ matches c =
     when doesMatch $ modify $ \s -> s { current = s.current + 1 }
     return doesMatch
 
-dumpLine :: State ScannerState ()
-dumpLine =
+skipToEOL :: State ScannerState ()
+skipToEOL =
   do
     c       <- peek
     isAtEnd <- checkForEnd
     if c /= '\n' && (not isAtEnd) then do
       _ <- slurpNextChar
-      dumpLine
+      skipToEOL
     else
       return ()
 
