@@ -64,7 +64,7 @@ scanToken =
       '\r' -> skip
       '\n' -> (modify $ \s -> s { sLineNumber = s.sLineNumber + 1 }) >> skip
       '"'  -> slurpString
-      x -> parseTier2 x
+      x    -> parseTier2 x
   where
     skip = return ()
 
