@@ -136,25 +136,23 @@ peek2 =
 slurpString :: State ScannerState ()
 slurpString =
   do
-    isAtEnd <- helper
+    (isAtEnd, chars) <- helper []
     if not isAtEnd then do
-      _     <- slurpNextChar -- Closing '"'
-      state <- get
-      let str = state.source |> Text.drop (state.start + 1) &> Text.take (state.current - state.start - 2)
-      addToken $ String str
+      _ <- slurpNextChar -- Closing '"'
+      chars |> List.reverse &> asText &> String &> addToken
     else
       addError UnterminatedString
   where
-    helper =
+    helper acc =
       do
         isAtEnd <- checkForEnd
         c       <- peek
         if c /= '"' && (not isAtEnd) then do
           when (c == '\n') $ modify $ \s -> s { sLineNumber = s.sLineNumber + 1 }
           _ <- slurpNextChar
-          helper
+          helper (c : acc)
         else
-          return isAtEnd
+          return (isAtEnd, acc)
 
 slurpNumber :: Char -> State ScannerState ()
 slurpNumber c =
