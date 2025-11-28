@@ -28,10 +28,20 @@ Executable lox
 
 Library
   hs-source-dirs:      src/main
-  exposed-modules:     Lox.Scanner
+  exposed-modules:
+    Lox.Scanner.ParserError,
+    Lox.Scanner.Scanner,
+    Lox.Scanner.Token
   default-language:    Haskell2010
   default-extensions:  OverloadedStrings
   other-modules:
+    Lox.Scanner.Internal.Classify,
+    Lox.Scanner.Internal.Identifier,
+    Lox.Scanner.Internal.Number,
+    Lox.Scanner.Internal.ParserError,
+    Lox.Scanner.Internal.ScannerState,
+    Lox.Scanner.Internal.String,
+    Lox.Scanner.Internal.Token
   GHC-Options:
     -Wall
     -Wcompat
