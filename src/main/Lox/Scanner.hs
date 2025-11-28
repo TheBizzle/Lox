@@ -12,9 +12,8 @@ import Data.Validation(_Failure, _Success, Validation)
 
 import Text.Read(readMaybe)
 
-import qualified Data.List          as List
-import qualified Data.List.NonEmpty as NE
-import qualified Data.Text          as Text
+import qualified Data.List as List
+import qualified Data.Text as Text
 
 scan :: Text -> ParserResult [TokenPlus]
 scan code = (SState code [] [] 0 0 1) |> (runState scan_) &> fst
