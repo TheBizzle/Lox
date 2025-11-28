@@ -8,7 +8,7 @@ import System.Environment(getArgs)
 import System.Exit(exitWith, ExitCode(ExitFailure))
 import System.IO(hFlush, stdout)
 
-import Lox.Scanner(ParserError(lineNumber, typ), ParserErrorType(UnknownToken), scan, TokenPlus(token))
+import Lox.Scanner(ParserError(lineNumber, typ), ParserErrorType(UnknownToken, UnterminatedString), scan, TokenPlus(token))
 
 import qualified Data.Text.IO as TIO
 
@@ -56,4 +56,5 @@ errorAsText error = line
   where
     line      = "[line " <> (showText error.lineNumber) <> "] Error - " <> errorText
     errorText = case error.typ of
-                  (UnknownToken c) -> "Unknown token: " <> c
+                  (UnknownToken c)   -> "Unknown token: " <> c
+                  UnterminatedString -> "Unterminated string"

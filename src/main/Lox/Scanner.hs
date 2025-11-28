@@ -1,7 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 
-module Lox.Scanner(ParserError(typ, lineNumber, ParserError), ParserErrorType(UnknownToken), scan, Token, TokenPlus(lineNumber, token, TokenPlus)) where
+module Lox.Scanner(ParserError(typ, lineNumber, ParserError), ParserErrorType(UnknownToken, UnterminatedString), scan, Token, TokenPlus(lineNumber, token, TokenPlus)) where
 
 import Control.Lens((#))
 import Control.Monad.State(get, modify, put, runState, State)
@@ -60,6 +60,7 @@ scanToken =
       '\t' -> skip
       '\r' -> skip
       '\n' -> (modify $ \s -> s { sLineNumber = s.sLineNumber + 1 }) >> skip
+      '"'  -> slurpString
       x -> do
         let err = \sln -> ParserError (UnknownToken $ asText [x]) sln
         modify $ \s -> s { errors = s.errors ++ [err s.sLineNumber] }
@@ -109,6 +110,29 @@ peek =
     state   <- get
     return $ if isAtEnd then '\0' else Text.index state.source state.current
 
+slurpString :: State ScannerState ()
+slurpString =
+  do
+    isAtEnd <- helper
+    if not isAtEnd then do
+      _     <- slurpNextChar -- Closing '"'
+      state <- get
+      let str = state.source |> Text.drop (state.start + 1) &> Text.take (state.current - state.start - 2)
+      addToken $ String str
+    else
+      modify $ \s -> s { errors = s.errors ++ [ParserError UnterminatedString s.sLineNumber] }
+  where
+    helper =
+      do
+        isAtEnd <- checkForEnd
+        c       <- peek
+        if c /= '"' && (not isAtEnd) then do
+          when (c == '\n') $ modify $ \s -> s { sLineNumber = s.sLineNumber + 1 }
+          _ <- slurpNextChar
+          helper
+        else
+          return isAtEnd
+
 data ScannerState
   = SState { source :: Text, tokens :: [TokenPlus], errors :: [ParserError], current :: Int, start :: Int, sLineNumber :: Int }
 
@@ -116,6 +140,7 @@ type ParserResult a = Validation (NonEmpty ParserError) a
 
 data ParserErrorType
   = UnknownToken Text
+  | UnterminatedString
 
 data ParserError =
   ParserError { typ :: ParserErrorType, lineNumber :: Int }
