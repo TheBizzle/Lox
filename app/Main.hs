@@ -6,7 +6,6 @@ import Data.Validation(validation)
 
 import System.Environment(getArgs)
 import System.Exit(exitWith, ExitCode(ExitFailure))
-import System.IO(hFlush, stdout)
 
 import Lox.Scanner(ParserError(lineNumber, typ), ParserErrorType(UnknownToken, UnterminatedString), scan, TokenPlus(token))
 
@@ -23,8 +22,7 @@ main = getArgs >>= processArgs
 runPrompt :: IO ()
 runPrompt =
   do
-    TIO.putStr "> "
-    hFlush stdout
+    putStrFlush "> "
     line <- TIO.getLine
     when (line /= "exit") $ (run line) >> runPrompt
 
