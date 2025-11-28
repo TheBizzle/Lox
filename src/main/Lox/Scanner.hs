@@ -210,7 +210,7 @@ instance Show Token where
   show Less           = "<"
   show LessEqual      = "<="
   show (Identifier x) = "(identifier: " <> (Text.unpack x) <> ")"
-  show (String x)     = "(string: "     <> (Text.unpack x) <> ")"
+  show (String x)     = "\"" <> (Text.unpack x) <> "\""
   show (Number x)     = "(number: "     <> (Text.unpack x) <> ")"
   show And            = "and"
   show Class          = "class"
