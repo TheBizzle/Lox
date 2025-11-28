@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+
 module Main(main) where
 
 import Data.Validation(validation)
@@ -6,7 +8,7 @@ import System.Environment(getArgs)
 import System.Exit(exitWith, ExitCode(ExitFailure))
 import System.IO(hFlush, stdout)
 
-import Lox.Scanner(ParserError(lineNumber, ParserError), scan)
+import Lox.Scanner(ParserError(lineNumber, ParserError, typ), ParserErrorType(UnknownToken), scan, TokenPlus(token))
 
 import qualified Data.Text.IO as TIO
 
@@ -46,11 +48,12 @@ run code =
 
     handleSuccess results =
       do
-        for_ results $ showText &> TIO.putStrLn
+        for_ results $ token &> showText &> TIO.putStrLn
         return True
 
 errorAsText :: ParserError -> Text
-errorAsText (ParserError { lineNumber = lineNum }) =
-    asText line
+errorAsText error = line
   where
-    line = "[line " <> (show lineNum) <> "] Error: "
+    line      = "[line " <> (showText error.lineNumber) <> "] Error - " <> errorText
+    errorText = case error.typ of
+                  (UnknownToken c) -> "Unknown token: " <> c
