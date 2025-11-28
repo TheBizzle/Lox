@@ -1,7 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 
-module Lox.Scanner(ParserError(typ, lineNumber, ParserError), ParserErrorType(UnknownToken, UnterminatedString), scan, Token, TokenPlus(lineNumber, token, TokenPlus)) where
+module Lox.Scanner(ParserError(typ, lineNumber, ParserError), ParserErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString), scan, Token, TokenPlus(lineNumber, token, TokenPlus)) where
 
 import Control.Lens((#))
 import Control.Monad.State(get, modify, put, runState, State)
@@ -10,6 +10,9 @@ import Data.List((++))
 import Data.List.NonEmpty(nonEmpty, NonEmpty)
 import Data.Validation(_Failure, _Success, Validation)
 
+import Text.Read(readMaybe)
+
+import qualified Data.List          as List
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Text          as Text
 
@@ -27,7 +30,7 @@ scan_ =
     else do
       modify $ \s -> s { tokens = s.tokens ++ [TokenPlus EOF s.sLineNumber] }
       state <- get
-      let errorsMaybe = nonEmpty state.errors
+      let errorsMaybe = state.errors |> List.reverse &> nonEmpty
       return $ maybe (_Success # state.tokens) (_Failure #) errorsMaybe
 
 checkForEnd :: State ScannerState Bool
@@ -61,11 +64,15 @@ scanToken =
       '\r' -> skip
       '\n' -> (modify $ \s -> s { sLineNumber = s.sLineNumber + 1 }) >> skip
       '"'  -> slurpString
-      x -> do
-        let err = \lNum -> ParserError (UnknownToken $ asText [x]) lNum
-        modify $ \s -> s { errors = s.errors ++ [err s.sLineNumber] }
+      x -> parseTier2 x
   where
     skip = return ()
+
+    parseTier2 x =
+      if isDigit x then
+        slurpNumber x
+      else
+        addError $ UnknownToken $ asText [x]
 
 slurpNextChar :: State ScannerState Char
 slurpNextChar =
@@ -81,6 +88,10 @@ addToken token =
     state <- get
     let tplus = TokenPlus { token = token, lineNumber = state.sLineNumber }
     put (state { tokens = state.tokens ++ [tplus] })
+
+addError :: ParserErrorType -> State ScannerState ()
+addError errorType =
+  modify $ \s -> s { errors = (ParserError errorType s.sLineNumber) : s.errors }
 
 matches :: Char -> State ScannerState Bool
 matches c =
@@ -110,6 +121,17 @@ peek =
     state   <- get
     return $ if isAtEnd then '\0' else Text.index state.source state.current
 
+peek2 :: State ScannerState Char
+peek2 =
+  do
+    state   <- get
+    let result =
+          if (state.current + 1) < (Text.length state.source) then
+            Text.index state.source $ state.current + 1
+          else
+            '\0'
+    return result
+
 slurpString :: State ScannerState ()
 slurpString =
   do
@@ -120,7 +142,7 @@ slurpString =
       let str = state.source |> Text.drop (state.start + 1) &> Text.take (state.current - state.start - 2)
       addToken $ String str
     else
-      modify $ \s -> s { errors = s.errors ++ [ParserError UnterminatedString s.sLineNumber] }
+      addError UnterminatedString
   where
     helper =
       do
@@ -133,13 +155,55 @@ slurpString =
         else
           return isAtEnd
 
+slurpNumber :: Char -> State ScannerState ()
+slurpNumber c =
+  do
+    integerCs <- helper [c]
+    c         <- peek
+    c2        <- peek2
+    let numState =
+          if (c == '.') && (isDigit c2) then do
+            dot       <- slurpNextChar
+            helper $ dot : integerCs
+          else
+            return integerCs
+    numRev <- numState
+    let numMaybe = (numRev |> List.reverse &> readMaybe) :: Maybe Double
+    maybe (reportNumError numRev) (Number &> addToken) numMaybe
+  where
+
+    helper acc =
+      do
+        c <- peek
+        if isDigit c then do
+          next <- slurpNextChar
+          helper $ next : acc
+        else
+          return acc
+
+    reportNumError = List.reverse &> asText &> InvalidNumberFormat &> addError
+
+isDigit :: Char -> Bool
+isDigit '0' = True
+isDigit '1' = True
+isDigit '2' = True
+isDigit '3' = True
+isDigit '4' = True
+isDigit '5' = True
+isDigit '6' = True
+isDigit '7' = True
+isDigit '8' = True
+isDigit '9' = True
+isDigit _   = False
+
 data ScannerState
   = SState { source :: Text, tokens :: [TokenPlus], errors :: [ParserError], current :: Int, start :: Int, sLineNumber :: Int }
 
 type ParserResult a = Validation (NonEmpty ParserError) a
 
 data ParserErrorType
-  = UnknownToken Text
+  = InvalidNumberFormat Text
+  | UnknownToken Text
   | UnterminatedString
 
 data ParserError =
@@ -170,7 +234,7 @@ data Token
   | LessEqual
   | Identifier Text
   | String Text
-  | Number Text
+  | Number Double
   | And
   | Class
   | Else
@@ -211,7 +275,7 @@ instance Show Token where
   show LessEqual      = "<="
   show (Identifier x) = "(identifier: " <> (Text.unpack x) <> ")"
   show (String x)     = "\"" <> (Text.unpack x) <> "\""
-  show (Number x)     = "(number: "     <> (Text.unpack x) <> ")"
+  show (Number x)     = x |> showText &> ((id &&& Text.stripSuffix ".0") &> (\(a, b) -> maybe a id b)) &> asString
   show And            = "and"
   show Class          = "class"
   show Else           = "else"
