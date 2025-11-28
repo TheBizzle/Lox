@@ -184,17 +184,7 @@ slurpNumber c =
     reportNumError = List.reverse &> asText &> InvalidNumberFormat &> addError
 
 isDigit :: Char -> Bool
-isDigit '0' = True
-isDigit '1' = True
-isDigit '2' = True
-isDigit '3' = True
-isDigit '4' = True
-isDigit '5' = True
-isDigit '6' = True
-isDigit '7' = True
-isDigit '8' = True
-isDigit '9' = True
-isDigit _   = False
+isDigit c = c >= '0' && c <= '9'
 
 data ScannerState
   = SState { source :: Text, tokens :: [TokenPlus], errors :: [ParserError], current :: Int, start :: Int, sLineNumber :: Int }
