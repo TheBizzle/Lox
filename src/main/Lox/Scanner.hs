@@ -71,6 +71,8 @@ scanToken =
     parseTier2 x =
       if isDigit x then
         slurpNumber x
+      else if isAlphabetic x then
+        slurpIdentifier x
       else
         addError $ UnknownToken $ asText [x]
 
@@ -185,6 +187,49 @@ slurpNumber c =
 
 isDigit :: Char -> Bool
 isDigit c = c >= '0' && c <= '9'
+
+slurpIdentifier :: Char -> State ScannerState ()
+slurpIdentifier c =
+  do
+    identChars <- helper [c]
+    identChars |> List.reverse &> asText &> identifierishToken &> addToken
+  where
+    helper acc =
+      do
+        c <- peek
+        if isAlphanumeric c then do
+          next <- slurpNextChar
+          helper $ next : acc
+        else
+          return acc
+
+isAlphabetic :: Char -> Bool
+isAlphabetic c = isLowerCase || isUpperCase || (c == '_')
+  where
+    isLowerCase = c >= 'a' && c <= 'z'
+    isUpperCase = c >= 'A' && c <= 'Z'
+
+isAlphanumeric :: Char -> Bool
+isAlphanumeric = (isAlphabetic &&& isDigit) &> (uncurry (||))
+
+identifierishToken :: Text -> Token
+identifierishToken "and"    = And
+identifierishToken "class"  = Class
+identifierishToken "else"   = Else
+identifierishToken "false"  = TokenFalse
+identifierishToken "for"    = For
+identifierishToken "fun"    = Fun
+identifierishToken "if"     = If
+identifierishToken "nil"    = Nil
+identifierishToken "or"     = Or
+identifierishToken "print"  = Print
+identifierishToken "return" = Return
+identifierishToken "super"  = Super
+identifierishToken "this"   = This
+identifierishToken "true"   = TokenTrue
+identifierishToken "var"    = Var
+identifierishToken "while"  = While
+identifierishToken x        = Identifier x
 
 data ScannerState
   = SState { source :: Text, tokens :: [TokenPlus], errors :: [ParserError], current :: Int, start :: Int, sLineNumber :: Int }
