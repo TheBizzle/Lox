@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 
-module Lox.Scanner.Internal.ScannerState(addError, addToken, checkForEnd, matches, peek, peek2, ScannerState(current, errors, lineNumber, ScannerState, source, start, tokens), skipToEOL, slurpNextChar) where
+module Lox.Scanner.Internal.ScannerState(addError, addToken, checkForEnd, peek, peek2, ScannerState(current, errors, lineNumber, ScannerState, source, start, tokens), skipToEOL, slurpMatch, slurpNextChar) where
 
 import Control.Applicative(liftA2)
 import Control.Monad.State(get, modify, put, State)
@@ -40,8 +40,8 @@ addError errorType =
 checkForEnd :: State ScannerState Bool
 checkForEnd = get <&> \state -> state.current >= (Text.length state.source)
 
-matches :: Char -> State ScannerState Bool
-matches c =
+slurpMatch :: Char -> State ScannerState Bool
+slurpMatch c =
   do
     isAtEnd <- checkForEnd
     state   <- get

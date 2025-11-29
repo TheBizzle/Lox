@@ -16,7 +16,7 @@ import Lox.Scanner.Internal.Classify(isAlphabetic, isDigit)
 import Lox.Scanner.Internal.Identifier(slurpIdentifier)
 import Lox.Scanner.Internal.Number(slurpNumber)
 import Lox.Scanner.Internal.ScannerError(ScannerError, ScannerErrorType(UnknownToken))
-import Lox.Scanner.Internal.ScannerState(addToken, addError, checkForEnd, matches, ScannerState(current, errors, ScannerState, lineNumber, start, tokens), skipToEOL, slurpNextChar)
+import Lox.Scanner.Internal.ScannerState(addToken, addError, checkForEnd, ScannerState(current, errors, ScannerState, lineNumber, start, tokens), skipToEOL, slurpMatch, slurpNextChar)
 import Lox.Scanner.Internal.String(slurpString)
 
 import qualified Data.List as List
@@ -56,11 +56,11 @@ scanToken =
       '+'  -> addToken Plus
       ';'  -> addToken Semicolon
       '*'  -> addToken Star
-      '!'  -> ((matches '=') <&> (\c -> if c then BangEqual    else Bang   )) >>= addToken
-      '='  -> ((matches '=') <&> (\c -> if c then EqualEqual   else Equal  )) >>= addToken
-      '<'  -> ((matches '=') <&> (\c -> if c then LessEqual    else Less   )) >>= addToken
-      '>'  -> ((matches '=') <&> (\c -> if c then GreaterEqual else Greater)) >>= addToken
-      '/'  -> (matches '/') >>= (\c -> if c then skipToEOL else addToken Slash)
+      '!'  -> ((slurpMatch '=') <&> (\c -> if c then BangEqual    else Bang   )) >>= addToken
+      '='  -> ((slurpMatch '=') <&> (\c -> if c then EqualEqual   else Equal  )) >>= addToken
+      '<'  -> ((slurpMatch '=') <&> (\c -> if c then LessEqual    else Less   )) >>= addToken
+      '>'  -> ((slurpMatch '=') <&> (\c -> if c then GreaterEqual else Greater)) >>= addToken
+      '/'  -> (slurpMatch '/') >>= (\c -> if c then skipToEOL else addToken Slash)
       ' '  -> skip
       '\t' -> skip
       '\r' -> skip
