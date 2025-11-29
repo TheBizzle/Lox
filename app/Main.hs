@@ -50,8 +50,7 @@ anyAsText _ = error "Unimplemented error handler"
 scannerErrorAsText :: ScannerError -> Text
 scannerErrorAsText error = line
   where
-    line      = "[line " <> (showText error.lineNumber) <> "] Error - " <> errorText
-    errorText = case error.typ of
-                  (InvalidNumberFormat c) -> "Invalid number format: " <> c
-                  (UnknownToken c)        -> "Unknown token: " <> c
-                  UnterminatedString      -> "Unterminated string"
+    line = "[line " <> (showText error.lineNumber) <> "] Error - " <> (errorText error.typ)
+    errorText (InvalidNumberFormat c) = "Invalid number format: " <> c
+    errorText (UnknownToken c)        = "Unknown token: " <> c
+    errorText UnterminatedString      = "Unterminated string"
