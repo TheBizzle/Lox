@@ -19,7 +19,7 @@ main = getArgs >>= processArgs
     processArgs :: [String] -> IO ()
     processArgs            [] = runPrompt
     processArgs (filePath:[]) = (TIO.readFile filePath) >>= runFile
-    processArgs             _ = (TIO.putStrLn "Usage: jlox [script]") >> (exitWith $ ExitFailure 64)
+    processArgs             _ = (TIO.putStrLn "Usage: lox [script]") >> (exitWith $ ExitFailure 64)
 
 runPrompt :: IO ()
 runPrompt =
