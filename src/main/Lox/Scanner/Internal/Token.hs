@@ -67,8 +67,8 @@ instance Show Token where
   show GreaterEqual   = ">="
   show Less           = "<"
   show LessEqual      = "<="
-  show (Identifier x) = "(identifier: " <> (Text.unpack x) <> ")"
-  show (String x)     = "\"" <> (Text.unpack x) <> "\""
+  show (Identifier x) = "(identifier: " <> asString x <> ")"
+  show (String x)     = "\"" <> asString x <> "\""
   show (Number x)     = x |> showText &> ((id &&& Text.stripSuffix ".0") &> (\(a, b) -> maybe a id b)) &> asString
   show And            = "and"
   show Class          = "class"
