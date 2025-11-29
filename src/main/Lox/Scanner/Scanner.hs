@@ -16,7 +16,7 @@ import Lox.Scanner.Internal.Classify(isAlphabetic, isDigit)
 import Lox.Scanner.Internal.Identifier(slurpIdentifier)
 import Lox.Scanner.Internal.Number(slurpNumber)
 import Lox.Scanner.Internal.ScannerError(ScannerError, ScannerErrorType(UnknownToken))
-import Lox.Scanner.Internal.ScannerState(addToken, addError, checkForEnd, matches, ScannerState(current, errors, ScannerState, sLineNumber, start, tokens), skipToEOL, slurpNextChar)
+import Lox.Scanner.Internal.ScannerState(addToken, addError, checkForEnd, matches, ScannerState(current, errors, ScannerState, lineNumber, start, tokens), skipToEOL, slurpNextChar)
 import Lox.Scanner.Internal.String(slurpString)
 
 import qualified Data.List as List
@@ -36,7 +36,7 @@ scan_ =
       scanToken
       scan_
     else do
-      modify $ \s -> s { tokens = s.tokens ++ [TokenPlus EOF s.sLineNumber] }
+      modify $ \s -> s { tokens = s.tokens ++ [TokenPlus EOF s.lineNumber] }
       state <- get
       let errorsMaybe = state.errors |> List.reverse &> nonEmpty
       return $ maybe (_Success # state.tokens) (_Failure #) errorsMaybe
@@ -64,7 +64,7 @@ scanToken =
       ' '  -> skip
       '\t' -> skip
       '\r' -> skip
-      '\n' -> (modify $ \s -> s { sLineNumber = s.sLineNumber + 1 }) >> skip
+      '\n' -> (modify $ \s -> s { lineNumber = s.lineNumber + 1 }) >> skip
       '"'  -> slurpString
       x    -> scanTier2 x
   where

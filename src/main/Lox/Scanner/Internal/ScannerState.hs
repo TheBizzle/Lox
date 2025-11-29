@@ -1,36 +1,37 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 
-module Lox.Scanner.Internal.ScannerState(addError, addToken, checkForEnd, matches, peek, peek2, ScannerState(current, errors, ScannerState, sLineNumber, source, start, tokens), skipToEOL, slurpNextChar) where
+module Lox.Scanner.Internal.ScannerState(addError, addToken, checkForEnd, matches, peek, peek2, ScannerState(current, errors, lineNumber, ScannerState, source, start, tokens), skipToEOL, slurpNextChar) where
 
 import Control.Monad.State(get, modify, put, State)
 
 import Data.List((++))
 
 import Lox.Scanner.Internal.ScannerError(ScannerError(ScannerError), ScannerErrorType)
-import Lox.Scanner.Internal.Token(Token, TokenPlus(lineNumber, token, TokenPlus))
+import Lox.Scanner.Internal.Token(Token, TokenPlus(token, TokenPlus))
 
-import qualified Data.Text as Text
+import qualified Lox.Scanner.Internal.Token as Token
+import qualified Data.Text                  as Text
 
 
 data ScannerState
-  = ScannerState { source      :: Text
-                 , tokens      :: [TokenPlus]
-                 , errors      :: [ScannerError]
-                 , current     :: Int
-                 , start       :: Int
-                 , sLineNumber :: Int
+  = ScannerState { source     :: Text
+                 , tokens     :: [TokenPlus]
+                 , errors     :: [ScannerError]
+                 , current    :: Int
+                 , start      :: Int
+                 , lineNumber :: Int
                  }
 
 addToken :: Token -> State ScannerState ()
 addToken token =
   do
     state <- get
-    let tplus = TokenPlus { token = token, lineNumber = state.sLineNumber }
+    let tplus = TokenPlus { token = token, Token.lineNumber = state.lineNumber }
     put (state { tokens = state.tokens ++ [tplus] })
 
 addError :: ScannerErrorType -> State ScannerState ()
 addError errorType =
-  modify $ \s -> s { errors = (ScannerError errorType s.sLineNumber) : s.errors }
+  modify $ \s -> s { errors = (ScannerError errorType s.lineNumber) : s.errors }
 
 checkForEnd :: State ScannerState Bool
 checkForEnd =

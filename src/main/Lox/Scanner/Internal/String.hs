@@ -5,7 +5,7 @@ module Lox.Scanner.Internal.String(slurpString) where
 import Control.Monad.State(modify, State)
 
 import Lox.Scanner.Internal.ScannerError(ScannerErrorType(UnterminatedString))
-import Lox.Scanner.Internal.ScannerState(addError, addToken, checkForEnd, peek, ScannerState(sLineNumber), slurpNextChar)
+import Lox.Scanner.Internal.ScannerState(addError, addToken, checkForEnd, peek, ScannerState(lineNumber), slurpNextChar)
 import Lox.Scanner.Internal.Token(Token(String))
 
 import qualified Data.List as List
@@ -26,7 +26,7 @@ slurpString =
         isAtEnd <- checkForEnd
         c       <- peek
         if c /= '"' && (not isAtEnd) then do
-          when (c == '\n') $ modify $ \s -> s { sLineNumber = s.sLineNumber + 1 }
+          when (c == '\n') $ modify $ \s -> s { lineNumber = s.lineNumber + 1 }
           _ <- slurpNextChar
           helper $ c : acc
         else
