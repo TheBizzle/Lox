@@ -53,18 +53,17 @@ peek =
   do
     isAtEnd <- checkForEnd
     state   <- get
-    return $ if isAtEnd then '\0' else Text.index state.source state.current
+    return $ if not isAtEnd then Text.index state.source state.current else '\0'
 
 peek2 :: State ScannerState Char
 peek2 =
   do
-    state   <- get
-    let result =
-          if (state.current + 1) < (Text.length state.source) then
-            Text.index state.source $ state.current + 1
-          else
-            '\0'
-    return result
+    state <- get
+    return $
+      if (state.current + 1) < (Text.length state.source) then
+        Text.index state.source $ state.current + 1
+      else
+        '\0'
 
 skipToEOL :: State ScannerState ()
 skipToEOL =
@@ -82,5 +81,5 @@ slurpNextChar =
   do
     state <- get
     let char = Text.index state.source state.current
-    put (state { current = state.current + 1 })
+    put $ state { current = state.current + 1 }
     return char

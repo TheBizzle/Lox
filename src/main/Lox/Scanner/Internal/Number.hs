@@ -18,13 +18,12 @@ slurpNumber c =
     integerCs <- helper [c]
     c         <- peek
     c2        <- peek2
-    let numState =
-          if (c == '.') && (isDigit c2) then do
-            dot       <- slurpNextChar
-            helper $ dot : integerCs
-          else
-            return integerCs
-    numRev <- numState
+    numRev    <-
+      if (c == '.') && (isDigit c2) then do
+        dot <- slurpNextChar
+        helper $ dot : integerCs
+      else
+        return integerCs
     let numMaybe = (numRev |> List.reverse &> readMaybe) :: Maybe Double
     maybe (reportNumError numRev) (Number &> addToken) numMaybe
   where

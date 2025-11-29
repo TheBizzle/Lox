@@ -28,6 +28,6 @@ slurpString =
         if c /= '"' && (not isAtEnd) then do
           when (c == '\n') $ modify $ \s -> s { sLineNumber = s.sLineNumber + 1 }
           _ <- slurpNextChar
-          helper (c : acc)
+          helper $ c : acc
         else
           return (isAtEnd, acc)
