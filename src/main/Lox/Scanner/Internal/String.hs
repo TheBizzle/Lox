@@ -4,7 +4,7 @@ module Lox.Scanner.Internal.String(slurpString) where
 
 import Control.Monad.State(modify, State)
 
-import Lox.Scanner.Internal.ParserError(ParserErrorType(UnterminatedString))
+import Lox.Scanner.Internal.ScannerError(ScannerErrorType(UnterminatedString))
 import Lox.Scanner.Internal.ScannerState(addError, addToken, checkForEnd, peek, ScannerState(sLineNumber), slurpNextChar)
 import Lox.Scanner.Internal.Token(Token(String))
 

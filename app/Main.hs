@@ -7,7 +7,7 @@ import Data.Validation(validation)
 import System.Environment(getArgs)
 import System.Exit(exitWith, ExitCode(ExitFailure))
 
-import Lox.Scanner.ParserError(ParserError(lineNumber, typ), ParserErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString))
+import Lox.Scanner.ScannerError(ScannerError(lineNumber, typ), ScannerErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString))
 import Lox.Scanner.Scanner(scan)
 import Lox.Scanner.Token(TokenPlus(token))
 
@@ -51,7 +51,7 @@ run code =
         for_ results $ token &> showText &> TIO.putStrLn
         return True
 
-errorAsText :: ParserError -> Text
+errorAsText :: ScannerError -> Text
 errorAsText error = line
   where
     line      = "[line " <> (showText error.lineNumber) <> "] Error - " <> errorText

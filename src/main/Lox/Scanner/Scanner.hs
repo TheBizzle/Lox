@@ -15,19 +15,19 @@ import Lox.Scanner.Token(Token(Bang, BangEqual, Comma, Dot, Equal, EqualEqual, E
 import Lox.Scanner.Internal.Classify(isAlphabetic, isDigit)
 import Lox.Scanner.Internal.Identifier(slurpIdentifier)
 import Lox.Scanner.Internal.Number(slurpNumber)
-import Lox.Scanner.Internal.ParserError(ParserError, ParserErrorType(UnknownToken))
+import Lox.Scanner.Internal.ScannerError(ScannerError, ScannerErrorType(UnknownToken))
 import Lox.Scanner.Internal.ScannerState(addToken, addError, checkForEnd, matches, ScannerState(current, errors, ScannerState, sLineNumber, start, tokens), skipToEOL, slurpNextChar)
 import Lox.Scanner.Internal.String(slurpString)
 
 import qualified Data.List as List
 
 
-type ParserResult a = Validation (NonEmpty ParserError) a
+type ScannerResult a = Validation (NonEmpty ScannerError) a
 
-scan :: Text -> ParserResult [TokenPlus]
+scan :: Text -> ScannerResult [TokenPlus]
 scan code = (ScannerState code [] [] 0 0 1) |> (runState scan_) &> fst
 
-scan_ :: State ScannerState (ParserResult [TokenPlus])
+scan_ :: State ScannerState (ScannerResult [TokenPlus])
 scan_ =
   do
     isAtEnd <- checkForEnd
@@ -66,11 +66,11 @@ scanToken =
       '\r' -> skip
       '\n' -> (modify $ \s -> s { sLineNumber = s.sLineNumber + 1 }) >> skip
       '"'  -> slurpString
-      x    -> parseTier2 x
+      x    -> scanTier2 x
   where
     skip = return ()
 
-    parseTier2 x =
+    scanTier2 x =
       if isDigit x then
         slurpNumber x
       else if isAlphabetic x then

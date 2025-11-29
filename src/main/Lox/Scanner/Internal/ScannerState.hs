@@ -6,7 +6,7 @@ import Control.Monad.State(get, modify, put, State)
 
 import Data.List((++))
 
-import Lox.Scanner.Internal.ParserError(ParserError(ParserError), ParserErrorType)
+import Lox.Scanner.Internal.ScannerError(ScannerError(ScannerError), ScannerErrorType)
 import Lox.Scanner.Internal.Token(Token, TokenPlus(lineNumber, token, TokenPlus))
 
 import qualified Data.Text as Text
@@ -15,7 +15,7 @@ import qualified Data.Text as Text
 data ScannerState
   = ScannerState { source      :: Text
                  , tokens      :: [TokenPlus]
-                 , errors      :: [ParserError]
+                 , errors      :: [ScannerError]
                  , current     :: Int
                  , start       :: Int
                  , sLineNumber :: Int
@@ -28,9 +28,9 @@ addToken token =
     let tplus = TokenPlus { token = token, lineNumber = state.sLineNumber }
     put (state { tokens = state.tokens ++ [tplus] })
 
-addError :: ParserErrorType -> State ScannerState ()
+addError :: ScannerErrorType -> State ScannerState ()
 addError errorType =
-  modify $ \s -> s { errors = (ParserError errorType s.sLineNumber) : s.errors }
+  modify $ \s -> s { errors = (ScannerError errorType s.sLineNumber) : s.errors }
 
 checkForEnd :: State ScannerState Bool
 checkForEnd =

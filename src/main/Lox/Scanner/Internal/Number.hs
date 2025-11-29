@@ -5,7 +5,7 @@ import Control.Monad.State(State)
 import Text.Read(readMaybe)
 
 import Lox.Scanner.Internal.Classify(isDigit)
-import Lox.Scanner.Internal.ParserError(ParserErrorType(InvalidNumberFormat))
+import Lox.Scanner.Internal.ScannerError(ScannerErrorType(InvalidNumberFormat))
 import Lox.Scanner.Internal.ScannerState(addError, addToken, peek, peek2, ScannerState, slurpNextChar)
 import Lox.Scanner.Internal.Token(Token(Number))
 
