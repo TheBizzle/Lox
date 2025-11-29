@@ -28,10 +28,7 @@ runPrompt =
     when (line /= "exit") $ (run line) >> runPrompt
 
 runFile :: Text -> IO ()
-runFile code =
-  do
-    wasSuccess <- run code
-    when (not wasSuccess) $ exitWith $ ExitFailure 65
+runFile = run >=> \wasSuccess -> when (not wasSuccess) $ exitWith $ ExitFailure 65
 
 run :: Text -> IO Bool
 run code =

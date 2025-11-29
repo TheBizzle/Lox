@@ -10,17 +10,14 @@ import qualified Data.List as List
 
 
 slurpIdentifier :: Char -> State ScannerState ()
-slurpIdentifier c =
-  do
-    identChars <- helper [c]
-    identChars |> List.reverse &> asText &> identifierishToken &> addToken
+slurpIdentifier c = (identChars [c]) <&> (List.reverse &> asText &> identifierishToken) >>= addToken
   where
-    helper acc =
+    identChars acc =
       do
         c <- peek
         if isAlphanumeric c then do
           next <- slurpNextChar
-          helper $ next : acc
+          identChars $ next : acc
         else
           return acc
 
