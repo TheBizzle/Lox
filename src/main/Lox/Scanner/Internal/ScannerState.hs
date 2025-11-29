@@ -2,6 +2,7 @@
 
 module Lox.Scanner.Internal.ScannerState(addError, addToken, checkForEnd, matches, peek, peek2, ScannerState(current, errors, lineNumber, ScannerState, source, start, tokens), skipToEOL, slurpNextChar) where
 
+import Control.Applicative(liftA2)
 import Control.Monad.State(get, modify, put, State)
 
 import Data.List((++))
@@ -22,6 +23,9 @@ data ScannerState
                  , lineNumber :: Int
                  }
 
+(<*@>) :: Applicative f => f a -> f b -> f (a, b)
+(<*@>) = liftA2 (,)
+
 addToken :: Token -> State ScannerState ()
 addToken token =
   do
@@ -34,10 +38,7 @@ addError errorType =
   modify $ \s -> s { errors = (ScannerError errorType s.lineNumber) : s.errors }
 
 checkForEnd :: State ScannerState Bool
-checkForEnd =
-  do
-    state <- get
-    return $ state.current >= (Text.length state.source)
+checkForEnd = get <&> \state -> state.current >= (Text.length state.source)
 
 matches :: Char -> State ScannerState Bool
 matches c =
@@ -50,21 +51,18 @@ matches c =
     return doesMatch
 
 peek :: State ScannerState Char
-peek =
-  do
-    isAtEnd <- checkForEnd
-    state   <- get
-    return $ if not isAtEnd then Text.index state.source state.current else '\0'
+peek = (get <*@> checkForEnd) <&> \(state, isAtEnd) ->
+  if not isAtEnd then
+    Text.index state.source state.current
+  else
+    '\0'
 
 peek2 :: State ScannerState Char
-peek2 =
-  do
-    state <- get
-    return $
-      if (state.current + 1) < (Text.length state.source) then
-        Text.index state.source $ state.current + 1
-      else
-        '\0'
+peek2 = get <&> \state ->
+  if (state.current + 1) < (Text.length state.source) then
+    Text.index state.source $ state.current + 1
+  else
+    '\0'
 
 skipToEOL :: State ScannerState ()
 skipToEOL =
