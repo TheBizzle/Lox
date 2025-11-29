@@ -29,6 +29,7 @@ Executable lox
 Library
   hs-source-dirs:      src/main
   exposed-modules:
+    Lox.Interpreter,
     Lox.Scanner.Scanner,
     Lox.Scanner.ScannerError,
     Lox.Scanner.Token

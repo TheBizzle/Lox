@@ -2,16 +2,15 @@
 
 module Main(main) where
 
-import Data.Validation(validation)
-
 import System.Environment(getArgs)
 import System.Exit(exitWith, ExitCode(ExitFailure))
 
+import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Success))
 import Lox.Scanner.ScannerError(ScannerError(lineNumber, typ), ScannerErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString))
-import Lox.Scanner.Scanner(scan)
 import Lox.Scanner.Token(TokenPlus(token))
 
 import qualified Data.Text.IO as TIO
+
 
 main :: IO ()
 main = getArgs >>= processArgs
@@ -36,23 +35,20 @@ runFile code =
 
 run :: Text -> IO Bool
 run code =
-  do
-    let result = scan code
-    validation handleError handleSuccess result
+  case (interpret code) of
+    ScannerFailure errors -> handleError scannerErrorAsText errors
+    ParserFailure  errors -> handleError          anyAsText errors
+    OtherFailure   errors -> handleError          anyAsText errors
+    Success        tokens -> (for_ tokens $ token &> showText &> TIO.putStrLn) $> True
   where
+    handleError errorToText errors =
+      (for_ errors $ errorToText &> TIO.putStrLn) $> False
 
-    handleError errors =
-      do
-        for_ errors $ errorAsText &> TIO.putStrLn
-        return False
+anyAsText :: a -> Text
+anyAsText _ = error "Unimplemented error handler"
 
-    handleSuccess results =
-      do
-        for_ results $ token &> showText &> TIO.putStrLn
-        return True
-
-errorAsText :: ScannerError -> Text
-errorAsText error = line
+scannerErrorAsText :: ScannerError -> Text
+scannerErrorAsText error = line
   where
     line      = "[line " <> (showText error.lineNumber) <> "] Error - " <> errorText
     errorText = case error.typ of
