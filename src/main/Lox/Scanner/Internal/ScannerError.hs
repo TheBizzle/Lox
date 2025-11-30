@@ -5,7 +5,7 @@ module Lox.Scanner.Internal.ScannerError(
 
 data ScannerErrorType
   = InvalidNumberFormat Text
-  | UnknownToken Text
+  | UnknownToken        Text
   | UnterminatedString
 
 data ScannerError =
