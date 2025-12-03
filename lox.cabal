@@ -30,12 +30,17 @@ Library
   hs-source-dirs:      src/main
   exposed-modules:
     Lox.Interpreter,
+    Lox.Parser.Parser,
+    Lox.Parser.ParserError,
+    Lox.Parser.Program,
     Lox.Scanner.Scanner,
     Lox.Scanner.ScannerError,
     Lox.Scanner.Token
   default-language:    Haskell2010
   default-extensions:  OverloadedStrings
   other-modules:
+    Lox.Parser.Internal.ParserError,
+    Lox.Parser.Internal.Program,
     Lox.Scanner.Internal.Classify,
     Lox.Scanner.Internal.Identifier,
     Lox.Scanner.Internal.Number,

@@ -6,8 +6,9 @@ import System.Environment(getArgs)
 import System.Exit(exitWith, ExitCode(ExitFailure))
 
 import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Success))
+import Lox.Parser.ParserError(ParserError(lineNumber, offender, typ), ParserErrorType(InvalidExpression, MissingClosingParen))
 import Lox.Scanner.ScannerError(ScannerError(lineNumber, typ), ScannerErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString))
-import Lox.Scanner.Token(TokenPlus(token))
+import Lox.Scanner.Token(Token(EOF))
 
 import qualified Data.Text.IO as TIO
 
@@ -34,15 +35,24 @@ run :: Text -> IO Bool
 run code =
   case (interpret code) of
     ScannerFailure errors -> handleError scannerErrorAsText errors
-    ParserFailure  errors -> handleError          anyAsText errors
+    ParserFailure  errors -> handleError  parserErrorAsText errors
     OtherFailure   errors -> handleError          anyAsText errors
-    Success        tokens -> (for_ tokens $ token &> showText &> TIO.putStrLn) $> True
+    Success        expr   -> (expr |> showText &> TIO.putStrLn) $> True
   where
     handleError errorToText errors =
       (for_ errors $ errorToText &> TIO.putStrLn) $> False
 
 anyAsText :: a -> Text
 anyAsText _ = error "Unimplemented error handler"
+
+parserErrorAsText :: ParserError -> Text
+parserErrorAsText error = line
+  where
+    line = "[line " <> (showText error.lineNumber) <> "] Error - " <> (errorText error.typ error.offender)
+    suffix EOF = ", at end"
+    suffix t   = ", at \"" <> (showText t) <> "\""
+    errorText InvalidExpression   token = "Expected an expression" <> (suffix token)
+    errorText MissingClosingParen token = "Expected ')' after expression" <> (suffix token)
 
 scannerErrorAsText :: ScannerError -> Text
 scannerErrorAsText error = line

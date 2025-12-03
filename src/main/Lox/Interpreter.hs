@@ -6,17 +6,20 @@ import Data.Void(Void)
 
 import Lox.Scanner.Scanner(scan)
 import Lox.Scanner.ScannerError(ScannerError)
-import Lox.Scanner.Token(TokenPlus)
+
+import Lox.Parser.Parser(parse)
+import Lox.Parser.ParserError(ParserError)
+import Lox.Parser.Program(Program)
 
 
 data Result
   = ScannerFailure (NonEmpty ScannerError)
-  | ParserFailure  (NonEmpty Void)
+  | ParserFailure  (NonEmpty ParserError)
   | OtherFailure   (NonEmpty Void)
-  | Success        [TokenPlus]
+  | Success        Program
 
 interpret :: Text -> Result
-interpret code = result
+interpret = runM
   where
-    scanV  = scan code
-    result = validation ScannerFailure Success scanV
+    runM   = scan  &> validation ScannerFailure parseM
+    parseM = parse &> validation ParserFailure  Success
