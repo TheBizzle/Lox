@@ -7,83 +7,83 @@ data TokenPlus =
   TokenPlus { token :: Token, lineNumber :: Int }
 
 data Token
-  = LeftParen
-  | RightParen
-  | LeftBrace
-  | RightBrace
+  = And
+  | Bang
+  | BangEqual
+  | Class
   | Comma
   | Dot
+  | Else
+  | EOF
+  | Equal
+  | EqualEqual
+  | For
+  | Fun
+  | Greater
+  | GreaterEqual
+  | Identifier Text
+  | If
+  | LeftBrace
+  | LeftParen
+  | Less
+  | LessEqual
   | Minus
+  | Nil
+  | Number Double
+  | Or
   | Plus
+  | Print
+  | Return
+  | RightBrace
+  | RightParen
   | Semicolon
   | Slash
   | Star
-  | Bang
-  | BangEqual
-  | Equal
-  | EqualEqual
-  | Greater
-  | GreaterEqual
-  | Less
-  | LessEqual
-  | Identifier Text
   | String Text
-  | Number Double
-  | And
-  | Class
-  | Else
-  | TokenFalse
-  | Fun
-  | For
-  | If
-  | Nil
-  | Or
-  | Print
-  | Return
   | Super
   | This
+  | TokenFalse
   | TokenTrue
   | Var
   | While
-  | EOF
 
 instance Show Token where
-  show LeftParen      = "("
-  show RightParen     = ")"
-  show LeftBrace      = "{"
-  show RightBrace     = "}"
+  show And            = "and"
+  show Bang           = "!"
+  show BangEqual      = "!="
+  show Class          = "class"
   show Comma          = ","
   show Dot            = "."
+  show EOF            = "\\EOF"
+  show Else           = "else"
+  show Equal          = "="
+  show EqualEqual     = "=="
+  show For            = "for"
+  show Fun            = "function"
+  show Greater        = ">"
+  show GreaterEqual   = ">="
+  show (Identifier x) = "(identifier: " <> asString x <> ")"
+  show If             = "if"
+  show LeftBrace      = "{"
+  show LeftParen      = "("
+  show Less           = "<"
+  show LessEqual      = "<="
   show Minus          = "-"
+  show Nil            = "nil"
+  show (Number x)     = x |> showText &> ((id &&& Text.stripSuffix ".0") &> (\(a, b) -> maybe a id b)) &> asString
+  show Or             = "||"
   show Plus           = "+"
+  show Print          = "print"
+  show Return         = "return"
+  show RightBrace     = "}"
+  show RightParen     = ")"
   show Semicolon      = ";"
   show Slash          = "/"
   show Star           = "*"
-  show Bang           = "!"
-  show BangEqual      = "!="
-  show Equal          = "="
-  show EqualEqual     = "=="
-  show Greater        = ">"
-  show GreaterEqual   = ">="
-  show Less           = "<"
-  show LessEqual      = "<="
-  show (Identifier x) = "(identifier: " <> asString x <> ")"
   show (String x)     = "\"" <> asString x <> "\""
-  show (Number x)     = x |> showText &> ((id &&& Text.stripSuffix ".0") &> (\(a, b) -> maybe a id b)) &> asString
-  show And            = "and"
-  show Class          = "class"
-  show Else           = "else"
-  show TokenFalse     = "false"
-  show Fun            = "function"
-  show For            = "for"
-  show If             = "if"
-  show Nil            = "nil"
-  show Or             = "||"
-  show Print          = "print"
-  show Return         = "return"
   show Super          = "super"
   show This           = "this"
+  show TokenFalse     = "false"
   show TokenTrue      = "true"
   show Var            = "var"
   show While          = "while"
-  show EOF            = "\\EOF"
