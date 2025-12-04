@@ -46,6 +46,7 @@ data Token
   | TokenTrue
   | Var
   | While
+  deriving Eq
 
 instance Show Token where
   show And            = "and"
