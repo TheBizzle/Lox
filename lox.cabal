@@ -22,7 +22,9 @@ Executable lox
   default-language:    Haskell2010
   default-extensions:  OverloadedStrings
   build-depends:       bizzlelude,
+                       containers,
                        lox,
+                       mtl,
                        text,
                        validation
 
@@ -30,6 +32,11 @@ Library
   hs-source-dirs:      src/main
   exposed-modules:
     Lox.Interpreter,
+    Lox.Evaluator.Evaluator,
+    Lox.Evaluator.EvalError,
+    Lox.Evaluator.Type,
+    Lox.Evaluator.Value,
+    Lox.Evaluator.World,
     Lox.Parser.Parser,
     Lox.Parser.ParserError,
     Lox.Parser.Program,
@@ -39,6 +46,11 @@ Library
   default-language:    Haskell2010
   default-extensions:  OverloadedStrings
   other-modules:
+    Lox.Evaluator.Internal.Effect,
+    Lox.Evaluator.Internal.EvalError,
+    Lox.Evaluator.Internal.Type,
+    Lox.Evaluator.Internal.Value,
+    Lox.Evaluator.Internal.World,
     Lox.Parser.Internal.ParserError,
     Lox.Parser.Internal.Program,
     Lox.Scanner.Internal.Classify,
