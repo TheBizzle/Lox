@@ -30,6 +30,7 @@ typecheck Minus        [v, w] = [check NumberT v, check NumberT w]
 typecheck Plus         [v, w] = [check StringT v, check StringT w]
 typecheck Slash        [v, w] = [check NumberT v, check NumberT w]
 typecheck Star         [v, w] = [check NumberT v, check NumberT w]
+typecheck op           _      = error $ "Unknown operation: " <> (showText op)
 
 check :: Type -> Value -> Maybe (Type, Value)
 check     AnyT            _ = Nothing
