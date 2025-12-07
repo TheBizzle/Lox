@@ -1,5 +1,5 @@
 module Lox.Evaluator.Internal.EvalError(
-    EvalError(NotImplemented, mismatches, operator, TypeError)
+    EvalError(culprit, NotImplemented, mismatches, operator, TypeError)
   ) where
 
 import Lox.Scanner.Token(TokenPlus)
