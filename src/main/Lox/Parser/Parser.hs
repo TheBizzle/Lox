@@ -108,11 +108,11 @@ parserFrom f = Parser $ parseOneToken f
 whineAbout :: ParserErrorType -> Parser a
 whineAbout typ = parserFrom $ \t -> errorWith $ ParserError typ t.lineNumber t.token
 
-oneOf :: [Token] -> Parser Token
+oneOf :: [Token] -> Parser TokenPlus
 oneOf = (map one) &> foldr (<|>) empty
 
-one :: Token -> Parser Token
-one token = convert $ token =#> token
+one :: Token -> Parser TokenPlus
+one token = parserFrom $ \tp -> if (tp.token == token) then win tp else backtrack [tp]
 
 win :: a -> Parsed a
 win = Right
