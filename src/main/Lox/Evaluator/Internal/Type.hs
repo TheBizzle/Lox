@@ -2,7 +2,7 @@ module Lox.Evaluator.Internal.Type(Type(AnyT, BooleanT, NumberT, StringT), typec
 
 import Lox.Scanner.Token(Token(Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Minus, Plus, Slash, Star))
 
-import Lox.Evaluator.Internal.Value(Value(BooleanV, NilV, NumberV, StringV))
+import Lox.Evaluator.Internal.Value(Value(BooleanV, NumberV, StringV))
 
 
 data Type
