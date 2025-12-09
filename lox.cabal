@@ -32,6 +32,7 @@ Library
   hs-source-dirs:      src/main
   exposed-modules:
     Lox.Interpreter,
+    Lox.Evaluator.Effect,
     Lox.Evaluator.Evaluator,
     Lox.Evaluator.EvalError,
     Lox.Evaluator.Type,

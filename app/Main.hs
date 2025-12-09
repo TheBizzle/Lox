@@ -12,8 +12,9 @@ import Data.Validation(validation, Validation)
 import System.Environment(getArgs)
 import System.Exit(exitWith, ExitCode(ExitFailure))
 
+import Lox.Evaluator.Effect(Effect(Print))
 import Lox.Evaluator.EvalError(EvalError(NotImplemented, TypeError))
-import Lox.Evaluator.World(World, WorldState(WorldState))
+import Lox.Evaluator.World(World, WorldState(effects, WorldState))
 import Lox.Evaluator.Value(Value)
 
 import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Success))
@@ -26,9 +27,12 @@ import Lox.Parser.ParserError(
 import Lox.Scanner.ScannerError(ScannerError(lineNumber, typ), ScannerErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString))
 import Lox.Scanner.Token(Token(EOF), TokenPlus(lineNumber, token))
 
+import qualified Data.List    as List
 import qualified Data.Map     as Map
 import qualified Data.Text    as Text
 import qualified Data.Text.IO as TIO
+
+import qualified Lox.Evaluator.World as World
 
 
 main :: IO ()
@@ -63,10 +67,15 @@ handleError errorToText errors = for_ errors $ errorToText &> TIO.putStrLn
 runWorld :: World (Validation (NonEmpty EvalError) Value) -> IO Int
 runWorld world = output
   where
-    (resultV, _) = runState world $ WorldState Map.empty []
-    output       = validation handleBad handleGood resultV
-    handleBad    = (handleError evalErrorAsText) &> ($> 70)
-    handleGood   = showText &> TIO.putStrLn      &> ($> 0)
+    (resultV, ws) = runState world $ World.empty
+    output        = validation handleBad handleGood resultV
+    handleBad     = (handleError evalErrorAsText)          &> ($> 70)
+    handleGood t  =
+      do
+        for_ (List.reverse ws.effects) runEffect
+        t |> showText &> TIO.putStrLn &> ($> 0)
+
+    runEffect (Print text) = TIO.putStrLn text
 
 anyAsText :: a -> Text
 anyAsText _ = error "Unimplemented error handler"

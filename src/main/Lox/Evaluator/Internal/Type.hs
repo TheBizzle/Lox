@@ -1,6 +1,6 @@
 module Lox.Evaluator.Internal.Type(Type(AnyT, BooleanT, NumberT, StringT), typecheck) where
 
-import Lox.Scanner.Token(Token(Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Minus, Plus, Slash, Star))
+import Lox.Scanner.Token(Token(Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Minus, Plus, Print, Slash, Star))
 
 import Lox.Evaluator.Internal.Value(Value(BooleanV, NumberV, StringV))
 
@@ -28,6 +28,7 @@ typecheck LessEqual    [v, w] = [check NumberT v, check NumberT w]
 typecheck Minus        [v]    = [check NumberT v]
 typecheck Minus        [v, w] = [check NumberT v, check NumberT w]
 typecheck Plus         [v, w] = [check StringT v, check StringT w]
+typecheck Print        [v]    = [check StringT v]
 typecheck Slash        [v, w] = [check NumberT v, check NumberT w]
 typecheck Star         [v, w] = [check NumberT v, check NumberT w]
 typecheck op           _      = error $ "Unknown typecheck operation: " <> (showText op)

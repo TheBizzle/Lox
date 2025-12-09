@@ -3,6 +3,7 @@
 module Lox.Evaluator.Evaluator(eval) where
 
 import Control.Lens((#))
+import Control.Monad.State(modify)
 
 import Data.List.NonEmpty(NonEmpty)
 import Data.Validation(bindValidation, _Failure, _Success, Validation)
@@ -10,7 +11,8 @@ import Data.Validation(bindValidation, _Failure, _Success, Validation)
 import Lox.Parser.Program(
     Expr(Assign, Binary, Call, Get, Grouping, LiteralExpr, Logical, Set, Super, This, Unary, Variable),
     Literal(BooleanLit, DoubleLit, NilLit, StringLit),
-    Program(program)
+    Program(statements),
+    Statement(ExpressionStatement, PrintStatement)
   )
 
 import Lox.Scanner.Token(
@@ -18,16 +20,26 @@ import Lox.Scanner.Token(
     Token(Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Plus, Slash, Star)
   )
 
+import Lox.Evaluator.Internal.Effect(Effect(Print))
 import Lox.Evaluator.Internal.EvalError(EvalError(NotImplemented, TypeError))
 import Lox.Evaluator.Internal.Type(typecheck)
 import Lox.Evaluator.Internal.Value(Value(BooleanV, NumberV, StringV, NilV))
-import Lox.Evaluator.Internal.World(World)
+import Lox.Evaluator.Internal.World(World, WorldState(effects))
 
 import qualified Data.List.NonEmpty as NE
 
 
 eval :: Program -> World (Validation (NonEmpty EvalError) Value)
-eval = program &> evalExpr
+eval = statements &> (flip foldM (_Success # NilV) $ \_ s -> evalStatement s)
+
+evalStatement :: Statement -> World (Validation (NonEmpty EvalError) Value)
+evalStatement (ExpressionStatement   expr) = evalExpr expr
+evalStatement (     PrintStatement _ expr) =
+  do
+    valueV <- evalExpr expr
+    sequence $ flip second valueV $ \value -> do
+      modify $ \s -> s { effects = (Print $ showText value) : s.effects }
+      return NilV
 
 evalExpr :: Expr -> World (Validation (NonEmpty EvalError) Value)
 evalExpr (Assign      name value)             = fail $ NotImplemented name

@@ -1,11 +1,21 @@
 {-# LANGUAGE OverloadedRecordDot #-}
 
-module Lox.Parser.Internal.Program where
+module Lox.Parser.Internal.Program(
+    Expr(..),
+    Literal(BooleanLit, DoubleLit, NilLit, StringLit),
+    Program(Program, statements),
+    Statement(expr, ExpressionStatement, PrintStatement, term)
+  ) where
 
 import Lox.Scanner.Token(TokenPlus)
 
 data Program
-  = Program { program :: Expr }
+  = Program { statements :: [Statement] }
+  deriving Show
+
+data Statement
+  = ExpressionStatement { expr :: Expr }
+  | PrintStatement { term :: TokenPlus, expr :: Expr }
   deriving Show
 
 data Literal
