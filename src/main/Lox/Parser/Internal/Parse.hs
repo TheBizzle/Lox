@@ -3,7 +3,7 @@
 {-# LANGUAGE TupleSections #-}
 
 module Lox.Parser.Internal.Parse(
-    (=#>), backtrack, convert, errorWith, oneOf, Parsed, Parser(Parser, run), parserFrom, throwaway, whineAbout, win
+    (=#>), backtrack, convert, errorWith, one, oneOf, Parsed, Parser(Parser, run), parserFrom, throwaway, whineAbout, win
   ) where
 
 import Control.Applicative(Alternative(empty))
@@ -13,7 +13,10 @@ import Lox.Scanner.Token(
     TokenPlus(lineNumber, token, TokenPlus)
   )
 
-import Lox.Parser.Internal.ParserError(ParserError(ParserError), ParserErrorType(InvalidExpression))
+import Lox.Parser.Internal.ParserError(
+    ParserError(ParserError, typ),
+    ParserErrorType(Backtrack, InvalidExpression, InvalidStatement, MissingSemicolon)
+  )
 
 
 type Parsed = Either ParserError
@@ -56,7 +59,7 @@ backtrack :: [TokenPlus] -> Parsed a
 backtrack = listToMaybe &> (maybe dfault id) &> (lineNumber &&& token) &> (uncurry mkError) &> errorWith
   where
     dfault  = TokenPlus EOF 0
-    mkError = ParserError InvalidExpression
+    mkError = ParserError Backtrack
 
 instance Applicative Parser where
   pure x = Parser $ \ts -> win (x, ts)
@@ -71,10 +74,6 @@ instance Alternative Parser where
   empty                 = Parser backtrack
   Parser p <|> Parser q = Parser $ \ts -> helper (p ts) (q ts)
     where
-      -- Valid parse > real error > backtrack --Jason B. (12/5/25)
       helper (Right r)         _ = win r
       helper         _ (Right r) = win r
-      helper (Left e1) (Left e2) = errorWith $ betterError e1 e2
-
-      betterError (ParserError InvalidExpression _ _) e2 = e2
-      betterError                                  e1  _ = e1
+      helper (Left e1) (Left e2) = errorWith $ if e1.typ >= e2.typ then e1 else e2

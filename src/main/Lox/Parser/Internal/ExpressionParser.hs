@@ -9,7 +9,7 @@ import Lox.Parser.Internal.Parse(
     (=#>), backtrack, convert, oneOf, Parser(run), parserFrom, throwaway, whineAbout, win
   )
 
-import Lox.Parser.Internal.ParserError(ParserErrorType(MissingClosingParen))
+import Lox.Parser.Internal.ParserError(ParserErrorType(InvalidExpression, MissingClosingParen))
 
 import Lox.Parser.Internal.Program(
     Expr(Binary, Grouping, LiteralExpr, Unary),
@@ -18,7 +18,7 @@ import Lox.Parser.Internal.Program(
 
 
 expression :: Parser Expr
-expression = expr
+expression = expr <|> (whineAbout InvalidExpression)
 
 expr :: Parser Expr
 expr = equality

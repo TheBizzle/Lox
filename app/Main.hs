@@ -15,8 +15,14 @@ import System.Exit(exitWith, ExitCode(ExitFailure))
 import Lox.Evaluator.EvalError(EvalError(NotImplemented, TypeError))
 import Lox.Evaluator.World(World, WorldState(WorldState))
 import Lox.Evaluator.Value(Value)
+
 import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Success))
-import Lox.Parser.ParserError(ParserError(lineNumber, offender, typ), ParserErrorType(InvalidExpression, MissingClosingParen))
+
+import Lox.Parser.ParserError(
+    ParserError(lineNumber, offender, typ),
+    ParserErrorType(Backtrack, InvalidExpression, InvalidStatement, MissingClosingParen, MissingSemicolon)
+  )
+
 import Lox.Scanner.ScannerError(ScannerError(lineNumber, typ), ScannerErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString))
 import Lox.Scanner.Token(Token(EOF), TokenPlus(lineNumber, token))
 
@@ -81,8 +87,12 @@ parserErrorAsText error = line
     line = "[line " <> (showText error.lineNumber) <> "] Error - " <> (errorText error.typ error.offender)
     suffix EOF = ", at end"
     suffix t   = ", at \"" <> (showText t) <> "\""
-    errorText InvalidExpression   token = "Expected an expression" <> (suffix token)
-    errorText MissingClosingParen token = "Expected ')' after expression" <> (suffix token)
+    errorText Backtrack           token = withLoc token "Expected something here (this shouldn't be able to happen)"
+    errorText InvalidExpression   token = withLoc token "Expected an expression"
+    errorText InvalidStatement    token = withLoc token "Expected a statement"
+    errorText MissingClosingParen token = withLoc token "Expected ')' after expression"
+    errorText MissingSemicolon    token = withLoc token "Expected ';'"
+    withLoc token = (<> (suffix token))
 
 scannerErrorAsText :: ScannerError -> Text
 scannerErrorAsText error = line
