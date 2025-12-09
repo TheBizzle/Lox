@@ -39,40 +39,40 @@ main :: IO ()
 main = getArgs >>= processArgs
   where
     processArgs :: [String] -> IO ()
-    processArgs            [] = runPrompt
+    processArgs            [] = runPrompt World.empty
     processArgs (filePath:[]) = (TIO.readFile filePath) >>= runFile
     processArgs             _ = (TIO.putStrLn "Usage: lox [script]") >> (exitWith $ ExitFailure 64)
 
-runPrompt :: IO ()
-runPrompt =
+runPrompt :: WorldState -> IO ()
+runPrompt world =
   do
     putStrFlush "> "
     line <- TIO.getLine
-    when (line /= "exit") $ (run line) >> runPrompt
+    when (line /= "exit") $ (run world line) >>= (fst &> runPrompt)
 
 runFile :: Text -> IO ()
-runFile = run >=> \errorCode -> when (errorCode /= 0) $ exitWith $ ExitFailure errorCode
+runFile = (run World.empty) >=> \(_, errorCode) -> when (errorCode /= 0) $ exitWith $ ExitFailure errorCode
 
-run :: Text -> IO Int
-run code =
+run :: WorldState -> Text -> IO (WorldState, Int)
+run world code =
   case (interpret code) of
-    ScannerFailure errors -> (handleError scannerErrorAsText errors) $> 65
-    ParserFailure  errors -> (handleError  parserErrorAsText errors) $> 65
-    OtherFailure   errors -> (handleError          anyAsText errors) $> 65
-    Success        expr   -> runWorld expr
+    ScannerFailure errors  -> (handleError scannerErrorAsText errors) $> (world, 65)
+    ParserFailure  errors  -> (handleError  parserErrorAsText errors) $> (world, 65)
+    OtherFailure   errors  -> (handleError          anyAsText errors) $> (world, 65)
+    Success        program -> runWorld program world
 
 handleError :: Traversable t => (a -> Text) -> t a -> IO ()
 handleError errorToText errors = for_ errors $ errorToText &> TIO.putStrLn
 
-runWorld :: World (Validation (NonEmpty EvalError) Value) -> IO Int
-runWorld world = output
+runWorld :: World (Validation (NonEmpty EvalError) Value) -> WorldState -> IO (WorldState, Int)
+runWorld program world = output <&> \signal -> (newWorld { effects = [] }, signal)
   where
-    (resultV, ws) = runState world $ World.empty
-    output        = validation handleBad handleGood resultV
-    handleBad     = (handleError evalErrorAsText)          &> ($> 70)
-    handleGood t  =
+    (resultV, newWorld) = runState program world
+    output              = validation handleBad handleGood resultV
+    handleBad           = (handleError evalErrorAsText) &> ($> 70)
+    handleGood t        =
       do
-        for_ (List.reverse ws.effects) runEffect
+        for_ (List.reverse newWorld.effects) runEffect
         t |> showText &> TIO.putStrLn &> ($> 0)
 
     runEffect (Print text) = TIO.putStrLn text
