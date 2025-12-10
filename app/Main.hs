@@ -13,8 +13,8 @@ import System.Environment(getArgs)
 import System.Exit(exitWith, ExitCode(ExitFailure))
 
 import Lox.Evaluator.Effect(Effect(Print))
-import Lox.Evaluator.EvalError(EvalError(NotImplemented, TypeError))
-import Lox.Evaluator.World(World, WorldState(effects, WorldState))
+import Lox.Evaluator.EvalError(EvalError(NotImplemented, TypeError, UnknownVariable))
+import Lox.Evaluator.World(World, WorldState(effects))
 import Lox.Evaluator.Value(Value)
 
 import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Success))
@@ -28,7 +28,6 @@ import Lox.Scanner.ScannerError(ScannerError(lineNumber, typ), ScannerErrorType(
 import Lox.Scanner.Token(Token(EOF), TokenPlus(lineNumber, token))
 
 import qualified Data.List    as List
-import qualified Data.Map     as Map
 import qualified Data.Text    as Text
 import qualified Data.Text.IO as TIO
 
@@ -84,8 +83,9 @@ evalErrorAsText :: EvalError -> Text
 evalErrorAsText = errorText
   where
     lineNum tp = showText tp.lineNumber
-    errorText (NotImplemented tp) = "Runtime error (on line " <> (lineNum tp) <> "): Functionality not yet implemented"
-    errorText (TypeError t pairs) = Text.intercalate "\n" $ map (typeError t) pairs
+    errorText (NotImplemented tp)       = "Runtime error (on line " <> (lineNum tp) <> "): Functionality not yet implemented"
+    errorText (UnknownVariable tp name) = "Runtime error (on line " <> (lineNum tp) <> "): `" <> name <> "` is not defined"
+    errorText (TypeError t pairs)       = Text.intercalate "\n" $ map (typeError t) pairs
       where
         typeError tp (typ, value) = "Type error (on line " <> (lineNum tp) <> "): `" <> (showText tp.token) <>
           "` expected a value of type '" <> (showText typ) <> "', but got `" <> (showText value) <> "`"

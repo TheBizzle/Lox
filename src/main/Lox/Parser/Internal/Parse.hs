@@ -3,20 +3,22 @@
 {-# LANGUAGE TupleSections #-}
 
 module Lox.Parser.Internal.Parse(
-    (=#>), backtrack, convert, errorWith, one, oneOf, Parsed, Parser(Parser, run), parserFrom, throwaway, whineAbout, win
+    (=#>), backtrack, convert, errorWith, one, oneOf, Parsed, Parser(Parser, run), parserFrom, throwaway, variable, whineAbout, win
   ) where
 
 import Control.Applicative(Alternative(empty))
 
 import Lox.Scanner.Token(
-    Token(EOF),
+    Token(EOF, Identifier),
     TokenPlus(lineNumber, token, TokenPlus)
   )
 
 import Lox.Parser.Internal.ParserError(
     ParserError(ParserError, typ),
-    ParserErrorType(Backtrack, InvalidExpression, InvalidStatement, MissingSemicolon)
+    ParserErrorType(Backtrack)
   )
+
+import Lox.Parser.Internal.Program(Expr(Variable))
 
 
 type Parsed = Either ParserError
@@ -24,6 +26,12 @@ type Parsed = Either ParserError
 newtype Parser a =
   Parser { run :: [TokenPlus] -> Parsed (a, [TokenPlus]) }
   deriving Functor
+
+variable :: Parser Expr
+variable = parserFrom helper
+  where
+    helper tp@(TokenPlus (Identifier _) _) = win $ Variable tp
+    helper                              tp = backtrack [tp]
 
 throwaway :: Token -> Parser ()
 throwaway token = convert $ token =#> ()

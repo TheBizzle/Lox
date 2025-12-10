@@ -6,7 +6,7 @@ import Lox.Scanner.Token(
   )
 
 import Lox.Parser.Internal.Parse(
-    (=#>), backtrack, convert, oneOf, Parser(run), parserFrom, throwaway, whineAbout, win
+    (=#>), backtrack, convert, oneOf, Parser(run), parserFrom, throwaway, variable, whineAbout, win
   )
 
 import Lox.Parser.Internal.ParserError(ParserErrorType(InvalidExpression, MissingClosingParen))
@@ -49,7 +49,7 @@ unary = unaryOperation <|> primary
     unaryOperation = Unary <$> (oneOf [Bang, Minus]) <*> unary
 
 primary :: Parser Expr
-primary = number <|> string <|> true <|> false <|> nil <|> grouping
+primary = number <|> string <|> true <|> false <|> nil <|> variable <|> grouping
   where
     true  = convert $ TokenTrue  =#> (LiteralExpr $ BooleanLit True)
     false = convert $ TokenFalse =#> (LiteralExpr $ BooleanLit False)
@@ -69,4 +69,3 @@ primary = number <|> string <|> true <|> false <|> nil <|> grouping
       where
         helper (TokenPlus (String s) _) = win $ LiteralExpr $ StringLit s
         helper                       tp = backtrack [tp]
-

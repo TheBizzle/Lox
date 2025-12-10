@@ -4,7 +4,7 @@ module Lox.Parser.Internal.Program(
     Expr(..),
     Literal(BooleanLit, DoubleLit, NilLit, StringLit),
     Program(Program, statements),
-    Statement(expr, ExpressionStatement, PrintStatement, term)
+    Statement(DeclareVar, expr, ExpressionStatement, newVarName, PrintStatement, term)
   ) where
 
 import Lox.Scanner.Token(TokenPlus)
@@ -14,7 +14,8 @@ data Program
   deriving Show
 
 data Statement
-  = ExpressionStatement { expr :: Expr }
+  = DeclareVar { newVarName :: TokenPlus, initial :: Expr }
+  | ExpressionStatement { expr :: Expr }
   | PrintStatement { term :: TokenPlus, expr :: Expr }
   deriving Show
 
