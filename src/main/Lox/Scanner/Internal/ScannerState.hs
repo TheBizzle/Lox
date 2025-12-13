@@ -31,7 +31,7 @@ addToken token =
   do
     state <- get
     let tplus = TokenPlus { token = token, Token.lineNumber = state.lineNumber }
-    put $ state { tokens = state.tokens ++ [tplus] }
+    put $ state { tokens = state.tokens <> [tplus] }
 
 addError :: ScannerErrorType -> State ScannerState ()
 addError errorType =
