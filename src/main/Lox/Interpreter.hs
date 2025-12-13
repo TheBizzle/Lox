@@ -11,6 +11,7 @@ import Lox.Evaluator.EvalError(EvalError)
 import Lox.Evaluator.Value(Value)
 import Lox.Evaluator.World(World)
 
+
 data Result
   = ScannerFailure (NonEmpty ScannerError)
   | ParserFailure  (NonEmpty ParserError)
