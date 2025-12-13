@@ -10,7 +10,7 @@ import Lox.Parser.Internal.Parse(
   )
 
 import Lox.Parser.Internal.Program(
-    Expr(Binary, Grouping, LiteralExpr, Unary),
+    Expr(Binary, Grouping, LiteralExpr, Unary, Variable),
     Literal(BooleanLit, DoubleLit, NilLit, StringLit)
   )
 
@@ -47,11 +47,13 @@ unary = unaryOperation <|> primary
     unaryOperation = Unary <$> (oneOf [Bang, Minus]) <*> unary
 
 primary :: Parser Expr
-primary = number <|> string <|> true <|> false <|> nil <|> variable <|> grouping
+primary = number <|> string <|> true <|> false <|> nil <|> realVariable <|> grouping
   where
     true  = convert $ TokenTrue  =#> (LiteralExpr $ BooleanLit True)
     false = convert $ TokenFalse =#> (LiteralExpr $ BooleanLit False)
     nil   = convert $        Nil =#>  LiteralExpr   NilLit
+
+    realVariable = (uncurry Variable) <$> variable
 
     grouping = Grouping <$> (throwaway LeftParen *> expr <* throwaway RightParen)
 

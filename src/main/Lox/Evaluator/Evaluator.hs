@@ -27,25 +27,25 @@ eval :: Program -> World (Validation (NonEmpty EvalError) Value)
 eval = statements &> (flip foldM (Success NilV) $ const $ evalStatement)
 
 evalStatement :: Statement -> World (Validation (NonEmpty EvalError) Value)
-evalStatement (         DeclareVar vnTP expr) = evalDeclaration vnTP expr
-evalStatement (ExpressionStatement      expr) = evalExpr expr
-evalStatement (     PrintStatement    _ expr) = evalPrint expr
+evalStatement (         DeclareVar name vnTP expr) = evalDeclaration name vnTP expr
+evalStatement (ExpressionStatement           expr) = evalExpr expr
+evalStatement (     PrintStatement         _ expr) = evalPrint expr
 
 evalExpr :: Expr -> World (Validation (NonEmpty EvalError) Value)
-evalExpr (Assign      name value)             = unimplemented name
+evalExpr (Assign      name token value)       = unimplemented token
 evalExpr (Binary      left operator right)    = handleBinary <$> (evalExpr left) <*> (evalExpr right)
   where
     handleBinary lv rv = lv `bindValidation` (\l -> rv `bindValidation` (evalBinary l operator))
-evalExpr (Call        callee paren arguments) = unimplemented paren
-evalExpr (Get         object name)            = unimplemented name
-evalExpr (Grouping    expression)             = evalExpr expression
-evalExpr (LiteralExpr literal _)              = return $ Success $ evalLiteral literal
-evalExpr (Logical     left operator right)    = unimplemented operator
-evalExpr (Set         object name value)      = unimplemented name
-evalExpr (Super       keyword method)         = unimplemented keyword
-evalExpr (This        keyword)                = unimplemented keyword
-evalExpr (Unary       operator right)         = (evalExpr right) <&> (flip bindValidation $ evalUnary operator)
-evalExpr (Variable    name)                   = lookupVar name
+evalExpr (Call        callee paren arguments)  = unimplemented paren
+evalExpr (Get         object name token)       = unimplemented token
+evalExpr (Grouping    expression)              = evalExpr expression
+evalExpr (LiteralExpr literal _)               = return $ Success $ evalLiteral literal
+evalExpr (Logical     left operator right)     = unimplemented operator
+evalExpr (Set         object name token value) = unimplemented token
+evalExpr (Super       keyword method)          = unimplemented keyword
+evalExpr (This        keyword)                 = unimplemented keyword
+evalExpr (Unary       operator right)          = (evalExpr right) <&> (flip bindValidation $ evalUnary operator)
+evalExpr (Variable    name token)              = lookupVar name token
 
 evalLiteral :: Literal -> Value
 evalLiteral (BooleanLit bool)   = BooleanV bool
@@ -82,11 +82,10 @@ evalBinary l tp r = helper l tp.token r
 
     succeed consV l op r = Success $ consV $ l `op` r
 
-evalDeclaration :: TokenPlus -> Expr -> World (Validation (NonEmpty EvalError) Value)
-evalDeclaration vnTP expr =
+evalDeclaration :: Text -> TokenPlus -> Expr -> World (Validation (NonEmpty EvalError) Value)
+evalDeclaration varName vnTP expr =
   do
     valueV <- evalExpr expr
-    let varName = extractVarName vnTP
     sequence $ flip second valueV $ \value -> do
       modify $ setVar varName value
       return NilV
@@ -99,17 +98,12 @@ evalPrint expr =
       modify $ \s -> s { effects = (Print $ showText value) : s.effects }
       return NilV
 
-lookupVar :: TokenPlus -> World (Validation (NonEmpty EvalError) Value)
-lookupVar vnTP =
+lookupVar :: Text -> TokenPlus -> World (Validation (NonEmpty EvalError) Value)
+lookupVar varName vnTP =
   do
     w <- get
-    let varName = extractVarName vnTP
-    let valM    = getVar varName w
+    let valM = getVar varName w
     return $ maybe (fail $ UnknownVariable vnTP varName) Success valM
-
-extractVarName :: TokenPlus -> Text
-extractVarName (TokenPlus (Identifier vn) _) = vn
-extractVarName                             _ = error "Impossible condition: Varname TP is not an identifier"
 
 typeError :: TokenPlus -> [Value] -> Validation (NonEmpty EvalError) a
 typeError tp args = Failure $ NE.singleton $ TypeError tp $ catMaybes $ typecheck tp.token args

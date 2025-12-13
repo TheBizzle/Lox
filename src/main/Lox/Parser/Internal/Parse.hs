@@ -15,8 +15,6 @@ import Lox.Parser.Internal.ParserError(
   , ParserErrorType(Backtrack, ReservedName)
   )
 
-import Lox.Parser.Internal.Program(Expr(Variable))
-
 
 type Parsed = Either ParserError
 
@@ -24,10 +22,10 @@ newtype Parser a =
   Parser { run :: [TokenPlus] -> Parsed (a, [TokenPlus]) }
   deriving Functor
 
-variable :: Parser Expr
+variable :: Parser (Text, TokenPlus)
 variable = parserFrom helper
   where
-    helper tp@(TokenPlus (Identifier _) _) = win $ Variable tp
+    helper tp@(TokenPlus (Identifier s) _) = win $ (s, tp)
     helper tp@(TokenPlus t              _) =
       if not $ isReserved t then
         backtrack [tp]

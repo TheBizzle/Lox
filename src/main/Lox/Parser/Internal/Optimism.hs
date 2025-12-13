@@ -5,7 +5,7 @@ import Lox.Scanner.Token(Token(EOF, Equal, Print, Semicolon, Var))
 import Lox.Parser.Internal.ExpressionParser(expression)
 import Lox.Parser.Internal.Parse(one, Parser, throwaway, variable)
 import Lox.Parser.Internal.Program(
-    Expr(LiteralExpr, Variable),
+    Expr(LiteralExpr),
     Literal(NilLit),
     Program(Program),
     Statement(DeclareVar, ExpressionStatement, PrintStatement)
@@ -22,8 +22,7 @@ varDeclaration :: Parser Statement
 varDeclaration = declare <$> ((throwaway Var) *> variable) <*>
                              ((optional $ (throwaway Equal) *> expression) <* (throwaway Semicolon))
   where
-    declare (Variable ident) initialM = DeclareVar ident $ maybe (LiteralExpr NilLit ident) id initialM
-    declare                _        _ = error "Impossibility: Our variable isn't a variable!"
+    declare (vn, ident) initialM = DeclareVar vn ident $ maybe (LiteralExpr NilLit ident) id initialM
 
 statement :: Parser Statement
 statement = printStatement <|> exprStatement
