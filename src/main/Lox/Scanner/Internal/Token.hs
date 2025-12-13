@@ -52,7 +52,7 @@ data Token
   deriving Eq
 
 instance Show Token where
-  show And            = "and"
+  show And            = "&&"
   show Bang           = "!"
   show BangEqual      = "!="
   show Class          = "class"
