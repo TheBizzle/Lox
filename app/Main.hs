@@ -12,7 +12,7 @@ import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFai
 
 import Lox.Parser.ParserError(
     ParserError(lineNumber, offender, typ),
-    ParserErrorType(Backtrack, InvalidExpression, InvalidStatement, MissingClosingParen, MissingSemicolon)
+    ParserErrorType(Backtrack, ExpectedIdentifier, InvalidExpression, Missing, ReservedName)
   )
 
 import Lox.Scanner.ScannerError(
@@ -94,11 +94,11 @@ parserErrorAsText error = line
     line = "[line " <> (showText error.lineNumber) <> "] Error - " <> (errorText error.typ error.offender)
     suffix EOF = ", at end"
     suffix t   = ", at \"" <> (showText t) <> "\""
-    errorText Backtrack           token = withLoc token "Expected something here (this shouldn't be able to happen)"
-    errorText InvalidExpression   token = withLoc token "Expected an expression"
-    errorText InvalidStatement    token = withLoc token "Expected a statement"
-    errorText MissingClosingParen token = withLoc token "Expected ')' after expression"
-    errorText MissingSemicolon    token = withLoc token "Expected ';'"
+    errorText Backtrack          token = withLoc token "Expected something here (this shouldn't be able to happen)"
+    errorText (ReservedName _)   token = withLoc token "Illegal use of reserved name"
+    errorText ExpectedIdentifier token = withLoc token "Expected an identifier"
+    errorText InvalidExpression  token = withLoc token "Expected an expression"
+    errorText (Missing t)        token = withLoc token $ "Expected '" <> (showText t) <> "'"
     withLoc token = (<> (suffix token))
 
 scannerErrorAsText :: ScannerError -> Text

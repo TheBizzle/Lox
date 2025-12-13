@@ -1,4 +1,4 @@
-module Lox.Parser.Internal.ExpressionParser(expression, Parser(run)) where
+module Lox.Parser.Internal.ExpressionParser(expression, unary) where
 
 import Lox.Scanner.Token(
     Token(Bang, BangEqual, EqualEqual, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Nil, Number, Plus, RightParen, TokenFalse, TokenTrue, Slash, Star, String),
@@ -9,8 +9,6 @@ import Lox.Parser.Internal.Parse(
     (=#>), backtrack, convert, oneOf, Parser, parserFrom, throwaway, variable, win
   )
 
-import Lox.Parser.Internal.ParserError(ParserErrorType(InvalidExpression, MissingClosingParen))
-
 import Lox.Parser.Internal.Program(
     Expr(Binary, Grouping, LiteralExpr, Unary),
     Literal(BooleanLit, DoubleLit, NilLit, StringLit)
@@ -18,7 +16,7 @@ import Lox.Parser.Internal.Program(
 
 
 expression :: Parser Expr
-expression = expr <|> (whineAbout InvalidExpression)
+expression = expr
 
 expr :: Parser Expr
 expr = equality
@@ -55,10 +53,7 @@ primary = number <|> string <|> true <|> false <|> nil <|> variable <|> grouping
     false = convert $ TokenFalse =#> (LiteralExpr $ BooleanLit False)
     nil   = convert $        Nil =#>  LiteralExpr   NilLit
 
-    grouping = validGrouping <|> whineAboutGrouping
-      where
-        validGrouping      = Grouping <$> (throwaway LeftParen *> expr <* throwaway RightParen)
-        whineAboutGrouping = throwaway LeftParen *> expr *> whineAbout MissingClosingParen
+    grouping = Grouping <$> (throwaway LeftParen *> expr <* throwaway RightParen)
 
     number = parserFrom helper
       where

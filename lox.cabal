@@ -53,6 +53,8 @@ Library
     Lox.Evaluator.Internal.Value,
     Lox.Evaluator.Internal.World,
     Lox.Parser.Internal.ExpressionParser,
+    Lox.Parser.Internal.Nihilism,
+    Lox.Parser.Internal.Optimism,
     Lox.Parser.Internal.Parse,
     Lox.Parser.Internal.Parser,
     Lox.Parser.Internal.ParserError,

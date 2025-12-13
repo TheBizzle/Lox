@@ -1,19 +1,28 @@
 module Lox.Parser.Internal.ParserError(
-    ParserErrorType(Backtrack, InvalidExpression, InvalidStatement, MissingClosingParen, MissingSemicolon)
-  , ParserError(lineNumber, offender, ParserError, typ)
+    ErrorPriority(Extreme, High, Low, Medium, Unimportant, VeryHigh)
+  , ParserErrorType(Backtrack, ExpectedIdentifier, InvalidExpression, Missing, ReservedName, token)
+  , ParserError(lineNumber, offender, ParserError, prio, typ)
   ) where
 
 import Lox.Scanner.Token(Token)
 
 
--- Do NOT arbitrarily reorder this.  The ordering is used for the `Alternative` instance. --Jason B. (12/7/25)
-data ParserErrorType
-  = Backtrack
-  | InvalidStatement
-  | MissingSemicolon
-  | InvalidExpression
-  | MissingClosingParen
+data ErrorPriority
+  = Unimportant
+  | Low
+  | Medium
+  | High
+  | VeryHigh
+  | Extreme
   deriving (Eq, Ord)
 
+data ParserErrorType
+  = Backtrack
+  | ReservedName { token :: Token }
+  | ExpectedIdentifier
+  | InvalidExpression
+  | Missing { token :: Token }
+  deriving Eq
+
 data ParserError =
-  ParserError { typ :: ParserErrorType, lineNumber :: Word, offender :: Token }
+  ParserError { typ :: ParserErrorType, prio :: ErrorPriority, lineNumber :: Word, offender :: Token }
