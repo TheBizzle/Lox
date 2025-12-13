@@ -9,4 +9,4 @@ data ScannerErrorType
   | UnterminatedString
 
 data ScannerError =
-  ScannerError { typ :: ScannerErrorType, lineNumber :: Int }
+  ScannerError { typ :: ScannerErrorType, lineNumber :: Word }

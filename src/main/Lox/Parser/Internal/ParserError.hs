@@ -16,4 +16,4 @@ data ParserErrorType
   deriving (Eq, Ord)
 
 data ParserError =
-  ParserError { typ :: ParserErrorType, lineNumber :: Int, offender :: Token }
+  ParserError { typ :: ParserErrorType, lineNumber :: Word, offender :: Token }
