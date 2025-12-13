@@ -52,7 +52,7 @@ whineAbout :: ParserErrorType -> Parser a
 whineAbout typ = parserFrom $ \t -> errorWith $ ParserError typ t.lineNumber t.token
 
 oneOf :: [Token] -> Parser TokenPlus
-oneOf = (map one) &> foldr (<|>) empty
+oneOf = (map one) &> foldr (<|>) aempty
 
 one :: Token -> Parser TokenPlus
 one token = parserFrom $ \tp -> if (tp.token == token) then win tp else backtrack [tp]

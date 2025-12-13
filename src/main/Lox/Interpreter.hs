@@ -1,4 +1,4 @@
-module Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Success)) where
+module Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Succeeded)) where
 
 import Data.List.NonEmpty(NonEmpty)
 import Data.Validation(validation, Validation)
@@ -19,11 +19,11 @@ data Result
   = ScannerFailure (NonEmpty ScannerError)
   | ParserFailure  (NonEmpty ParserError)
   | OtherFailure   (NonEmpty Void)
-  | Success        (World (Validation (NonEmpty EvalError) Value))
+  | Succeeded      (World (Validation (NonEmpty EvalError) Value))
 
 interpret :: Text -> Result
 interpret = runM
   where
     runM   = scan  &> validation ScannerFailure parseM
     parseM = parse &> validation ParserFailure  evalM
-    evalM  = eval  &> Success
+    evalM  = eval  &> Succeeded

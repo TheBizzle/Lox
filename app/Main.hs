@@ -17,7 +17,7 @@ import Lox.Evaluator.EvalError(EvalError(NotImplemented, TypeError, UnknownVaria
 import Lox.Evaluator.World(World, WorldState(effects))
 import Lox.Evaluator.Value(Value)
 
-import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Success))
+import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Succeeded))
 
 import Lox.Parser.ParserError(
     ParserError(lineNumber, offender, typ),
@@ -58,7 +58,7 @@ run world code =
     ScannerFailure errors  -> (handleError scannerErrorAsText errors) $> (world, 65)
     ParserFailure  errors  -> (handleError  parserErrorAsText errors) $> (world, 65)
     OtherFailure   errors  -> (handleError          anyAsText errors) $> (world, 65)
-    Success        program -> runWorld program world
+    Succeeded      program -> runWorld program world
 
 handleError :: Traversable t => (a -> Text) -> t a -> IO ()
 handleError errorToText errors = for_ errors $ errorToText &> TIO.putStrLn
