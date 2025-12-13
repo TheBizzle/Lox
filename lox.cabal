@@ -20,7 +20,7 @@ Executable lox
     -threaded
     -O2
   default-language:    GHC2024
-  default-extensions:  OverloadedStrings
+  default-extensions:  OverloadedRecordDot, OverloadedStrings
   build-depends:       bizzlelude,
                        containers,
                        lox,
@@ -45,7 +45,7 @@ Library
     Lox.Scanner.ScannerError,
     Lox.Scanner.Token
   default-language:    GHC2024
-  default-extensions:  OverloadedStrings
+  default-extensions:  OverloadedRecordDot, OverloadedStrings
   other-modules:
     Lox.Evaluator.Internal.Effect,
     Lox.Evaluator.Internal.EvalError,
