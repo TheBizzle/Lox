@@ -15,7 +15,10 @@ import Lox.Parser.ParserError(
     ParserErrorType(Backtrack, InvalidExpression, InvalidStatement, MissingClosingParen, MissingSemicolon)
   )
 
-import Lox.Scanner.ScannerError(ScannerError(lineNumber, typ), ScannerErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString))
+import Lox.Scanner.ScannerError(
+    ScannerError(lineNumber, typ),
+    ScannerErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString)
+  )
 import Lox.Scanner.Token(Token(EOF), TokenPlus(lineNumber, token))
 
 import qualified Control.Exception as Exception
