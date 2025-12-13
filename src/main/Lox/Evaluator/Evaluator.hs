@@ -24,12 +24,12 @@ import qualified Data.List.NonEmpty as NE
 
 
 eval :: Program -> World (Validation (NonEmpty EvalError) Value)
-eval = statements &> (flip foldM (Success NilV) $ \_ s -> evalStatement s)
+eval = statements &> (flip foldM (Success NilV) $ const $ evalStatement)
 
 evalStatement :: Statement -> World (Validation (NonEmpty EvalError) Value)
-evalStatement (DeclareVar       vnTP expr) = evalDeclaration vnTP expr
-evalStatement (ExpressionStatement   expr) = evalExpr expr
-evalStatement (     PrintStatement _ expr) = evalPrint expr
+evalStatement (         DeclareVar vnTP expr) = evalDeclaration vnTP expr
+evalStatement (ExpressionStatement      expr) = evalExpr expr
+evalStatement (     PrintStatement    _ expr) = evalPrint expr
 
 evalExpr :: Expr -> World (Validation (NonEmpty EvalError) Value)
 evalExpr (Assign      name value)             = fail_ $ NotImplemented name
@@ -63,18 +63,24 @@ evalUnary tp v = helper tp.token v
 evalBinary :: Value -> TokenPlus -> Value -> Validation (NonEmpty EvalError) Value
 evalBinary l tp r = helper l tp.token r
   where
-    helper l           BangEqual    r           = Success $ BooleanV $ l  /= r
-    helper l           EqualEqual   r           = Success $ BooleanV $ l  == r
-    helper (NumberV l) Greater      (NumberV r) = Success $ BooleanV $ l  >  r
-    helper (NumberV l) GreaterEqual (NumberV r) = Success $ BooleanV $ l  >= r
-    helper (NumberV l) Less         (NumberV r) = Success $ BooleanV $ l  <  r
-    helper (NumberV l) LessEqual    (NumberV r) = Success $ BooleanV $ l  <= r
-    helper (NumberV l) Minus        (NumberV r) = Success $  NumberV $ l  -  r
-    helper (NumberV l) Plus         (NumberV r) = Success $  NumberV $ l  +  r
-    helper (StringV l) Plus         (StringV r) = Success $  StringV $ l  <> r
-    helper (NumberV l) Slash        (NumberV r) = Success $  NumberV $ l  /# r
-    helper (NumberV l) Star         (NumberV r) = Success $  NumberV $ l  *  r
+    helper l           BangEqual    r           = bool l (/=) r
+    helper l           EqualEqual   r           = bool l (==) r
+    helper (NumberV l) Greater      (NumberV r) = bool l (> ) r
+    helper (NumberV l) GreaterEqual (NumberV r) = bool l (>=) r
+    helper (NumberV l) Less         (NumberV r) = bool l (< ) r
+    helper (NumberV l) LessEqual    (NumberV r) = bool l (<=) r
+    helper (NumberV l) Minus        (NumberV r) = num  l (- ) r
+    helper (NumberV l) Plus         (NumberV r) = num  l (+ ) r
+    helper (StringV l) Plus         (StringV r) = str  l (<>) r
+    helper (NumberV l) Slash        (NumberV r) = num  l (/#) r
+    helper (NumberV l) Star         (NumberV r) = num  l (* ) r
     helper l           t            r           = typeError tp [l, r]
+
+    bool = succeed BooleanV
+    num  = succeed NumberV
+    str  = succeed StringV
+
+    succeed consV l op r = Success $ consV $ l `op` r
 
 evalDeclaration :: TokenPlus -> Expr -> World (Validation (NonEmpty EvalError) Value)
 evalDeclaration vnTP expr =
