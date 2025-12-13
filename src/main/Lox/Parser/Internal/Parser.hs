@@ -1,12 +1,4 @@
-{-# LANGUAGE OverloadedRecordDot #-}
-
 module Lox.Parser.Internal.Parser(parse) where
-
-import Control.Applicative(optional, many)
-import Control.Lens((#))
-
-import Data.List.NonEmpty(NonEmpty)
-import Data.Validation(_Failure, _Success, Validation)
 
 import Lox.Scanner.Token(Token(EOF, Equal, Print, Semicolon, Var), TokenPlus)
 

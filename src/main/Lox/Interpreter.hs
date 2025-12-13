@@ -1,9 +1,5 @@
 module Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Succeeded)) where
 
-import Data.List.NonEmpty(NonEmpty)
-import Data.Validation(validation, Validation)
-import Data.Void(Void)
-
 import Lox.Scanner.Scanner(scan)
 import Lox.Scanner.ScannerError(ScannerError)
 

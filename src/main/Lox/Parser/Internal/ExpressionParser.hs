@@ -6,7 +6,7 @@ import Lox.Scanner.Token(
   )
 
 import Lox.Parser.Internal.Parse(
-    (=#>), backtrack, convert, oneOf, Parser(run), parserFrom, throwaway, variable, whineAbout, win
+    (=#>), backtrack, convert, oneOf, Parser, parserFrom, throwaway, variable, win
   )
 
 import Lox.Parser.Internal.ParserError(ParserErrorType(InvalidExpression, MissingClosingParen))

@@ -1,14 +1,6 @@
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE OverloadedRecordDot #-}
-
 module Lox.Scanner.Scanner(scan) where
 
-import Control.Lens((#))
-import Control.Monad.State(get, modify, runState, State)
-
-import Data.List((++))
-import Data.List.NonEmpty(nonEmpty, NonEmpty)
-import Data.Validation(_Failure, _Success, Validation)
+import Control.Monad.State(get, modify)
 
 import Lox.Scanner.Token(Token(Bang, BangEqual, Comma, Dot, Equal, EqualEqual, EOF, Greater, GreaterEqual, LeftBrace, LeftParen, Less, LessEqual, Minus, Plus, RightBrace, RightParen, Semicolon, Slash, Star), TokenPlus(TokenPlus))
 

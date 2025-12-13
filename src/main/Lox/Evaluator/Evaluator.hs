@@ -1,11 +1,6 @@
-{-# LANGUAGE OverloadedRecordDot #-}
-
 module Lox.Evaluator.Evaluator(eval) where
 
 import Control.Monad.State(get, modify)
-
-import Data.List.NonEmpty(NonEmpty)
-import Data.Validation(bindValidation, _Failure, _Success, Validation)
 
 import Lox.Parser.Program(
     Expr(Assign, Binary, Call, Get, Grouping, LiteralExpr, Logical, Set, Super, This, Unary, Variable),

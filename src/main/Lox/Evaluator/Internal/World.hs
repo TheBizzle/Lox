@@ -1,11 +1,6 @@
-{-# LANGUAGE OverloadedRecordDot #-}
-
 module Lox.Evaluator.Internal.World(cleanupScope, empty, getVar, initScope, setVar, World, WorldState(scopes, effects, WorldState)) where
 
-import Control.Monad.State(State)
-
-import Data.Word(Word)
-import Data.List.NonEmpty((<|), NonEmpty)
+import Data.List.NonEmpty((<|))
 import Data.Map(lookup, union)
 
 import Lox.Evaluator.Internal.Effect(Effect)

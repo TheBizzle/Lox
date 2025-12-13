@@ -1,13 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE OverloadedRecordDot #-}
-
 module Main(main) where
-
-import Control.Monad.State(runState)
-
-import Data.List.NonEmpty(NonEmpty)
-import Data.Traversable(Traversable)
-import Data.Validation(validation, Validation)
 
 import System.Environment(getArgs)
 import System.Exit(exitWith, ExitCode(ExitFailure))

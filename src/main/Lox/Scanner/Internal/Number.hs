@@ -1,9 +1,5 @@
 module Lox.Scanner.Internal.Number(slurpNumber) where
 
-import Control.Monad.State(State)
-
-import Text.Read(readMaybe)
-
 import Lox.Scanner.Internal.Classify(isDigit)
 import Lox.Scanner.Internal.ScannerError(ScannerErrorType(InvalidNumberFormat))
 import Lox.Scanner.Internal.ScannerState(addError, addToken, peek, peek2, ScannerState, slurpNextChar)

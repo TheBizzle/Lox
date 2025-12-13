@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedRecordDot #-}
-
 module Lox.Parser.Internal.Program(
     Expr(..),
     Literal(BooleanLit, DoubleLit, NilLit, StringLit),

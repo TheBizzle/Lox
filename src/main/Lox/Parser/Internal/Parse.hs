@@ -1,7 +1,3 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE OverloadedRecordDot #-}
-{-# LANGUAGE TupleSections #-}
-
 module Lox.Parser.Internal.Parse(
     (=#>), backtrack, convert, errorWith, one, oneOf, Parsed, Parser(Parser, run), parserFrom, throwaway, variable, whineAbout, win
   ) where

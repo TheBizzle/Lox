@@ -1,8 +1,6 @@
-{-# LANGUAGE OverloadedRecordDot #-}
-
 module Lox.Scanner.Internal.String(slurpString) where
 
-import Control.Monad.State(modify, State)
+import Control.Monad.State(modify)
 
 import Lox.Scanner.Internal.ScannerError(ScannerErrorType(UnterminatedString))
 import Lox.Scanner.Internal.ScannerState(addError, addToken, checkForEnd, peek, ScannerState(lineNumber), slurpNextChar)

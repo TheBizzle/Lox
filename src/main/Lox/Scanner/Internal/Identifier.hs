@@ -1,7 +1,5 @@
 module Lox.Scanner.Internal.Identifier(slurpIdentifier) where
 
-import Control.Monad.State(State)
-
 import Lox.Scanner.Internal.Classify(isAlphanumeric)
 import Lox.Scanner.Internal.ScannerState(addToken, peek, ScannerState, slurpNextChar)
 import Lox.Scanner.Internal.Token(Token(And, Class, Else, For, Fun, Identifier, If, Nil, Or, Print, Return, Super, This, TokenFalse, TokenTrue, Var, While))

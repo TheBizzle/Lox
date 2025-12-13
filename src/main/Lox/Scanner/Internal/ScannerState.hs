@@ -1,11 +1,6 @@
-{-# LANGUAGE OverloadedRecordDot #-}
-
 module Lox.Scanner.Internal.ScannerState(addError, addToken, checkForEnd, peek, peek2, ScannerState(current, errors, lineNumber, ScannerState, source, start, tokens), skipToEOL, slurpMatch, slurpNextChar) where
 
-import Control.Applicative(liftA2)
-import Control.Monad.State(get, modify, put, State)
-
-import Data.List((++))
+import Control.Monad.State(get, modify, put)
 
 import Lox.Scanner.Internal.ScannerError(ScannerError(ScannerError), ScannerErrorType)
 import Lox.Scanner.Internal.Token(Token, TokenPlus(token, TokenPlus))
