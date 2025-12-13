@@ -18,9 +18,10 @@ import Lox.Parser.ParserError(
 import Lox.Scanner.ScannerError(ScannerError(lineNumber, typ), ScannerErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString))
 import Lox.Scanner.Token(Token(EOF), TokenPlus(lineNumber, token))
 
-import qualified Data.List    as List
-import qualified Data.Text    as Text
-import qualified Data.Text.IO as TIO
+import qualified Control.Exception as Exception
+import qualified Data.List         as List
+import qualified Data.Text         as Text
+import qualified Data.Text.IO      as TIO
 
 import qualified Lox.Evaluator.World as World
 
@@ -29,9 +30,12 @@ main :: IO ()
 main = getArgs >>= processArgs
   where
     processArgs :: [String] -> IO ()
-    processArgs            [] = runPrompt World.empty
+    processArgs            [] = Exception.handle handler $ runPrompt World.empty
     processArgs (filePath:[]) = (TIO.readFile filePath) >>= runFile
     processArgs             _ = (TIO.putStrLn "Usage: lox [script]") >> (exitWith $ ExitFailure 64)
+
+    handler :: Exception.IOException -> IO ()
+    handler _ = TIO.putStrLn "EOF reached.  Exiting...." >> return ()
 
 runPrompt :: WorldState -> IO ()
 runPrompt world =
