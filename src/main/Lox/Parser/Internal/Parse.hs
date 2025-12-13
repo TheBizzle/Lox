@@ -1,11 +1,11 @@
 module Lox.Parser.Internal.Parse(
-    (=#>), backtrack, convert, errorWith, one, oneOf, Parsed, Parser(Parser, run), parserFrom, throwaway, variable, whineAbout, win
+    (=#>), backtrack, convert, debug, errorWith, keywords, one, oneOf, Parsed, Parser(Parser, run), parserFrom, throwaway, variable, whineAbout, win
   ) where
 
 import Control.Applicative(Alternative(empty))
 
 import Lox.Scanner.Token(
-    Token(EOF, Identifier),
+    Token(And, Class, Else, EOF, For, Fun, Identifier, If, Print, Return, Super, This, Var, While),
     TokenPlus(lineNumber, token, TokenPlus)
   )
 
@@ -65,6 +65,15 @@ backtrack = listToMaybe &> (maybe dfault id) &> (lineNumber &&& token) &> (uncur
     dfault  = TokenPlus EOF 0
     mkError = ParserError Backtrack
 
+isReserved :: Token -> Bool
+isReserved = flip elem keywords
+
+keywords :: [Token]
+keywords = [And, Class, Else, For, Fun, If, Print, Return, Super, This, Var, While]
+
+debug :: Parser ()
+debug = Parser $ \tps -> win $ ((), traceShowId tps)
+
 instance Applicative Parser where
   pure x = Parser $ \ts -> win (x, ts)
 
@@ -81,3 +90,11 @@ instance Alternative Parser where
       helper (Right r)         _ = win r
       helper         _ (Right r) = win r
       helper (Left e1) (Left e2) = errorWith $ if e1.typ >= e2.typ then e1 else e2
+
+instance Monad Parser where
+  return          = pure
+  Parser pa >>= f =
+    Parser $ \tokens0 -> do
+      (a, tokens1) <- pa tokens0
+      (b, tokens2) <- (f a).run tokens1
+      return (b, tokens2)
