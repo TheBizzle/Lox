@@ -1,5 +1,6 @@
 module Lox.Parser.Internal.Program(
     Expr(..),
+    exprToToken,
     Literal(BooleanLit, DoubleLit, NilLit, StringLit),
     Program(Program, statements),
     Statement(DeclareVar, expr, ExpressionStatement, newVarName, PrintStatement, term)
@@ -30,7 +31,7 @@ data Expr
   | Call        { callee :: Expr, paren :: TokenPlus, arguments :: [Expr] }
   | Get         { object :: Expr, name :: TokenPlus }
   | Grouping    { expression :: Expr }
-  | LiteralExpr { literal :: Literal }
+  | LiteralExpr { literal :: Literal, token :: TokenPlus }
   | Logical     { left :: Expr, operator :: TokenPlus, right :: Expr }
   | Set         { object :: Expr, name :: TokenPlus, value :: Expr }
   | Super       { keyword :: TokenPlus, method :: TokenPlus }
@@ -38,3 +39,17 @@ data Expr
   | Unary       { operator :: TokenPlus, right :: Expr }
   | Variable    { name :: TokenPlus }
   deriving Show
+
+exprToToken :: Expr -> TokenPlus
+exprToToken (Assign      name   _      ) = name
+exprToToken (Binary      left   _     _) = exprToToken left
+exprToToken (Call        callee _     _) = exprToToken callee
+exprToToken (Get         obj    _      ) = exprToToken obj
+exprToToken (Grouping    expr          ) = exprToToken expr
+exprToToken (LiteralExpr _      token  ) = token
+exprToToken (Logical     left   _     _) = exprToToken left
+exprToToken (Set         obj    _     _) = exprToToken obj
+exprToToken (Super       kword  _      ) = kword
+exprToToken (This        kword         ) = kword
+exprToToken (Unary       op     _      ) = op
+exprToToken (Variable    name          ) = name

@@ -62,10 +62,10 @@ primary = number <|> string <|> true <|> false <|> nil <|> variable <|> grouping
 
     number = parserFrom helper
       where
-        helper (TokenPlus (Number x) _) = win $ LiteralExpr $ DoubleLit x
-        helper                       tp = backtrack [tp]
+        helper tp@(TokenPlus (Number x) _) = win $ LiteralExpr (DoubleLit x) tp
+        helper                          tp = backtrack [tp]
 
     string = parserFrom helper
       where
-        helper (TokenPlus (String s) _) = win $ LiteralExpr $ StringLit s
-        helper                       tp = backtrack [tp]
+        helper tp@(TokenPlus (String s) _) = win $ LiteralExpr (StringLit s) tp
+        helper                          tp = backtrack [tp]

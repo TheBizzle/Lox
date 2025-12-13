@@ -30,13 +30,13 @@ variable = parserFrom helper
     helper                              tp = backtrack [tp]
 
 throwaway :: Token -> Parser ()
-throwaway token = convert $ token =#> ()
+throwaway token = convert $ token =#> (const ())
 
 (=#>) :: Token -> a -> (Token, a)
 (=#>) = (,)
 
-convert :: (Token, a) -> Parser a
-convert (t, result) = parserFrom $ \tp -> if (tp.token == t) then win result else backtrack [tp]
+convert :: (Token, TokenPlus -> a) -> Parser a
+convert (t, mkResult) = parserFrom $ \tp -> if (tp.token == t) then win (mkResult tp) else backtrack [tp]
 
 parserFrom :: (TokenPlus -> Parsed a) -> Parser a
 parserFrom f = Parser $ parseOneToken f
