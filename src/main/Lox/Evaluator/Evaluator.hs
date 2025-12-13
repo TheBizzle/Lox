@@ -32,18 +32,18 @@ evalStatement (ExpressionStatement      expr) = evalExpr expr
 evalStatement (     PrintStatement    _ expr) = evalPrint expr
 
 evalExpr :: Expr -> World (Validation (NonEmpty EvalError) Value)
-evalExpr (Assign      name value)             = fail_ $ NotImplemented name
+evalExpr (Assign      name value)             = unimplemented name
 evalExpr (Binary      left operator right)    = handleBinary <$> (evalExpr left) <*> (evalExpr right)
   where
     handleBinary lv rv = lv `bindValidation` (\l -> rv `bindValidation` (evalBinary l operator))
-evalExpr (Call        callee paren arguments) = fail_ $ NotImplemented paren
-evalExpr (Get         object name)            = fail_ $ NotImplemented name
+evalExpr (Call        callee paren arguments) = unimplemented paren
+evalExpr (Get         object name)            = unimplemented name
 evalExpr (Grouping    expression)             = evalExpr expression
 evalExpr (LiteralExpr literal _)              = return $ Success $ evalLiteral literal
-evalExpr (Logical     left operator right)    = fail_ $ NotImplemented operator
-evalExpr (Set         object name value)      = fail_ $ NotImplemented name
-evalExpr (Super       keyword method)         = fail_ $ NotImplemented keyword
-evalExpr (This        keyword)                = fail_ $ NotImplemented keyword
+evalExpr (Logical     left operator right)    = unimplemented operator
+evalExpr (Set         object name value)      = unimplemented name
+evalExpr (Super       keyword method)         = unimplemented keyword
+evalExpr (This        keyword)                = unimplemented keyword
 evalExpr (Unary       operator right)         = (evalExpr right) <&> (flip bindValidation $ evalUnary operator)
 evalExpr (Variable    name)                   = lookupVar name
 
@@ -119,8 +119,8 @@ asBool NilV             = False
 asBool (BooleanV False) = False
 asBool _                = True
 
-fail_ :: EvalError -> World (Validation (NonEmpty EvalError) Value)
-fail_ = fail &> return
-
 fail :: EvalError -> Validation (NonEmpty EvalError) Value
 fail err = Failure $ NE.singleton err
+
+unimplemented :: TokenPlus -> World (Validation (NonEmpty EvalError) Value)
+unimplemented = NotImplemented &> fail &> return
