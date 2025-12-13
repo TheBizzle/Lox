@@ -27,8 +27,8 @@ import qualified Data.List.NonEmpty as NE
 parse :: [TokenPlus] -> Validation (NonEmpty ParserError) Program
 parse = parser.run &> (either handleError handleSuccess)
   where
-    handleError   = NE.singleton &> (_Failure #)
-    handleSuccess = fst &> (_Success #)
+    handleError   = NE.singleton &> Failure
+    handleSuccess = fst &> Success
 
 parser :: Parser Program
 parser = program

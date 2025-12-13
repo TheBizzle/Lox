@@ -39,7 +39,7 @@ scan_ =
       modify $ \s -> s { tokens = s.tokens ++ [TokenPlus EOF s.lineNumber] }
       state <- get
       let errorsMaybe = state.errors |> List.reverse &> nonEmpty
-      return $ maybe (_Success # state.tokens) (_Failure #) errorsMaybe
+      return $ maybe (Success state.tokens) Failure errorsMaybe
 
 scanToken :: State ScannerState ()
 scanToken =

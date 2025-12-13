@@ -2,7 +2,6 @@
 
 module Lox.Evaluator.Evaluator(eval) where
 
-import Control.Lens((#))
 import Control.Monad.State(get, modify)
 
 import Data.List.NonEmpty(NonEmpty)
@@ -30,7 +29,7 @@ import qualified Data.List.NonEmpty as NE
 
 
 eval :: Program -> World (Validation (NonEmpty EvalError) Value)
-eval = statements &> (flip foldM (_Success # NilV) $ \_ s -> evalStatement s)
+eval = statements &> (flip foldM (Success NilV) $ \_ s -> evalStatement s)
 
 evalStatement :: Statement -> World (Validation (NonEmpty EvalError) Value)
 evalStatement (DeclareVar       vnTP expr) = evalDeclaration vnTP expr
@@ -45,7 +44,7 @@ evalExpr (Binary      left operator right)    = handleBinary <$> (evalExpr left)
 evalExpr (Call        callee paren arguments) = fail_ $ NotImplemented paren
 evalExpr (Get         object name)            = fail_ $ NotImplemented name
 evalExpr (Grouping    expression)             = evalExpr expression
-evalExpr (LiteralExpr literal)                = return $ _Success # (evalLiteral literal)
+evalExpr (LiteralExpr literal _)              = return $ Success $ evalLiteral literal
 evalExpr (Logical     left operator right)    = fail_ $ NotImplemented operator
 evalExpr (Set         object name value)      = fail_ $ NotImplemented name
 evalExpr (Super       keyword method)         = fail_ $ NotImplemented keyword
@@ -62,24 +61,24 @@ evalLiteral  NilLit             =     NilV
 evalUnary :: TokenPlus -> Value -> Validation (NonEmpty EvalError) Value
 evalUnary tp v = helper tp.token v
   where
-    helper Bang  v           = _Success # (BooleanV $ not $ asBool v)
-    helper Minus (NumberV d) = _Success # (NumberV $ -d)
+    helper Bang  v           = Success $ BooleanV $ not $ asBool v
+    helper Minus (NumberV d) = Success $ NumberV $ -d
     helper t     v           = typeError tp [v]
 
 evalBinary :: Value -> TokenPlus -> Value -> Validation (NonEmpty EvalError) Value
 evalBinary l tp r = helper l tp.token r
   where
-    helper l           BangEqual    r           = _Success # (BooleanV $ l  /= r)
-    helper l           EqualEqual   r           = _Success # (BooleanV $ l  == r)
-    helper (NumberV l) Greater      (NumberV r) = _Success # (BooleanV $ l  >  r)
-    helper (NumberV l) GreaterEqual (NumberV r) = _Success # (BooleanV $ l  >= r)
-    helper (NumberV l) Less         (NumberV r) = _Success # (BooleanV $ l  <  r)
-    helper (NumberV l) LessEqual    (NumberV r) = _Success # (BooleanV $ l  <= r)
-    helper (NumberV l) Minus        (NumberV r) = _Success # ( NumberV $ l  -  r)
-    helper (NumberV l) Plus         (NumberV r) = _Success # ( NumberV $ l  +  r)
-    helper (StringV l) Plus         (StringV r) = _Success # ( StringV $ l  <> r)
-    helper (NumberV l) Slash        (NumberV r) = _Success # ( NumberV $ l  /  r)
-    helper (NumberV l) Star         (NumberV r) = _Success # ( NumberV $ l  *  r)
+    helper l           BangEqual    r           = Success $ BooleanV $ l  /= r
+    helper l           EqualEqual   r           = Success $ BooleanV $ l  == r
+    helper (NumberV l) Greater      (NumberV r) = Success $ BooleanV $ l  >  r
+    helper (NumberV l) GreaterEqual (NumberV r) = Success $ BooleanV $ l  >= r
+    helper (NumberV l) Less         (NumberV r) = Success $ BooleanV $ l  <  r
+    helper (NumberV l) LessEqual    (NumberV r) = Success $ BooleanV $ l  <= r
+    helper (NumberV l) Minus        (NumberV r) = Success $  NumberV $ l  -  r
+    helper (NumberV l) Plus         (NumberV r) = Success $  NumberV $ l  +  r
+    helper (StringV l) Plus         (StringV r) = Success $  StringV $ l  <> r
+    helper (NumberV l) Slash        (NumberV r) = Success $  NumberV $ l  /# r
+    helper (NumberV l) Star         (NumberV r) = Success $  NumberV $ l  *  r
     helper l           t            r           = typeError tp [l, r]
 
 evalDeclaration :: TokenPlus -> Expr -> World (Validation (NonEmpty EvalError) Value)
@@ -105,14 +104,14 @@ lookupVar vnTP =
     w <- get
     let varName = extractVarName vnTP
     let valM    = getVar varName w
-    return $ maybe (fail $ UnknownVariable vnTP varName) (_Success #) valM
+    return $ maybe (fail $ UnknownVariable vnTP varName) Success valM
 
 extractVarName :: TokenPlus -> Text
 extractVarName (TokenPlus (Identifier vn) _) = vn
 extractVarName                             _ = error "Impossible condition: Varname TP is not an identifier"
 
 typeError :: TokenPlus -> [Value] -> Validation (NonEmpty EvalError) a
-typeError tp args = _Failure # (NE.singleton $ TypeError tp $ catMaybes $ typecheck tp.token args)
+typeError tp args = Failure $ NE.singleton $ TypeError tp $ catMaybes $ typecheck tp.token args
 
 asBool :: Value -> Bool
 asBool NilV             = False
@@ -123,4 +122,4 @@ fail_ :: EvalError -> World (Validation (NonEmpty EvalError) Value)
 fail_ = fail &> return
 
 fail :: EvalError -> Validation (NonEmpty EvalError) Value
-fail err = _Failure # (NE.singleton err)
+fail err = Failure $ NE.singleton err
