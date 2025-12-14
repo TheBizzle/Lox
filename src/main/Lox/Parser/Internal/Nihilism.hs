@@ -19,7 +19,7 @@ import Lox.Parser.Internal.Program(exprToToken)
 
 
 errorParser :: Parser a
-errorParser = ((many declaration) *> badDeclaration)
+errorParser = (many declaration) *> badDeclaration
 
 badDeclaration :: Parser a
 badDeclaration = badVarDecl1 <|> badVarDecl2 <|> badVarDecl3 <|> badVarDecl4 <|> badVarDecl5 <|>
