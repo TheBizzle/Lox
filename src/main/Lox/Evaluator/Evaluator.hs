@@ -114,9 +114,11 @@ evalPrint :: Expr -> Evaluated
 evalPrint expr =
   do
     valueV <- evalExpr expr
-    sequence $ flip second valueV $ \value -> do
-      modify $ \s -> s { effects = (Print $ showText value) : s.effects }
-      return NilV
+    valueV `onSuccessEval` (
+      \value -> do
+        modify $ \s -> s { effects = (Print $ showText value) : s.effects }
+        return $ Success NilV
+      )
 
 runStatements :: [Statement] -> Evaluated
 runStatements = foldM helper $ Success NilV
@@ -134,10 +136,11 @@ setVariable :: Text -> Value -> TokenPlus -> Evaluated
 setVariable varName value vnTP =
   do
     varV <- lookupVar varName vnTP
-    sequence $ flip second varV $ const $
-      do
+    varV `onSuccessEval` (
+      const $ do
         modify $ setVar varName value
-        return value
+        return $ Success value
+      )
 
 typeError :: TokenPlus -> [Value] -> Validation (NonEmpty EvalError) a
 typeError tp args = Failure $ NE.singleton $ TypeError tp $ catMaybes $ typecheck tp.token args
