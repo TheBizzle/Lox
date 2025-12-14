@@ -62,10 +62,13 @@ badUnary :: Parser a
 badUnary = (many $ oneOf [Bang, Minus]) *> badPrimary
 
 badPrimary :: Parser a
-badPrimary = badGrouping1 <|> badGrouping2 <|> (whine InvalidExpression)
+badPrimary = badGrouping1 <|> badGrouping2 <|> badGrouping3 <|> badGrouping4 <|> badGrouping5 <|> (whine InvalidExpression)
   where
-    badGrouping1 = (throwaway LeftParen) *> expression *> (whine $ Missing RightParen)
-    badGrouping2 = (throwaway LeftParen) *> badExpression
+    badGrouping1 = (throwaway LeftParen) *> (whineIf RightParen InvalidExpression)
+    badGrouping2 = (throwaway LeftParen) *> expression *> (whineIfNot RightParen)
+    badGrouping3 = (throwaway LeftParen) *> badExpression
+    badGrouping4 = expression *> (whineIf RightParen $ Missing LeftParen)
+    badGrouping5 = whineIf RightParen $ Missing LeftParen
 
 whine :: ParserErrorType -> Parser a
 whine = whineWithPrio VeryHigh

@@ -19,7 +19,8 @@ import Lox.Scanner.ScannerError(
     ScannerError(lineNumber, typ),
     ScannerErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString)
   )
-import Lox.Scanner.Token(Token(EOF), TokenPlus(lineNumber, token))
+
+import Lox.Scanner.Token(Token(EOF, LeftParen), TokenPlus(lineNumber, token))
 
 import qualified Control.Exception as Exception
 import qualified Data.List         as List
@@ -94,11 +95,12 @@ parserErrorAsText error = line
     line = "[line " <> (showText error.lineNumber) <> "] Error - " <> (errorText error.typ error.offender)
     suffix EOF = ", at end"
     suffix t   = ", at \"" <> (showText t) <> "\""
-    errorText Backtrack          token = withLoc token "Expected something here (this shouldn't be able to happen)"
-    errorText (ReservedName _)   token = withLoc token "Illegal use of reserved name"
-    errorText ExpectedIdentifier token = withLoc token "Expected an identifier"
-    errorText InvalidExpression  token = withLoc token "Expected an expression"
-    errorText (Missing t)        token = withLoc token $ "Expected '" <> (showText t) <> "'"
+    errorText Backtrack           token = withLoc token "Expected something here (this shouldn't be able to happen)"
+    errorText (ReservedName _)    token = withLoc token "Illegal use of reserved name"
+    errorText ExpectedIdentifier  token = withLoc token "Expected an identifier"
+    errorText InvalidExpression   token = withLoc token "Expected an expression"
+    errorText (Missing LeftParen) token = withLoc token $ "No matching '('"
+    errorText (Missing t)         token = withLoc token $ "Expected '" <> (showText t) <> "'"
     withLoc token = (<> (suffix token))
 
 scannerErrorAsText :: ScannerError -> Text
