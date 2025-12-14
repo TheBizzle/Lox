@@ -12,3 +12,4 @@ data EvalError
   = NotImplemented { culprit :: TokenPlus }
   | TypeError { operator :: TokenPlus, mismatches :: [(Type, Value)] }
   | UnknownVariable { culprit :: TokenPlus, varName :: Text }
+  deriving Show

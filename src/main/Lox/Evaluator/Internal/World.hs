@@ -13,22 +13,22 @@ import qualified Data.Set           as Set
 
 type World = State WorldState
 
--- I think we'll need to address scopes and variables like this, in order to support setting closed-over variables.
--- --Jason B. (12/9/25)
 newtype ScopeAddress
   = ScopeAddress { n :: Word }
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
 
 data VarAddress
   = VarAddress Text ScopeAddress
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
 
 data WorldState
   = WorldState { variables :: Map VarAddress Value, scopes :: NonEmpty Scope
                , lastScopeAddr :: ScopeAddress, effects :: [Effect] }
+  deriving Show
 
 data Scope
   = Scope { locals :: Set Text, address :: ScopeAddress }
+  deriving Show
 
 initScope :: WorldState -> WorldState
 initScope world = world { scopes = newScope <| world.scopes, lastScopeAddr = newAddr }
