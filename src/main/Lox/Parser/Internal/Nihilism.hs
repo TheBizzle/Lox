@@ -50,7 +50,7 @@ badAssignment :: Parser a
 badAssignment = (many goodAss) *> (badAss <|> badBinary)
   where
     goodAss = variable *> (throwaway Equal)
-    badAss  = (whineParsed expression exprToToken ExpectedIdentifier) <* (throwaway Equal)
+    badAss  = whineParsed (expression <* (throwaway Equal)) exprToToken ExpectedIdentifier
 
 badBinary :: Parser a
 badBinary = (optional $ unary *> (many goodBinary) *> (oneOf binaryOperators)) *> badUnary
