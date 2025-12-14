@@ -34,10 +34,8 @@ evalStatement (ExpressionStatement           expr) = evalExpr expr
 evalStatement (     PrintStatement         _ expr) = evalPrint expr
 
 evalExpr :: Expr -> Evaluated
-evalExpr (Assign      name token value)       = evalAssign name token value
-evalExpr (Binary      left operator right)    = handleBinary <$> (evalExpr left) <*> (evalExpr right)
-  where
-    handleBinary lv rv = lv `bindValidation` (\l -> rv `bindValidation` (evalBinary l operator))
+evalExpr (Assign      name token value)        = evalAssign name token value
+evalExpr (Binary      left operator right)     = evalBinary left operator right
 evalExpr (Call        callee paren arguments)  = unimplemented paren
 evalExpr (Get         object name token)       = unimplemented token
 evalExpr (Grouping    expression)              = evalExpr expression
@@ -52,6 +50,32 @@ evalExpr (Variable    name token)              = lookupVar name token
 evalAssign :: Text -> TokenPlus -> Expr -> Evaluated
 evalAssign name token value = (evalExpr value) >>= (validation (Failure &> return) $ \v -> setVariable name v token)
 
+evalBinary :: Expr -> TokenPlus -> Expr -> Evaluated
+evalBinary left operator right = helper <$> (evalExpr left) <*> (evalExpr right)
+  where
+    helper lv rv = lv `bindValidation` (\l -> rv `bindValidation` (helper2 l operator))
+
+    helper2 l tp r = helper3 l tp.token r
+      where
+        helper3 l           BangEqual    r           = bool l (/=) r
+        helper3 l           EqualEqual   r           = bool l (==) r
+        helper3 (NumberV l) Greater      (NumberV r) = bool l (> ) r
+        helper3 (NumberV l) GreaterEqual (NumberV r) = bool l (>=) r
+        helper3 (NumberV l) Less         (NumberV r) = bool l (< ) r
+        helper3 (NumberV l) LessEqual    (NumberV r) = bool l (<=) r
+        helper3 (NumberV l) Minus        (NumberV r) = num  l (- ) r
+        helper3 (NumberV l) Plus         (NumberV r) = num  l (+ ) r
+        helper3 (StringV l) Plus         (StringV r) = str  l (<>) r
+        helper3 (NumberV l) Slash        (NumberV r) = num  l (/#) r
+        helper3 (NumberV l) Star         (NumberV r) = num  l (* ) r
+        helper3 l           t            r           = typeError tp [l, r]
+
+    bool = succeed BooleanV
+    num  = succeed NumberV
+    str  = succeed StringV
+
+    succeed consV l op r = Success $ consV $ l `op` r
+
 evalLiteral :: Literal -> Value
 evalLiteral (BooleanLit bool)   = BooleanV bool
 evalLiteral (DoubleLit  double) =  NumberV double
@@ -64,28 +88,6 @@ evalUnary tp v = helper tp.token v
     helper Bang  v           = Success $ BooleanV $ not $ asBool v
     helper Minus (NumberV d) = Success $ NumberV $ -d
     helper t     v           = typeError tp [v]
-
-evalBinary :: Value -> TokenPlus -> Value -> Validation (NonEmpty EvalError) Value
-evalBinary l tp r = helper l tp.token r
-  where
-    helper l           BangEqual    r           = bool l (/=) r
-    helper l           EqualEqual   r           = bool l (==) r
-    helper (NumberV l) Greater      (NumberV r) = bool l (> ) r
-    helper (NumberV l) GreaterEqual (NumberV r) = bool l (>=) r
-    helper (NumberV l) Less         (NumberV r) = bool l (< ) r
-    helper (NumberV l) LessEqual    (NumberV r) = bool l (<=) r
-    helper (NumberV l) Minus        (NumberV r) = num  l (- ) r
-    helper (NumberV l) Plus         (NumberV r) = num  l (+ ) r
-    helper (StringV l) Plus         (StringV r) = str  l (<>) r
-    helper (NumberV l) Slash        (NumberV r) = num  l (/#) r
-    helper (NumberV l) Star         (NumberV r) = num  l (* ) r
-    helper l           t            r           = typeError tp [l, r]
-
-    bool = succeed BooleanV
-    num  = succeed NumberV
-    str  = succeed StringV
-
-    succeed consV l op r = Success $ consV $ l `op` r
 
 evalDeclaration :: Text -> TokenPlus -> Expr -> Evaluated
 evalDeclaration varName vnTP expr =
