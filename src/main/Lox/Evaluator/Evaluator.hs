@@ -56,10 +56,8 @@ evalBinary left operator right =
     do
       lv <- evalExpr left
       rv <- evalExpr right
-      lv `onSuccessEval` (
-        \l -> rv `onSuccessEval` (
-          \r -> return $ helper l operator.token r
-          )
+      ((,) <$> lv <*> rv) `onSuccessEval` (
+        \(l, r) -> return $ helper l operator.token r
         )
   where
     helper l           BangEqual    r           = bool l (/=) r
