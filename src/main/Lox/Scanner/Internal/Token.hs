@@ -52,7 +52,7 @@ data Token
   deriving Eq
 
 instance Show Token where
-  show And            = "&&"
+  show And            = "and"
   show Bang           = "!"
   show BangEqual      = "!="
   show Class          = "class"
@@ -75,7 +75,7 @@ instance Show Token where
   show Minus          = "-"
   show Nil            = "nil"
   show (Number x)     = x |> showText &> ((id &&& Text.stripSuffix ".0") &> (\(a, b) -> maybe a id b)) &> asString
-  show Or             = "||"
+  show Or             = "or"
   show Plus           = "+"
   show Print          = "print"
   show Return         = "return"
