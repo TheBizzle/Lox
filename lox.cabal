@@ -5,9 +5,11 @@ Category:            Web
 Stability:           Experimental
 Build-type:          Simple
 
-Executable lox
-  hs-source-dirs:      app
-  main-is:             Main.hs
+Common common
+  Default-Language:   GHC2024
+  Default-Extensions: OverloadedRecordDot, OverloadedStrings
+  Build-Depends:
+    bizzlelude >= 4.20.2.0.1 && < 4.21.0,
   GHC-Options:
     -Wall
     -Wcompat
@@ -17,20 +19,22 @@ Executable lox
     -Wredundant-constraints
     -fno-warn-name-shadowing
     -funbox-strict-fields
-    -threaded
     -O2
-  default-language:    GHC2024
-  default-extensions:  OverloadedRecordDot, OverloadedStrings
-  build-depends:       bizzlelude,
-                       containers,
-                       lox,
-                       mtl,
-                       text,
-                       validation
+
+Executable lox
+  Import:          common
+  Hs-Source-Dirs:  app
+  Main-Is:         Main.hs
+  Build-Depends:
+    containers,
+    lox,
+    mtl,
+    text
 
 Library
-  hs-source-dirs:      src/main
-  exposed-modules:
+  Import:          common
+  Hs-Source-Dirs:  src/main
+  Exposed-Modules:
     Lox.Interpreter,
     Lox.Evaluator.Effect,
     Lox.Evaluator.Evaluator,
@@ -44,9 +48,7 @@ Library
     Lox.Scanner.Scanner,
     Lox.Scanner.ScannerError,
     Lox.Scanner.Token
-  default-language:    GHC2024
-  default-extensions:  OverloadedRecordDot, OverloadedStrings
-  other-modules:
+  Other-Modules:
     Lox.Evaluator.Internal.Effect,
     Lox.Evaluator.Internal.EvalError,
     Lox.Evaluator.Internal.Type,
@@ -66,30 +68,16 @@ Library
     Lox.Scanner.Internal.ScannerState,
     Lox.Scanner.Internal.String,
     Lox.Scanner.Internal.Token
-  GHC-Options:
-    -Wall
-    -Wcompat
-    -Wincomplete-record-updates
-    -Wincomplete-uni-patterns
-    -Wmissing-import-lists
-    -Wredundant-constraints
-    -fno-warn-name-shadowing
-    -funbox-strict-fields
-    -O2
-  Build-depends:
-    bizzlelude >= 4.20.2.0.1 && < 4.21.0,
-    bytestring >= 0.12.2  && < 0.13.0,
-    containers >= 0.7     && < 0.8,
-    directory  >= 1.3.7   && < 1.4.0,
-    mtl        >= 2.3.1   && < 2.4.0,
-    text       >= 2.1.3   && < 2.2.0,
-    validation >= 1.1.3   && < 1.2.0
+  Build-Depends:
+    containers >= 0.7   && < 0.8,
+    mtl        >= 2.3.1 && < 2.4.0,
+    text       >= 2.1.3 && < 2.2.0,
 
 test-suite tests
-  type:             exitcode-stdio-1.0
-  main-is:          Main.hs
-  hs-source-dirs:   src/test
-  default-language: GHC2024
-  build-depends:
+  Type:             exitcode-stdio-1.0
+  Main-Is:          Main.hs
+  Hs-Source-Dirs:   src/test
+  Default-Language: GHC2024
+  Build-Depends:
     test-framework             >= 0.8,
     test-framework-hunit       >= 0.3
