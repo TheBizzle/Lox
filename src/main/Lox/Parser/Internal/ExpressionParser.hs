@@ -1,7 +1,7 @@
 module Lox.Parser.Internal.ExpressionParser(expression, unary) where
 
 import Lox.Scanner.Token(
-    Token(Bang, BangEqual, EqualEqual, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Nil, Number, Plus, RightParen, TokenFalse, TokenTrue, Slash, Star, String),
+    Token(Bang, BangEqual, Equal, EqualEqual, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Nil, Number, Plus, RightParen, TokenFalse, TokenTrue, Slash, Star, String),
     TokenPlus(TokenPlus)
   )
 
@@ -10,7 +10,7 @@ import Lox.Parser.Internal.Parse(
   )
 
 import Lox.Parser.Internal.Program(
-    Expr(Binary, Grouping, LiteralExpr, Unary, Variable),
+    Expr(Assign, Binary, Grouping, LiteralExpr, Unary, Variable),
     Literal(BooleanLit, DoubleLit, NilLit, StringLit)
   )
 
@@ -19,7 +19,12 @@ expression :: Parser Expr
 expression = expr
 
 expr :: Parser Expr
-expr = equality
+expr = assignment
+
+assignment :: Parser Expr
+assignment = assignOperation <|> equality
+  where
+    assignOperation = (\(name, tp) v -> Assign name tp v) <$> variable <*> ((throwaway Equal) *> assignment)
 
 equality :: Parser Expr
 equality = eqOperation <|> comparison
@@ -47,13 +52,11 @@ unary = unaryOperation <|> primary
     unaryOperation = Unary <$> (oneOf [Bang, Minus]) <*> unary
 
 primary :: Parser Expr
-primary = number <|> string <|> true <|> false <|> nil <|> realVariable <|> grouping
+primary = number <|> string <|> true <|> false <|> nil <|> fullVariable <|> grouping
   where
     true  = convert $ TokenTrue  =#> (LiteralExpr $ BooleanLit True)
     false = convert $ TokenFalse =#> (LiteralExpr $ BooleanLit False)
     nil   = convert $        Nil =#>  LiteralExpr   NilLit
-
-    realVariable = (uncurry Variable) <$> variable
 
     grouping = Grouping <$> (throwaway LeftParen *> expr <* throwaway RightParen)
 
@@ -66,3 +69,6 @@ primary = number <|> string <|> true <|> false <|> nil <|> realVariable <|> grou
       where
         helper tp@(TokenPlus (String s) _) = win $ LiteralExpr (StringLit s) tp
         helper                          tp = backtrack [tp]
+
+fullVariable :: Parser Expr
+fullVariable = (uncurry Variable) <$> variable

@@ -32,7 +32,7 @@ evalStatement (ExpressionStatement           expr) = evalExpr expr
 evalStatement (     PrintStatement         _ expr) = evalPrint expr
 
 evalExpr :: Expr -> World (Validation (NonEmpty EvalError) Value)
-evalExpr (Assign      name token value)       = unimplemented token
+evalExpr (Assign      name token value)       = evalAssign name token value
 evalExpr (Binary      left operator right)    = handleBinary <$> (evalExpr left) <*> (evalExpr right)
   where
     handleBinary lv rv = lv `bindValidation` (\l -> rv `bindValidation` (evalBinary l operator))
@@ -46,6 +46,9 @@ evalExpr (Super       keyword method)          = unimplemented keyword
 evalExpr (This        keyword)                 = unimplemented keyword
 evalExpr (Unary       operator right)          = (evalExpr right) <&> (flip bindValidation $ evalUnary operator)
 evalExpr (Variable    name token)              = lookupVar name token
+
+evalAssign :: Text -> TokenPlus -> Expr -> World (Validation (NonEmpty EvalError) Value)
+evalAssign name token value = (evalExpr value) >>= (validation (Failure &> return) $ \v -> setVariable name v token)
 
 evalLiteral :: Literal -> Value
 evalLiteral (BooleanLit bool)   = BooleanV bool
@@ -104,6 +107,15 @@ lookupVar varName vnTP =
     w <- get
     let valM = getVar varName w
     return $ maybe (fail $ UnknownVariable vnTP varName) Success valM
+
+setVariable :: Text -> Value -> TokenPlus -> World (Validation (NonEmpty EvalError) Value)
+setVariable varName value vnTP =
+  do
+    varV <- lookupVar varName vnTP
+    sequence $ flip second varV $ const $
+      do
+        modify $ setVar varName value
+        return value
 
 typeError :: TokenPlus -> [Value] -> Validation (NonEmpty EvalError) a
 typeError tp args = Failure $ NE.singleton $ TypeError tp $ catMaybes $ typecheck tp.token args

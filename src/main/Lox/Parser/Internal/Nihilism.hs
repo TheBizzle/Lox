@@ -44,7 +44,13 @@ badDeclaration = badVarDecl1 <|> badVarDecl2 <|> badVarDecl3 <|> badVarDecl4 <|>
         whineIfKeyword = whineParsed (oneOf keywords) id $ Missing Semicolon
 
 badExpression :: Parser a
-badExpression = badBinary
+badExpression = badAssignment
+
+badAssignment :: Parser a
+badAssignment = (many goodAss) *> (badAss <|> badBinary)
+  where
+    goodAss = variable *> (throwaway Equal)
+    badAss  = (whineParsed expression exprToToken ExpectedIdentifier) <* (throwaway Equal)
 
 badBinary :: Parser a
 badBinary = (optional $ unary *> (many goodBinary) *> (oneOf binaryOperators)) *> badUnary
