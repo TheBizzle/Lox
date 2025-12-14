@@ -52,24 +52,28 @@ evalAssign :: Text -> TokenPlus -> Expr -> Evaluated
 evalAssign name token value = (evalExpr value) >>= (flip onSuccessEval $ \v -> setVariable name v token)
 
 evalBinary :: Expr -> TokenPlus -> Expr -> Evaluated
-evalBinary left operator right = helper <$> (evalExpr left) <*> (evalExpr right)
+evalBinary left operator right =
+    do
+      lv <- evalExpr left
+      rv <- evalExpr right
+      lv `onSuccessEval` (
+        \l -> rv `onSuccessEval` (
+          \r -> return $ helper l operator.token r
+          )
+        )
   where
-    helper lv rv = lv `bindValidation` (\l -> rv `bindValidation` (helper2 l operator))
-
-    helper2 l tp r = helper3 l tp.token r
-      where
-        helper3 l           BangEqual    r           = bool l (/=) r
-        helper3 l           EqualEqual   r           = bool l (==) r
-        helper3 (NumberV l) Greater      (NumberV r) = bool l (> ) r
-        helper3 (NumberV l) GreaterEqual (NumberV r) = bool l (>=) r
-        helper3 (NumberV l) Less         (NumberV r) = bool l (< ) r
-        helper3 (NumberV l) LessEqual    (NumberV r) = bool l (<=) r
-        helper3 (NumberV l) Minus        (NumberV r) = num  l (- ) r
-        helper3 (NumberV l) Plus         (NumberV r) = num  l (+ ) r
-        helper3 (StringV l) Plus         (StringV r) = str  l (<>) r
-        helper3 (NumberV l) Slash        (NumberV r) = num  l (/#) r
-        helper3 (NumberV l) Star         (NumberV r) = num  l (* ) r
-        helper3 l           _            r           = typeError tp [l, r]
+    helper l           BangEqual    r           = bool l (/=) r
+    helper l           EqualEqual   r           = bool l (==) r
+    helper (NumberV l) Greater      (NumberV r) = bool l (> ) r
+    helper (NumberV l) GreaterEqual (NumberV r) = bool l (>=) r
+    helper (NumberV l) Less         (NumberV r) = bool l (< ) r
+    helper (NumberV l) LessEqual    (NumberV r) = bool l (<=) r
+    helper (NumberV l) Minus        (NumberV r) = num  l (- ) r
+    helper (NumberV l) Plus         (NumberV r) = num  l (+ ) r
+    helper (StringV l) Plus         (StringV r) = str  l (<>) r
+    helper (NumberV l) Slash        (NumberV r) = num  l (/#) r
+    helper (NumberV l) Star         (NumberV r) = num  l (* ) r
+    helper l           _            r           = typeError operator [l, r]
 
     bool = succeed BooleanV
     num  = succeed NumberV
