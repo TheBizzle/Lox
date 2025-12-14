@@ -20,7 +20,7 @@ import Lox.Scanner.ScannerError(
     ScannerErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString)
   )
 
-import Lox.Scanner.Token(Token(EOF, LeftParen), TokenPlus(lineNumber, token))
+import Lox.Scanner.Token(Token(EOF, LeftBrace, LeftParen), TokenPlus(lineNumber, token))
 
 import qualified Control.Exception as Exception
 import qualified Data.List         as List
@@ -100,6 +100,7 @@ parserErrorAsText error = line
     errorText ExpectedIdentifier  token = withLoc token "Expected an identifier"
     errorText InvalidExpression   token = withLoc token "Expected an expression"
     errorText (Missing LeftParen) token = withLoc token $ "No matching '('"
+    errorText (Missing LeftBrace) token = withLoc token $ "No matching '{'"
     errorText (Missing t)         token = withLoc token $ "Expected '" <> (showText t) <> "'"
     withLoc token = (<> (suffix token))
 

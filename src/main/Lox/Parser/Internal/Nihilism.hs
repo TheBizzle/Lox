@@ -1,7 +1,7 @@
 module Lox.Parser.Internal.Nihilism(errorParser) where
 
 import Lox.Scanner.Token(
-    Token(Bang, BangEqual, EOF, Equal, EqualEqual, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Plus, Print, RightParen, Semicolon, Slash, Star, Var)
+    Token(Bang, BangEqual, EOF, Equal, EqualEqual, Greater, GreaterEqual, LeftBrace, LeftParen, Less, LessEqual, Minus, Plus, Print, RightBrace, RightParen, Semicolon, Slash, Star, Var)
   , TokenPlus(lineNumber, token, TokenPlus)
   )
 
@@ -23,7 +23,8 @@ errorParser = ((many declaration) *> badDeclaration)
 
 badDeclaration :: Parser a
 badDeclaration = badVarDecl1 <|> badVarDecl2 <|> badVarDecl3 <|> badVarDecl4 <|> badVarDecl5 <|>
-                 badExprStatement1 <|> badExprStatement2 <|> badPrintStatement1 <|> badPrintStatement2
+                 badBlock1 <|> badBlock2 <|> badBlock3 <|> badBlock4 <|>
+                 badPrintStatement1 <|> badPrintStatement2 <|> badExprStatement1 <|> badExprStatement2
   where
     -- bvd1 catches `var x = !3 == (3) var` | bvd2 catches `var x = !3 ==` --Jason B. (12/12/25)
     badVarDecl1 = (throwaway Var) *> variable *> (throwaway Equal) *> expression *> detectCompound
@@ -32,16 +33,22 @@ badDeclaration = badVarDecl1 <|> badVarDecl2 <|> badVarDecl3 <|> badVarDecl4 <|>
     badVarDecl4 = (throwaway Var) *> variable *> (whine $ Missing Semicolon)
     badVarDecl5 = (throwaway Var) *> (whine ExpectedIdentifier)
 
-    badExprStatement1 = expression *> (whine $ Missing Semicolon)
-    badExprStatement2 = badExpression
+    badBlock1 = (throwaway LeftBrace) *> (many declaration) *> badDeclaration
+    badBlock2 = (throwaway LeftBrace) *> (many declaration) *> (whineIfNot RightBrace)
+    badBlock3 = declaration *> (whineIf RightBrace $ Missing LeftBrace)
+    badBlock4 = whineIf RightBrace $ Missing LeftBrace
 
     badPrintStatement1 = (throwaway Print) *> expression *> (whine $ Missing Semicolon)
     badPrintStatement2 = (throwaway Print) *> badExpression
 
-    detectCompound = whineIfEOF <|> whineIfKeyword
+    badExprStatement1 = expression *> (whine $ Missing Semicolon)
+    badExprStatement2 = badExpression
+
+    detectCompound = whineIfEOF <|> whineIfEndBlock <|> whineIfKeyword
       where
-        whineIfEOF     = whineIf EOF $ Missing Semicolon
-        whineIfKeyword = whineParsed (oneOf keywords) id $ Missing Semicolon
+        whineIfEOF      = whineIf EOF                     $ Missing Semicolon
+        whineIfEndBlock = whineIf RightBrace              $ Missing Semicolon
+        whineIfKeyword  = whineParsed (oneOf keywords) id $ Missing Semicolon
 
 badExpression :: Parser a
 badExpression = badAssignment

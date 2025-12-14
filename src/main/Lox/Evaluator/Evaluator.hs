@@ -6,7 +6,7 @@ import Lox.Parser.Program(
     Expr(Assign, Binary, Call, Get, Grouping, LiteralExpr, Logical, Set, Super, This, Unary, Variable),
     Literal(BooleanLit, DoubleLit, NilLit, StringLit),
     Program(statements),
-    Statement(DeclareVar, ExpressionStatement, PrintStatement)
+    Statement(Block, DeclareVar, ExpressionStatement, PrintStatement)
   )
 
 import Lox.Scanner.Token(
@@ -18,7 +18,7 @@ import Lox.Evaluator.Internal.Effect(Effect(Print))
 import Lox.Evaluator.Internal.EvalError(EvalError(NotImplemented, TypeError, UnknownVariable))
 import Lox.Evaluator.Internal.Type(typecheck)
 import Lox.Evaluator.Internal.Value(Value(BooleanV, NumberV, StringV, NilV))
-import Lox.Evaluator.Internal.World(getVar, setVar, World, WorldState(effects))
+import Lox.Evaluator.Internal.World(declareVar, getVar, popScope, pushScope, setVar, World, WorldState(effects))
 
 import qualified Data.List.NonEmpty as NE
 
@@ -29,9 +29,10 @@ eval :: Program -> Evaluated
 eval = statements &> runStatements
 
 evalStatement :: Statement -> Evaluated
-evalStatement (         DeclareVar name vnTP expr) = evalDeclaration name vnTP expr
-evalStatement (ExpressionStatement           expr) = evalExpr expr
-evalStatement (     PrintStatement         _ expr) = evalPrint expr
+evalStatement (              Block statements          ) = evalBlock statements
+evalStatement (         DeclareVar name       vnTP expr) = evalDeclaration name vnTP expr
+evalStatement (ExpressionStatement                 expr) = evalExpr expr
+evalStatement (     PrintStatement               _ expr) = evalPrint expr
 
 evalExpr :: Expr -> Evaluated
 evalExpr (Assign      name token value)        = evalAssign name token value
@@ -76,6 +77,14 @@ evalBinary left operator right = helper <$> (evalExpr left) <*> (evalExpr right)
 
     succeed consV l op r = Success $ consV $ l `op` r
 
+evalBlock :: [Statement] -> Evaluated
+evalBlock statements =
+  do
+    modify pushScope
+    result <- runStatements statements
+    modify popScope
+    return result
+
 evalLiteral :: Literal -> Value
 evalLiteral (BooleanLit bool)   = BooleanV bool
 evalLiteral (DoubleLit  double) =  NumberV double
@@ -95,7 +104,7 @@ evalDeclaration varName vnTP expr =
     valueV <- evalExpr expr
     valueV `onSuccessEval` (
         \value -> do
-          modify $ setVar varName value
+          modify $ declareVar varName value
           return $ Success NilV
       )
 
