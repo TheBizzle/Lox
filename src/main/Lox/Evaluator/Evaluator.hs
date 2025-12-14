@@ -10,8 +10,8 @@ import Lox.Parser.Program(
   )
 
 import Lox.Scanner.Token(
-    TokenPlus(token, TokenPlus),
-    Token(Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Identifier, Less, LessEqual, Minus, Plus, Slash, Star)
+    TokenPlus(token),
+    Token(Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Plus, Slash, Star)
   )
 
 import Lox.Evaluator.Internal.Effect(Effect(Print))
@@ -68,7 +68,7 @@ evalBinary left operator right = helper <$> (evalExpr left) <*> (evalExpr right)
         helper3 (StringV l) Plus         (StringV r) = str  l (<>) r
         helper3 (NumberV l) Slash        (NumberV r) = num  l (/#) r
         helper3 (NumberV l) Star         (NumberV r) = num  l (* ) r
-        helper3 l           t            r           = typeError tp [l, r]
+        helper3 l           _            r           = typeError tp [l, r]
 
     bool = succeed BooleanV
     num  = succeed NumberV
@@ -87,7 +87,7 @@ evalUnary tp v = helper tp.token v
   where
     helper Bang  v           = Success $ BooleanV $ not $ asBool v
     helper Minus (NumberV d) = Success $ NumberV $ -d
-    helper t     v           = typeError tp [v]
+    helper _     v           = typeError tp [v]
 
 evalDeclaration :: Text -> TokenPlus -> Expr -> Evaluated
 evalDeclaration varName vnTP expr =
