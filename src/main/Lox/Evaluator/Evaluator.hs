@@ -48,7 +48,7 @@ evalExpr (Unary       operator right)          = (evalExpr right) <&> (flip bind
 evalExpr (Variable    name token)              = lookupVar name token
 
 evalAssign :: Text -> TokenPlus -> Expr -> Evaluated
-evalAssign name token value = (evalExpr value) >>= (validation (Failure &> return) $ \v -> setVariable name v token)
+evalAssign name token value = (evalExpr value) >>= (flip onSuccessEval $ \v -> setVariable name v token)
 
 evalBinary :: Expr -> TokenPlus -> Expr -> Evaluated
 evalBinary left operator right = helper <$> (evalExpr left) <*> (evalExpr right)
@@ -93,9 +93,11 @@ evalDeclaration :: Text -> TokenPlus -> Expr -> Evaluated
 evalDeclaration varName vnTP expr =
   do
     valueV <- evalExpr expr
-    sequence $ flip second valueV $ \value -> do
-      modify $ setVar varName value
-      return NilV
+    valueV `onSuccessEval` (
+        \value -> do
+          modify $ setVar varName value
+          return $ Success NilV
+      )
 
 evalPrint :: Expr -> Evaluated
 evalPrint expr =
@@ -108,7 +110,7 @@ evalPrint expr =
 runStatements :: [Statement] -> Evaluated
 runStatements = foldM helper $ Success NilV
   where
-    helper acc s = validation (Failure &> return) (const $ evalStatement s) acc
+    helper acc s = acc `onSuccessEval` (const $ evalStatement s)
 
 lookupVar :: Text -> TokenPlus -> Evaluated
 lookupVar varName vnTP =
@@ -133,6 +135,9 @@ asBool :: Value -> Bool
 asBool NilV             = False
 asBool (BooleanV False) = False
 asBool _                = True
+
+onSuccessEval :: (Validation (NonEmpty EvalError) a) -> (a -> Evaluated) -> Evaluated
+onSuccessEval vali f = validation (Failure &> return) f vali
 
 fail :: EvalError -> Validation (NonEmpty EvalError) Value
 fail err = Failure $ NE.singleton err
