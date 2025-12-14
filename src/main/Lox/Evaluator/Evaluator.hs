@@ -26,7 +26,7 @@ import qualified Data.List.NonEmpty as NE
 type Evaluated = World (Validation (NonEmpty EvalError) Value)
 
 eval :: Program -> Evaluated
-eval = statements &> (flip foldM (Success NilV) $ const $ evalStatement)
+eval = statements &> runStatements
 
 evalStatement :: Statement -> Evaluated
 evalStatement (         DeclareVar name vnTP expr) = evalDeclaration name vnTP expr
@@ -104,6 +104,11 @@ evalPrint expr =
     sequence $ flip second valueV $ \value -> do
       modify $ \s -> s { effects = (Print $ showText value) : s.effects }
       return NilV
+
+runStatements :: [Statement] -> Evaluated
+runStatements = foldM helper $ Success NilV
+  where
+    helper acc s = validation (Failure &> return) (const $ evalStatement s) acc
 
 lookupVar :: Text -> TokenPlus -> Evaluated
 lookupVar varName vnTP =
