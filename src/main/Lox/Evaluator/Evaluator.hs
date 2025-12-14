@@ -30,7 +30,7 @@ eval = statements &> runStatements
 
 evalStatement :: Statement -> Evaluated
 evalStatement (              Block statements          ) = evalBlock statements
-evalStatement (         DeclareVar name       vnTP expr) = evalDeclaration name vnTP expr
+evalStatement (         DeclareVar name          _ expr) = evalDeclaration name expr
 evalStatement (ExpressionStatement                 expr) = evalExpr expr
 evalStatement (     PrintStatement               _ expr) = evalPrint expr
 
@@ -98,8 +98,8 @@ evalUnary tp v = helper tp.token v
     helper Minus (NumberV d) = Success $ NumberV $ -d
     helper _     v           = typeError tp [v]
 
-evalDeclaration :: Text -> TokenPlus -> Expr -> Evaluated
-evalDeclaration varName vnTP expr =
+evalDeclaration :: Text -> Expr -> Evaluated
+evalDeclaration varName expr =
   do
     valueV <- evalExpr expr
     valueV `onSuccessEval` (
