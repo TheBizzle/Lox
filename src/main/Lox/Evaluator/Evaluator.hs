@@ -23,15 +23,17 @@ import Lox.Evaluator.Internal.World(getVar, setVar, World, WorldState(effects))
 import qualified Data.List.NonEmpty as NE
 
 
-eval :: Program -> World (Validation (NonEmpty EvalError) Value)
+type Evaluated = World (Validation (NonEmpty EvalError) Value)
+
+eval :: Program -> Evaluated
 eval = statements &> (flip foldM (Success NilV) $ const $ evalStatement)
 
-evalStatement :: Statement -> World (Validation (NonEmpty EvalError) Value)
+evalStatement :: Statement -> Evaluated
 evalStatement (         DeclareVar name vnTP expr) = evalDeclaration name vnTP expr
 evalStatement (ExpressionStatement           expr) = evalExpr expr
 evalStatement (     PrintStatement         _ expr) = evalPrint expr
 
-evalExpr :: Expr -> World (Validation (NonEmpty EvalError) Value)
+evalExpr :: Expr -> Evaluated
 evalExpr (Assign      name token value)       = evalAssign name token value
 evalExpr (Binary      left operator right)    = handleBinary <$> (evalExpr left) <*> (evalExpr right)
   where
@@ -47,7 +49,7 @@ evalExpr (This        keyword)                 = unimplemented keyword
 evalExpr (Unary       operator right)          = (evalExpr right) <&> (flip bindValidation $ evalUnary operator)
 evalExpr (Variable    name token)              = lookupVar name token
 
-evalAssign :: Text -> TokenPlus -> Expr -> World (Validation (NonEmpty EvalError) Value)
+evalAssign :: Text -> TokenPlus -> Expr -> Evaluated
 evalAssign name token value = (evalExpr value) >>= (validation (Failure &> return) $ \v -> setVariable name v token)
 
 evalLiteral :: Literal -> Value
@@ -85,7 +87,7 @@ evalBinary l tp r = helper l tp.token r
 
     succeed consV l op r = Success $ consV $ l `op` r
 
-evalDeclaration :: Text -> TokenPlus -> Expr -> World (Validation (NonEmpty EvalError) Value)
+evalDeclaration :: Text -> TokenPlus -> Expr -> Evaluated
 evalDeclaration varName vnTP expr =
   do
     valueV <- evalExpr expr
@@ -93,7 +95,7 @@ evalDeclaration varName vnTP expr =
       modify $ setVar varName value
       return NilV
 
-evalPrint :: Expr -> World (Validation (NonEmpty EvalError) Value)
+evalPrint :: Expr -> Evaluated
 evalPrint expr =
   do
     valueV <- evalExpr expr
@@ -101,14 +103,14 @@ evalPrint expr =
       modify $ \s -> s { effects = (Print $ showText value) : s.effects }
       return NilV
 
-lookupVar :: Text -> TokenPlus -> World (Validation (NonEmpty EvalError) Value)
+lookupVar :: Text -> TokenPlus -> Evaluated
 lookupVar varName vnTP =
   do
     w <- get
     let valM = getVar varName w
     return $ maybe (fail $ UnknownVariable vnTP varName) Success valM
 
-setVariable :: Text -> Value -> TokenPlus -> World (Validation (NonEmpty EvalError) Value)
+setVariable :: Text -> Value -> TokenPlus -> Evaluated
 setVariable varName value vnTP =
   do
     varV <- lookupVar varName vnTP
@@ -128,5 +130,5 @@ asBool _                = True
 fail :: EvalError -> Validation (NonEmpty EvalError) Value
 fail err = Failure $ NE.singleton err
 
-unimplemented :: TokenPlus -> World (Validation (NonEmpty EvalError) Value)
+unimplemented :: TokenPlus -> Evaluated
 unimplemented = NotImplemented &> fail &> return
