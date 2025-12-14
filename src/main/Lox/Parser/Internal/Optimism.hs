@@ -28,7 +28,7 @@ statement :: Parser Statement
 statement = printStatement <|> exprStatement
 
 exprStatement :: Parser Statement
-exprStatement = ExpressionStatement <$> (expression <* (throwaway Semicolon))
+exprStatement = ExpressionStatement <$> expression <* (throwaway Semicolon)
 
 printStatement :: Parser Statement
 printStatement = PrintStatement <$> (one Print) <*> (expression <* (throwaway Semicolon))
