@@ -1,7 +1,7 @@
 module Lox.Parser.Internal.Nihilism(errorParser) where
 
 import Lox.Scanner.Token(
-    Token(And, Bang, BangEqual, Else, EOF, Equal, EqualEqual, Greater, GreaterEqual, If, LeftBrace, LeftParen, Less, LessEqual, Minus, Or, Plus, Print, RightBrace, RightParen, Semicolon, Slash, Star, Var)
+    Token(And, Bang, BangEqual, Else, EOF, Equal, EqualEqual, Greater, GreaterEqual, If, LeftBrace, LeftParen, Less, LessEqual, Minus, Or, Plus, Print, RightBrace, RightParen, Semicolon, Slash, Star, Var, While)
   , TokenPlus(lineNumber, token, TokenPlus)
   )
 
@@ -41,6 +41,7 @@ badDeclaration = badVarDecl1 <|> badVarDecl2 <|> badVarDecl3 <|> badVarDecl4 <|>
 badStatement :: Parser a
 badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
                  badIfElse <|> badIf <|>
+                 badWhile <|>
                  badBlock1 <|> badBlock2 <|> badBlock3 <|> badBlock4 <|>
                  badExprStatement1 <|> badExprStatement2
   where
@@ -50,6 +51,8 @@ badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
 
     badIfElse = (throwaway Else) *> (whineIf EOF $ Missing EOF) -- TODO
     badIf     = (throwaway If  ) *> (whineIf EOF $ Missing EOF) -- TODO
+
+    badWhile = (throwaway While) *> (whineIf EOF $ Missing EOF) -- TODO
 
     badBlock1 = (throwaway LeftBrace) *> (many declaration) *> badDeclaration
     badBlock2 = (throwaway LeftBrace) *> (many declaration) *> (whineIfNot RightBrace)
@@ -111,7 +114,6 @@ whineIfNot token = parserFrom helper
                                   errorWith $ ParserError (Missing token) VeryHigh tp.lineNumber tp.token
                                 else
                                   errorWith $ ParserError Backtrack Unimportant tp.lineNumber tp.token
-
 
 whineWithPrio :: ErrorPriority -> ParserErrorType -> Parser a
 whineWithPrio prio typ = parserFrom $ \t -> errorWith $ ParserError typ prio t.lineNumber t.token

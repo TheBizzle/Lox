@@ -3,7 +3,7 @@ module Lox.Parser.Internal.Program(
     exprToToken,
     Literal(BooleanLit, DoubleLit, NilLit, StringLit),
     Program(Program, statements),
-    Statement(Block, contents, DeclareVar, expr, ExpressionStatement, IfElse, newVarName, PrintStatement, term)
+    Statement(Block, body, contents, DeclareVar, expr, ExpressionStatement, IfElse, newVarName, predicate, PrintStatement, term, WhileStatement)
   ) where
 
 import Lox.Scanner.Token(TokenPlus)
@@ -18,6 +18,7 @@ data Statement
   | ExpressionStatement { expr :: Expr }
   | IfElse { antecedent :: Expr, consequent :: Statement, alternative :: Maybe Statement }
   | PrintStatement { term :: TokenPlus, expr :: Expr }
+  | WhileStatement { predicate :: Expr, body :: Statement }
   deriving Show
 
 data Literal

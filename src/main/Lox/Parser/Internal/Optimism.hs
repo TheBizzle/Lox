@@ -1,6 +1,6 @@
 module Lox.Parser.Internal.Optimism(declaration, program, statement) where
 
-import Lox.Scanner.Token(Token(Else, EOF, Equal, If, LeftBrace, LeftParen, Print, RightBrace, RightParen, Semicolon, Var))
+import Lox.Scanner.Token(Token(Else, EOF, Equal, If, LeftBrace, LeftParen, Print, RightBrace, RightParen, Semicolon, Var, While))
 
 import Lox.Parser.Internal.ExpressionParser(expression)
 import Lox.Parser.Internal.Parse(one, Parser, throwaway, variable)
@@ -8,7 +8,7 @@ import Lox.Parser.Internal.Program(
     Expr(LiteralExpr),
     Literal(NilLit),
     Program(Program),
-    Statement(Block, DeclareVar, ExpressionStatement, IfElse, PrintStatement)
+    Statement(Block, DeclareVar, ExpressionStatement, IfElse, PrintStatement, WhileStatement)
   )
 
 
@@ -25,7 +25,7 @@ varDeclaration = declare <$> ((throwaway Var) *> variable) <*>
     declare (vn, ident) initialM = DeclareVar vn ident $ maybe (LiteralExpr NilLit ident) id initialM
 
 statement :: Parser Statement
-statement = ifStatement <|> printStatement <|> exprStatement <|> block
+statement = ifStatement <|> printStatement <|> whileStatement <|> exprStatement <|> block
 
 block :: Parser Statement
 block = Block <$> ((throwaway LeftBrace) *> (many declaration) <* (throwaway RightBrace))
@@ -47,3 +47,8 @@ ifStatement = ifElse <|> plainIf
     plainIf = (\ant con -> IfElse ant con Nothing) <$>
                 ((throwaway If) *> (throwaway LeftParen) *> expression <* (throwaway RightParen)) <*>
                 statement
+
+whileStatement :: Parser Statement
+whileStatement = WhileStatement <$>
+                   ((throwaway While) *> (throwaway LeftParen) *> expression <* (throwaway RightParen)) <*>
+                   statement

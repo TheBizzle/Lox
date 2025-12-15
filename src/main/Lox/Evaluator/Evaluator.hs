@@ -6,7 +6,7 @@ import Lox.Parser.Program(
     Expr(Assign, Binary, Call, Get, Grouping, LiteralExpr, Logical, Set, Super, This, Unary, Variable),
     Literal(BooleanLit, DoubleLit, NilLit, StringLit),
     Program(statements),
-    Statement(Block, DeclareVar, ExpressionStatement, IfElse, PrintStatement)
+    Statement(Block, DeclareVar, ExpressionStatement, IfElse, PrintStatement, WhileStatement)
   )
 
 import Lox.Scanner.Token(
@@ -34,6 +34,7 @@ evalStatement (DeclareVar          name       _    expr) = evalDeclaration name 
 evalStatement (ExpressionStatement                 expr) = evalExpr expr
 evalStatement (IfElse              ant        con  alt ) = evalIfElse ant con alt
 evalStatement (PrintStatement      _               expr) = evalPrint expr
+evalStatement (WhileStatement      pred       stmt     ) = evalWhile pred stmt
 
 evalExpr :: Expr -> Evaluated
 evalExpr (Assign      name token value)        = evalAssign name token value
@@ -123,6 +124,19 @@ evalUnary tp v = helper tp.token v
     helper Bang  v           = Success $ BooleanV $ not $ asBool v
     helper Minus (NumberV d) = Success $ NumberV $ -d
     helper _     v           = typeError tp [v]
+
+evalWhile :: Expr -> Statement -> Evaluated
+evalWhile predExpr body =
+  do
+    predV <- evalExpr predExpr
+    predV `onSuccessEval` (
+      \predicate ->
+        if (asBool predicate) then do
+          resultV <- evalStatement body
+          resultV `onSuccessEval` (const $ evalWhile predExpr body)
+        else
+          nothing
+      )
 
 evalDeclaration :: Text -> Expr -> Evaluated
 evalDeclaration varName expr =
