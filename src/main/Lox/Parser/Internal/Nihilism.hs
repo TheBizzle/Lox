@@ -1,7 +1,7 @@
 module Lox.Parser.Internal.Nihilism(errorParser) where
 
 import Lox.Scanner.Token(
-    Token(And, Bang, BangEqual, Else, EOF, Equal, EqualEqual, Greater, GreaterEqual, If, LeftBrace, LeftParen, Less, LessEqual, Minus, Or, Plus, Print, RightBrace, RightParen, Semicolon, Slash, Star, Var, While)
+    Token(And, Bang, BangEqual, Else, EOF, Equal, EqualEqual, For, Greater, GreaterEqual, If, LeftBrace, LeftParen, Less, LessEqual, Minus, Or, Plus, Print, RightBrace, RightParen, Semicolon, Slash, Star, Var, While)
   , TokenPlus(lineNumber, token, TokenPlus)
   )
 
@@ -40,6 +40,7 @@ badDeclaration = badVarDecl1 <|> badVarDecl2 <|> badVarDecl3 <|> badVarDecl4 <|>
 
 badStatement :: Parser a
 badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
+                 badFor <|>
                  badIfElse <|> badIf <|>
                  badWhile <|>
                  badBlock1 <|> badBlock2 <|> badBlock3 <|> badBlock4 <|>
@@ -48,6 +49,8 @@ badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
 
     badPrintStatement1 = (throwaway Print) *> expression *> (whine $ Missing Semicolon)
     badPrintStatement2 = (throwaway Print) *> badExpression
+
+    badFor = (throwaway For) *> (whineIf EOF $ Missing EOF) -- TODO
 
     badIfElse = (throwaway Else) *> (whineIf EOF $ Missing EOF) -- TODO
     badIf     = (throwaway If  ) *> (whineIf EOF $ Missing EOF) -- TODO
