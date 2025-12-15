@@ -10,8 +10,8 @@ import Lox.Parser.Program(
   )
 
 import Lox.Scanner.Token(
-    TokenPlus(token),
-    Token(Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Plus, Slash, Star)
+    TokenPlus(token, TokenPlus),
+    Token(And, Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Or, Plus, Slash, Star)
   )
 
 import Lox.Evaluator.Internal.Effect(Effect(Print))
@@ -42,7 +42,7 @@ evalExpr (Call        callee paren arguments)  = unimplemented paren
 evalExpr (Get         object name token)       = unimplemented token
 evalExpr (Grouping    expression)              = evalExpr expression
 evalExpr (LiteralExpr literal _)               = return $ Success $ evalLiteral literal
-evalExpr (Logical     left operator right)     = unimplemented operator
+evalExpr (Logical     left operator right)     = evalLogical left operator right
 evalExpr (Set         object name token value) = unimplemented token
 evalExpr (Super       keyword method)          = unimplemented keyword
 evalExpr (This        keyword)                 = unimplemented keyword
@@ -105,6 +105,17 @@ evalLiteral (BooleanLit bool)   = BooleanV bool
 evalLiteral (DoubleLit  double) =  NumberV double
 evalLiteral (StringLit  str)    =  StringV str
 evalLiteral  NilLit             =     NilV
+
+evalLogical :: Expr -> TokenPlus -> Expr -> Evaluated
+evalLogical left operator right =
+  do
+    lv <- evalExpr left
+    lv `onSuccessEval` (
+      \l -> case operator of
+              (TokenPlus And _) -> if (not . asBool $ l) then return (Success l) else evalExpr right
+              (TokenPlus  Or _) -> if (      asBool   l) then return (Success l) else evalExpr right
+              tp                -> error $ "Impossible logical operator: " <> (showText tp)
+      )
 
 evalUnary :: TokenPlus -> Value -> Validation (NonEmpty EvalError) Value
 evalUnary tp v = helper tp.token v

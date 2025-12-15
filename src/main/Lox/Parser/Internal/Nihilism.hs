@@ -1,7 +1,7 @@
 module Lox.Parser.Internal.Nihilism(errorParser) where
 
 import Lox.Scanner.Token(
-    Token(Bang, BangEqual, Else, EOF, Equal, EqualEqual, Greater, GreaterEqual, If, LeftBrace, LeftParen, Less, LessEqual, Minus, Plus, Print, RightBrace, RightParen, Semicolon, Slash, Star, Var)
+    Token(And, Bang, BangEqual, Else, EOF, Equal, EqualEqual, Greater, GreaterEqual, If, LeftBrace, LeftParen, Less, LessEqual, Minus, Or, Plus, Print, RightBrace, RightParen, Semicolon, Slash, Star, Var)
   , TokenPlus(lineNumber, token, TokenPlus)
   )
 
@@ -72,7 +72,7 @@ badBinary :: Parser a
 badBinary = (optional $ unary *> (many goodBinary) *> (oneOf binaryOperators)) *> badUnary
   where
     goodBinary      = (oneOf binaryOperators) *> expression
-    binaryOperators = [BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Plus, Slash, Star]
+    binaryOperators = [And, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Or, Plus, Slash, Star]
 
 badUnary :: Parser a
 badUnary = (many $ oneOf [Bang, Minus]) *> badPrimary

@@ -1,16 +1,16 @@
 module Lox.Parser.Internal.ExpressionParser(expression, unary) where
 
 import Lox.Scanner.Token(
-    Token(Bang, BangEqual, Equal, EqualEqual, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Nil, Number, Plus, RightParen, TokenFalse, TokenTrue, Slash, Star, String),
+    Token(And, Bang, BangEqual, Equal, EqualEqual, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Nil, Number, Or, Plus, RightParen, TokenFalse, TokenTrue, Slash, Star, String),
     TokenPlus(TokenPlus)
   )
 
 import Lox.Parser.Internal.Parse(
-    (=#>), backtrack, convert, oneOf, Parser, parserFrom, throwaway, variable, win
+    (=#>), backtrack, convert, one, oneOf, Parser, parserFrom, throwaway, variable, win
   )
 
 import Lox.Parser.Internal.Program(
-    Expr(Assign, Binary, Grouping, LiteralExpr, Unary, Variable),
+    Expr(Assign, Binary, Grouping, LiteralExpr, Logical, Unary, Variable),
     Literal(BooleanLit, DoubleLit, NilLit, StringLit)
   )
 
@@ -22,9 +22,19 @@ expr :: Parser Expr
 expr = assignment
 
 assignment :: Parser Expr
-assignment = assignOperation <|> equality
+assignment = assignOperation <|> logicalOr
   where
     assignOperation = (\(name, tp) v -> Assign name tp v) <$> variable <*> ((throwaway Equal) *> assignment)
+
+logicalOr :: Parser Expr
+logicalOr = orOperation <|> logicalAnd
+  where
+    orOperation = (\x or y -> Logical x or y) <$> logicalAnd <*> (one Or) <*> logicalOr
+
+logicalAnd :: Parser Expr
+logicalAnd = andOperation <|> equality
+  where
+    andOperation = (\x and y -> Logical x and y) <$> equality <*> (one And) <*> logicalAnd
 
 equality :: Parser Expr
 equality = eqOperation <|> comparison
