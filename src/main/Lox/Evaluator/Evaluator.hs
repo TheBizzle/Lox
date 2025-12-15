@@ -6,7 +6,7 @@ import Lox.Parser.Program(
     Expr(Assign, Binary, Call, Get, Grouping, LiteralExpr, Logical, Set, Super, This, Unary, Variable),
     Literal(BooleanLit, DoubleLit, NilLit, StringLit),
     Program(statements),
-    Statement(Block, DeclareVar, ExpressionStatement, PrintStatement)
+    Statement(Block, DeclareVar, ExpressionStatement, IfElse, PrintStatement)
   )
 
 import Lox.Scanner.Token(
@@ -29,10 +29,11 @@ eval :: Program -> Evaluated
 eval = statements &> runStatements
 
 evalStatement :: Statement -> Evaluated
-evalStatement (              Block statements          ) = evalBlock statements
-evalStatement (         DeclareVar name          _ expr) = evalDeclaration name expr
+evalStatement (Block               statements          ) = evalBlock statements
+evalStatement (DeclareVar          name       _    expr) = evalDeclaration name expr
 evalStatement (ExpressionStatement                 expr) = evalExpr expr
-evalStatement (     PrintStatement               _ expr) = evalPrint expr
+evalStatement (IfElse              ant        con  alt ) = evalIfElse ant con alt
+evalStatement (PrintStatement      _               expr) = evalPrint expr
 
 evalExpr :: Expr -> Evaluated
 evalExpr (Assign      name token value)        = evalAssign name token value
@@ -87,6 +88,18 @@ evalBlock statements =
     modify popScope
     return result
 
+evalIfElse :: Expr -> Statement -> (Maybe Statement) -> Evaluated
+evalIfElse antecedentExpr consequent alternativeM =
+  do
+    anteV <- evalExpr antecedentExpr
+    anteV `onSuccessEval` (
+      \antecedent ->
+        if (asBool antecedent) then
+          evalStatement consequent
+        else
+          maybe nothing evalStatement alternativeM
+      )
+
 evalLiteral :: Literal -> Value
 evalLiteral (BooleanLit bool)   = BooleanV bool
 evalLiteral (DoubleLit  double) =  NumberV double
@@ -107,7 +120,7 @@ evalDeclaration varName expr =
     valueV `onSuccessEval` (
         \value -> do
           modify $ declareVar varName value
-          return $ Success NilV
+          nothing
       )
 
 evalPrint :: Expr -> Evaluated
@@ -117,7 +130,7 @@ evalPrint expr =
     valueV `onSuccessEval` (
       \value -> do
         modify $ \s -> s { effects = (Print $ showText value) : s.effects }
-        return $ Success NilV
+        nothing
       )
 
 runStatements :: [Statement] -> Evaluated
@@ -152,6 +165,9 @@ asBool _                = True
 
 onSuccessEval :: (Validation (NonEmpty EvalError) a) -> (a -> Evaluated) -> Evaluated
 onSuccessEval vali f = validation (Failure &> return) f vali
+
+nothing :: Evaluated
+nothing = return $ Success NilV
 
 fail :: EvalError -> Validation (NonEmpty EvalError) Value
 fail err = Failure $ NE.singleton err
