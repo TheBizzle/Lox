@@ -1,5 +1,5 @@
 module Lox.Evaluator.Internal.World(
-    closeOver, declareVar, empty, getVar, popScope, pushScope, runEffect, setVar
+    closeOver, currentEnvironment, declareVar, empty, getVar, popScope, pushScope, runEffect, setVar
   , World
   , WorldState(scopes, WorldState)
   ) where
@@ -9,7 +9,7 @@ import Control.Monad.State(get, modify, StateT)
 import Data.List.NonEmpty((<|))
 import Data.Map(alter, lookup)
 
-import Lox.Evaluator.Internal.Data(ScopeAddress(n, ScopeAddress), VarAddress(scopeAddr, VarAddress))
+import Lox.Evaluator.Internal.Data(Environment, ScopeAddress(n, ScopeAddress), VarAddress(scopeAddr, VarAddress))
 import Lox.Evaluator.Internal.Effect(Effect(Print))
 import Lox.Evaluator.Internal.EvalError(EvalError)
 import Lox.Evaluator.Internal.Value(Value(NilV))
@@ -39,7 +39,7 @@ data WorldState
   deriving Show
 
 data Scope
-  = Scope { locals :: Set Text, address :: ScopeAddress }
+  = Scope { environ :: Environment, address :: ScopeAddress }
   deriving Show
 
 empty :: WorldState
@@ -75,6 +75,9 @@ cleanupClosure addr world = world { variables = newVars, closures = newClosures 
     newClosures   = Set.foldr Map.delete csWithoutMe     keysOfEmpties
     newVars       = Set.foldr Map.delete world.variables keysOfEmpties
 
+currentEnvironment :: World Environment
+currentEnvironment = get <&> (currentScope &> environ)
+
 currentScope :: WorldState -> Scope
 currentScope = scopes &> NE.head
 
@@ -85,27 +88,23 @@ popScope world = (cleanupClosure myScope.address world) { scopes = newScopes }
     newScopes          = maybe (error whinerMsg) id tailMNE
     whinerMsg          = "Critical error!  You should never be able to pop the global scope!"
 
-pushScope :: WorldState -> WorldState
-pushScope world = world { scopes = newScope <| world.scopes, lastScopeAddr = newAddr }
+pushScope :: Environment -> WorldState -> WorldState
+pushScope env world = world { scopes = newScope <| world.scopes, lastScopeAddr = newAddr }
   where
     newAddr  = ScopeAddress $ world.lastScopeAddr.n + 1
-    newScope = Scope Set.empty newAddr
+    newScope = Scope env newAddr
 
 lookupVarAddr :: Text -> WorldState -> Maybe VarAddress
-lookupVarAddr varName = scopes &> (foldr concatVarMap Map.empty) &> (lookup varName)
-  where
-    concatVarMap x acc = x |> locals &> Set.toList &> map (\n -> (n, VarAddress n x.address)) &>
-                              Map.fromList &> (flip union acc)
+lookupVarAddr varName = currentScope &> environ &> (lookup varName)
 
 declareVar :: Text -> Value -> WorldState -> WorldState
-declareVar varName value world = world { variables = newVars, closures = newClosures, scopes = newScopes }
+declareVar varName value world = world { variables = newVars, scopes = newScopes }
   where
-    (oldScope, tailMNE) = NE.uncons world.scopes
-    newScope            = oldScope { locals = Set.insert varName oldScope.locals }
-    varAddr             = VarAddress varName newScope.address
-    newScopes           = maybe (NE.singleton newScope) (NE.cons newScope) tailMNE
-    newVars             = Map.insert varAddr value                            world.variables
-    newClosures         = Map.insert varAddr (Set.singleton newScope.address) world.closures
+    (oldScope, tailML) = NE.uncons world.scopes
+    varAddr            = VarAddress varName oldScope.address
+    newScope           = oldScope { environ = Map.insert varName varAddr oldScope.environ }
+    newScopes          = maybe (NE.singleton newScope) (NE.cons newScope) tailML
+    newVars            = Map.insert varAddr value world.variables
 
 getVar :: Text -> WorldState -> Maybe Value
 getVar varName world = world |> (lookupVarAddr varName) &> getValue

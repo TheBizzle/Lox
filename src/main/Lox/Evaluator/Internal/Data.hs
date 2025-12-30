@@ -1,6 +1,8 @@
 module Lox.Evaluator.Internal.Data(Environment, ScopeAddress(n, ScopeAddress), VarAddress(scopeAddr, VarAddress, varName)) where
 
 
+type Environment = Map Text VarAddress
+
 newtype ScopeAddress
   = ScopeAddress { n :: Word }
   deriving (Eq, Ord, Show)

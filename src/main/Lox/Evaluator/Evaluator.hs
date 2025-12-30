@@ -23,7 +23,7 @@ import Lox.Evaluator.Internal.EvalError(
   )
 
 import Lox.Evaluator.Internal.World(
-    declareVar, defineFunction, getVar, popScope, pushScope, runEffect, setVar, World
+    currentEnvironment, declareVar, defineFunction, getVar, popScope, pushScope, runEffect, setVar, World
   )
 
 import qualified Data.List          as List
@@ -102,7 +102,8 @@ evalBinary left operator right =
 evalBlock :: [Statement] -> Evaluating
 evalBlock statements =
   do
-    modify pushScope
+    env    <- currentEnvironment
+    modify $ pushScope env
     result <- runStatements statements
     modify popScope
     return result
