@@ -3,6 +3,7 @@ module Lox.Evaluator.Internal.World(closeOver, declareVar, empty, getVar, popSco
 import Data.List.NonEmpty((<|))
 import Data.Map(alter, lookup, union)
 
+import Lox.Evaluator.Internal.Data(ScopeAddress(n, ScopeAddress), VarAddress(scopeAddr, VarAddress))
 import Lox.Evaluator.Internal.Effect(Effect)
 import Lox.Evaluator.Internal.Value(Value)
 
@@ -13,13 +14,7 @@ import qualified Data.Set           as Set
 
 type World = State WorldState
 
-newtype ScopeAddress
-  = ScopeAddress { n :: Word }
-  deriving (Eq, Ord, Show)
 
-data VarAddress
-  = VarAddress Text ScopeAddress
-  deriving (Eq, Ord, Show)
 
 data WorldState
   = WorldState { variables :: Map VarAddress Value, closures :: Map VarAddress (Set ScopeAddress)

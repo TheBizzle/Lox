@@ -49,6 +49,7 @@ Library
     Lox.Scanner.ScannerError,
     Lox.Scanner.Token
   Other-Modules:
+    Lox.Evaluator.Internal.Data,
     Lox.Evaluator.Internal.Effect,
     Lox.Evaluator.Internal.EvalError,
     Lox.Evaluator.Internal.Type,
