@@ -15,20 +15,38 @@ import Lox.Scanner.Token(
   )
 
 import Lox.Evaluator.Internal.Effect(Effect(Print))
-import Lox.Evaluator.Internal.EvalError(EvalError(NotImplemented, TypeError, UnknownVariable))
 import Lox.Evaluator.Internal.Type(typecheck)
 import Lox.Evaluator.Internal.Value(Value(BooleanV, NumberV, StringV, NilV))
-import Lox.Evaluator.Internal.World(declareVar, getVar, popScope, pushScope, setVar, World, WorldState(effects))
 
+import Lox.Evaluator.Internal.EvalError(
+    EvalError(NotImplemented, TypeError, UnknownVariable)
+  )
+
+import Lox.Evaluator.Internal.World(
+    declareVar, defineFunction, getVar, popScope, pushScope, runEffect, setVar, World
+  )
+
+import qualified Data.List          as List
 import qualified Data.List.NonEmpty as NE
 
+import qualified Lox.Evaluator.Internal.ControlFlow as CF
 
-type Evaluated = World (Validation (NonEmpty EvalError) Value)
+
+type Result  t  = Validation (NonEmpty EvalError) t
+type Worldly t  = World (Result t)
+type Evaluated  = Worldly Value
+type Evaluating = Worldly CF.ControlFlow
 
 eval :: Program -> Evaluated
-eval = statements &> runStatements
+eval = statements &> runStatements &> evaluated
 
-evalStatement :: Statement -> Evaluated
+evaluated :: Evaluating -> Evaluated
+evaluated = (<&> (validation Failure helper))
+  where
+    helper (CF.Exception    ex) = Failure $ NE.singleton ex
+    helper (CF.Normal    value) = Success value
+
+evalStatement :: Statement -> Evaluating
 evalStatement (Block               statements          ) = evalBlock statements
 evalStatement (DeclareVar          name       _    expr) = evalDeclaration name expr
 evalStatement (ExpressionStatement                 expr) = evalExpr expr
@@ -36,29 +54,29 @@ evalStatement (IfElse              ant        con  alt ) = evalIfElse ant con al
 evalStatement (PrintStatement      _               expr) = evalPrint expr
 evalStatement (WhileStatement      pred       stmt     ) = evalWhile pred stmt
 
-evalExpr :: Expr -> Evaluated
+evalExpr :: Expr -> Evaluating
 evalExpr (Assign      name token value)        = evalAssign name token value
 evalExpr (Binary      left operator right)     = evalBinary left operator right
 evalExpr (Call        callee paren arguments)  = unimplemented paren
 evalExpr (Get         object name token)       = unimplemented token
 evalExpr (Grouping    expression)              = evalExpr expression
-evalExpr (LiteralExpr literal _)               = return $ Success $ evalLiteral literal
+evalExpr (LiteralExpr literal _)               = win $ evalLiteral literal
 evalExpr (Logical     left operator right)     = evalLogical left operator right
 evalExpr (Set         object name token value) = unimplemented token
 evalExpr (Super       keyword method)          = unimplemented keyword
 evalExpr (This        keyword)                 = unimplemented keyword
-evalExpr (Unary       operator right)          = (evalExpr right) <&> (flip bindValidation $ evalUnary operator)
+evalExpr (Unary       operator right)          = evalUnary operator right
 evalExpr (Variable    name token)              = lookupVar name token
 
-evalAssign :: Text -> TokenPlus -> Expr -> Evaluated
+evalAssign :: Text -> TokenPlus -> Expr -> Evaluating
 evalAssign name token value = (evalExpr value) >>= (flip onSuccessEval $ \v -> setVariable name v token)
 
-evalBinary :: Expr -> TokenPlus -> Expr -> Evaluated
+evalBinary :: Expr -> TokenPlus -> Expr -> Evaluating
 evalBinary left operator right =
     do
       lv <- evalExpr left
       rv <- evalExpr right
-      ((,) <$> lv <*> rv) `onSuccessEval` (
+      ((,) <$> lv <*> rv) `onSuccessEval2` (
         \(l, r) -> return $ helper l operator.token r
         )
   where
@@ -75,13 +93,13 @@ evalBinary left operator right =
     helper (NumberV l) Star         (NumberV r) = num  l (* ) r
     helper l           _            r           = typeError operator [l, r]
 
-    bool = succeed BooleanV
-    num  = succeed NumberV
-    str  = succeed StringV
+    bool = succ BooleanV
+    num  = succ NumberV
+    str  = succ StringV
 
-    succeed consV l op r = Success $ consV $ l `op` r
+    succ consV l op r = Success $ CF.Normal $ consV $ l `op` r
 
-evalBlock :: [Statement] -> Evaluated
+evalBlock :: [Statement] -> Evaluating
 evalBlock statements =
   do
     modify pushScope
@@ -89,7 +107,7 @@ evalBlock statements =
     modify popScope
     return result
 
-evalIfElse :: Expr -> Statement -> (Maybe Statement) -> Evaluated
+evalIfElse :: Expr -> Statement -> (Maybe Statement) -> Evaluating
 evalIfElse antecedentExpr consequent alternativeM =
   do
     anteV <- evalExpr antecedentExpr
@@ -107,38 +125,41 @@ evalLiteral (DoubleLit  double) =  NumberV double
 evalLiteral (StringLit  str)    =  StringV str
 evalLiteral  NilLit             =     NilV
 
-evalLogical :: Expr -> TokenPlus -> Expr -> Evaluated
+evalLogical :: Expr -> TokenPlus -> Expr -> Evaluating
 evalLogical left operator right =
   do
     lv <- evalExpr left
     lv `onSuccessEval` (
       \l -> case operator of
-              (TokenPlus And _) -> if (not . asBool $ l) then return (Success l) else evalExpr right
-              (TokenPlus  Or _) -> if (      asBool   l) then return (Success l) else evalExpr right
+              (TokenPlus And _) -> if (not . asBool $ l) then return (succeed l) else evalExpr right
+              (TokenPlus  Or _) -> if (      asBool   l) then return (succeed l) else evalExpr right
               tp                -> error $ "Impossible logical operator: " <> (showText tp)
       )
 
-evalUnary :: TokenPlus -> Value -> Validation (NonEmpty EvalError) Value
-evalUnary tp v = helper tp.token v
+evalUnary :: TokenPlus -> Expr -> Evaluating
+evalUnary operator rightExpr =
+  do
+    rightV <- evalExpr rightExpr
+    rightV `onSuccessEval` ((helper operator.token) &> return)
   where
-    helper Bang  v           = Success $ BooleanV $ not $ asBool v
-    helper Minus (NumberV d) = Success $ NumberV $ -d
-    helper _     v           = typeError tp [v]
+    helper Bang  v           = succeed $ BooleanV $ not $ asBool v
+    helper Minus (NumberV d) = succeed $ NumberV $ -d
+    helper _     v           = typeError operator [v]
 
-evalWhile :: Expr -> Statement -> Evaluated
+evalWhile :: Expr -> Statement -> Evaluating
 evalWhile predExpr body =
   do
     predV <- evalExpr predExpr
     predV `onSuccessEval` (
       \predicate ->
-        if (asBool predicate) then do
-          resultV <- evalStatement body
-          resultV `onSuccessEval` (const $ evalWhile predExpr body)
-        else
+        do
+          when (asBool predicate) $ do
+            resultV <- evalStatement body
+            void $ resultV `onSuccessEval` (const $ evalWhile predExpr body)
           nothing
       )
 
-evalDeclaration :: Text -> Expr -> Evaluated
+evalDeclaration :: Text -> Expr -> Evaluating
 evalDeclaration varName expr =
   do
     valueV <- evalExpr expr
@@ -148,39 +169,39 @@ evalDeclaration varName expr =
           nothing
       )
 
-evalPrint :: Expr -> Evaluated
+evalPrint :: Expr -> Evaluating
 evalPrint expr =
   do
     valueV <- evalExpr expr
     valueV `onSuccessEval` (
       \value -> do
-        modify $ \s -> s { effects = (Print $ showText value) : s.effects }
+        void $ runEffect $ Print $ showText value
         nothing
       )
 
-runStatements :: [Statement] -> Evaluated
-runStatements = foldM helper $ Success NilV
+runStatements :: [Statement] -> Evaluating
+runStatements = foldM helper $ succeed NilV
   where
     helper acc s = acc `onSuccessEval` (const $ evalStatement s)
 
-lookupVar :: Text -> TokenPlus -> Evaluated
+lookupVar :: Text -> TokenPlus -> Evaluating
 lookupVar varName vnTP =
   do
     w <- get
     let valM = getVar varName w
-    return $ maybe (fail $ UnknownVariable vnTP varName) Success valM
+    maybe (lose $ UnknownVariable vnTP varName) win valM
 
-setVariable :: Text -> Value -> TokenPlus -> Evaluated
+setVariable :: Text -> Value -> TokenPlus -> Evaluating
 setVariable varName value vnTP =
   do
     varV <- lookupVar varName vnTP
     varV `onSuccessEval` (
       const $ do
         modify $ setVar varName value
-        return $ Success value
+        win value
       )
 
-typeError :: TokenPlus -> [Value] -> Validation (NonEmpty EvalError) a
+typeError :: TokenPlus -> [Value] -> Result a
 typeError tp args = Failure $ NE.singleton $ TypeError tp $ catMaybes $ typecheck tp.token args
 
 asBool :: Value -> Bool
@@ -188,14 +209,43 @@ asBool NilV             = False
 asBool (BooleanV False) = False
 asBool _                = True
 
-onSuccessEval :: (Validation (NonEmpty EvalError) a) -> (a -> Evaluated) -> Evaluated
-onSuccessEval vali f = validation (Failure &> return) f vali
+onSuccessEval :: Result CF.ControlFlow -> (Value -> Evaluating) -> Evaluating
+onSuccessEval vali f = validation (Failure &> return) runIfNormal vali
+  where
+    runIfNormal (CF.Normal v) = f v
+    runIfNormal             x = return $ Success x
 
-nothing :: Evaluated
-nothing = return $ Success NilV
+onSuccessEval2 :: Result (CF.ControlFlow, CF.ControlFlow) -> ((Value, Value) -> Evaluating) -> Evaluating
+onSuccessEval2 vali f = validation (Failure &> return) runIfNormal vali
+  where
+    runIfNormal ((CF.Normal v), (CF.Normal w)) = f (v, w)
+    runIfNormal ((CF.Normal _),             x) = return $ Success x
+    runIfNormal (            x,             _) = return $ Success x
 
-fail :: EvalError -> Validation (NonEmpty EvalError) Value
+onSuccessEval2Seq :: Result (CF.ControlFlow, [CF.ControlFlow]) -> ((Value, [Value]) -> Evaluating) -> Evaluating
+onSuccessEval2Seq vali f = validation (Failure &> return) runIfNormal vali
+  where
+    runIfNormal ((CF.Normal v), ws) = either (Success &> return) ((v, ) &> f) $ purify [] ws
+    runIfNormal (            x,  _) = return $ Success x
+
+    purify acc                [] = Right $ List.reverse acc
+    purify acc ((CF.Normal v):t) = purify (v:acc) t
+    purify   _ (            h:_) = Left h
+
+nothing :: Evaluating
+nothing = win NilV
+
+fail :: EvalError -> Result CF.ControlFlow
 fail err = Failure $ NE.singleton err
 
-unimplemented :: TokenPlus -> Evaluated
-unimplemented = NotImplemented &> fail &> return
+succeed :: Value -> Result CF.ControlFlow
+succeed = CF.Normal &> Success
+
+win :: Value -> Evaluating
+win = succeed &> return
+
+lose :: EvalError -> Evaluating
+lose = fail &> return
+
+unimplemented :: TokenPlus -> Evaluating
+unimplemented = NotImplemented &> lose

@@ -1,25 +1,41 @@
-module Lox.Evaluator.Internal.World(closeOver, declareVar, empty, getVar, popScope, pushScope, setVar, World, WorldState(scopes, effects, WorldState)) where
+module Lox.Evaluator.Internal.World(
+    closeOver, declareVar, empty, getVar, popScope, pushScope, runEffect, setVar
+  , World
+  , WorldState(scopes, WorldState)
+  ) where
+
+import Control.Monad.State(get, modify, StateT)
 
 import Data.List.NonEmpty((<|))
-import Data.Map(alter, lookup, union)
+import Data.Map(alter, lookup)
 
 import Lox.Evaluator.Internal.Data(ScopeAddress(n, ScopeAddress), VarAddress(scopeAddr, VarAddress))
-import Lox.Evaluator.Internal.Effect(Effect)
-import Lox.Evaluator.Internal.Value(Value)
+import Lox.Evaluator.Internal.Effect(Effect(Print))
+import Lox.Evaluator.Internal.EvalError(EvalError)
+import Lox.Evaluator.Internal.Value(Value(NilV))
 
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map           as Map
 import qualified Data.Set           as Set
+import qualified Data.Text.IO       as TIO
+
+import qualified Lox.Evaluator.Internal.ControlFlow as CF
 
 
-type World = State WorldState
+type World   t  = StateT WorldState IO t
+type Result  t  = Validation (NonEmpty EvalError) t
+type Worldly t  = World (Result t)
+type Evaluated  = Worldly Value
+type Evaluating = Worldly CF.ControlFlow
 
 
 
 data WorldState
-  = WorldState { variables :: Map VarAddress Value, closures :: Map VarAddress (Set ScopeAddress)
-               , scopes :: NonEmpty Scope, lastScopeAddr :: ScopeAddress
-               , effects :: [Effect] }
+  = WorldState { variables        :: Map VarAddress Value              -- The central registry of all variables' values
+               , closures         :: Map VarAddress (Set ScopeAddress) -- Keep-alives for all closed-over variables
+               , scopes           :: NonEmpty Scope                    -- The call stack
+               , lastScopeAddr    :: ScopeAddress
+               }
   deriving Show
 
 data Scope
@@ -33,7 +49,6 @@ empty =
     , closures      = Map.empty
     , scopes        = (NE.singleton $ Scope Set.empty defaultAddr)
     , lastScopeAddr = defaultAddr
-    , effects       = []
     }
   where
     defaultAddr = ScopeAddress 0
@@ -47,6 +62,9 @@ closeOver varName world = world { closures = newClosures }
 
     orEmpty setM = maybe Set.empty id setM
 
+runEffect :: Effect -> Evaluated
+runEffect (Print x) = (liftIO $ TIO.putStrLn x) $> (Success NilV)
+
     whinerMsg = "Critical error!  It is impossible to close over a variable that has no address: " <> varName
 
 cleanupClosure :: ScopeAddress -> WorldState -> WorldState
@@ -56,6 +74,9 @@ cleanupClosure addr world = world { variables = newVars, closures = newClosures 
     keysOfEmpties = Map.keysSet $ Map.filter (Set.null) csWithoutMe
     newClosures   = Set.foldr Map.delete csWithoutMe     keysOfEmpties
     newVars       = Set.foldr Map.delete world.variables keysOfEmpties
+
+currentScope :: WorldState -> Scope
+currentScope = scopes &> NE.head
 
 popScope :: WorldState -> WorldState
 popScope world = (cleanupClosure myScope.address world) { scopes = newScopes }

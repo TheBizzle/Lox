@@ -1,9 +1,10 @@
 module Main(main) where
 
+import Control.Monad.State(runStateT)
+
 import System.Environment(getArgs)
 import System.Exit(exitWith, ExitCode(ExitFailure))
 
-import Lox.Evaluator.Effect(Effect(Print))
 import Lox.Evaluator.EvalError(EvalError(NotImplemented, TypeError, UnknownVariable))
 import Lox.Evaluator.World(World, WorldState(effects))
 import Lox.Evaluator.Value(Value)
@@ -27,7 +28,8 @@ import qualified Data.List         as List
 import qualified Data.Text         as Text
 import qualified Data.Text.IO      as TIO
 
-import qualified Lox.Evaluator.World as World
+import qualified Lox.Evaluator.ControlFlow as CF
+import qualified Lox.Evaluator.World       as World
 
 
 main :: IO ()
@@ -63,17 +65,14 @@ handleError :: Traversable t => (a -> Text) -> t a -> IO ()
 handleError errorToText errors = for_ errors $ errorToText &> TIO.putStrLn
 
 runWorld :: World (Validation (NonEmpty EvalError) Value) -> WorldState -> IO (WorldState, Int)
-runWorld program world = output <&> \signal -> (newWorld { effects = [] }, signal)
+runWorld program world =
+  do
+    (resultV, newWorld) <- runStateT program world
+    output              <- validation handleBad handleGood resultV
+    return (newWorld, output)
   where
-    (resultV, newWorld) = runState program world
-    output              = validation handleBad handleGood resultV
-    handleBad           = (handleError evalErrorAsText) &> ($> 70)
-    handleGood t        =
-      do
-        for_ (List.reverse newWorld.effects) runEffect
-        t |> showText &> TIO.putStrLn &> ($> 0)
-
-    runEffect (Print text) = TIO.putStrLn text
+    handleBad  = (handleError evalErrorAsText) &> ($> 70)
+    handleGood = showText &> TIO.putStrLn      &> ($>  0)
 
 anyAsText :: a -> Text
 anyAsText _ = error "Unimplemented error handler"

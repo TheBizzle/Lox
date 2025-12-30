@@ -36,6 +36,7 @@ Library
   Hs-Source-Dirs:  src/main
   Exposed-Modules:
     Lox.Interpreter,
+    Lox.Evaluator.ControlFlow,
     Lox.Evaluator.Effect,
     Lox.Evaluator.Evaluator,
     Lox.Evaluator.EvalError,
@@ -49,6 +50,7 @@ Library
     Lox.Scanner.ScannerError,
     Lox.Scanner.Token
   Other-Modules:
+    Lox.Evaluator.Internal.ControlFlow,
     Lox.Evaluator.Internal.Data,
     Lox.Evaluator.Internal.Effect,
     Lox.Evaluator.Internal.EvalError,
