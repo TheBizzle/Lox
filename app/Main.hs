@@ -1,5 +1,6 @@
 module Main(main) where
 
+import Control.DeepSeq(force)
 import Control.Monad.State(runStateT)
 
 import GHC.Real(realToFrac)
@@ -80,7 +81,8 @@ runWorld program world =
   do
     (resultV, newWorld) <- runStateT program world
     output              <- validation handleBad handleGood resultV
-    return (newWorld, output)
+    let !strictWorld     = force newWorld
+    return (strictWorld, output)
   where
     handleBad  = (handleError evalErrorAsText) &> ($> 70)
     handleGood = showText &> TIO.putStrLn      &> ($>  0)

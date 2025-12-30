@@ -10,6 +10,7 @@ Common common
   Default-Extensions: OverloadedRecordDot, OverloadedStrings
   Build-Depends:
     bizzlelude >= 4.20.2.0.1 && < 4.21.0,
+    deepseq    >= 1.5.0      && < 1.6.0,
   GHC-Options:
     -Wall
     -Wcompat

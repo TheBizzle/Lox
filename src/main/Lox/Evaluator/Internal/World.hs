@@ -4,6 +4,7 @@ module Lox.Evaluator.Internal.World(
   , WorldState(scopes, WorldState)
   ) where
 
+import Control.DeepSeq(NFData, rnf)
 import Control.Monad.State(get, modify, StateT)
 
 import Data.List.NonEmpty((<|))
@@ -52,9 +53,16 @@ data WorldState
                }
   deriving Show
 
+instance NFData WorldState where
+    rnf (WorldState vs cs fns xfs nfn ss lsa) =
+      rnf vs `seq` rnf cs `seq` rnf fns `seq` rnf xfs `seq` rnf nfn `seq` rnf ss `seq` rnf lsa
+
 data Scope
   = Scope { environ :: Environment, address :: ScopeAddress }
   deriving Show
+
+instance NFData Scope where
+    rnf (Scope env addr) = rnf env `seq` rnf addr
 
 empty :: WorldState
 empty =
