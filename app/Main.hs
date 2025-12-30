@@ -2,12 +2,14 @@ module Main(main) where
 
 import Control.Monad.State(runStateT)
 
+import GHC.Real(realToFrac)
+
 import System.Environment(getArgs)
 import System.Exit(exitWith, ExitCode(ExitFailure))
 
 import Lox.Evaluator.EvalError(EvalError(ArityMismatch, NotCallable, NotImplemented, TopLevelReturn, TypeError, UnknownVariable))
 import Lox.Evaluator.World(definePrimitiveFunc, World, WorldState)
-import Lox.Evaluator.Value(Value)
+import Lox.Evaluator.Value(Value(NumberV))
 
 import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Succeeded))
 
@@ -23,10 +25,10 @@ import Lox.Scanner.ScannerError(
 
 import Lox.Scanner.Token(Token(EOF, LeftBrace, LeftParen), TokenPlus(lineNumber, token))
 
-import qualified Control.Exception as Exception
-import qualified Data.List         as List
-import qualified Data.Text         as Text
-import qualified Data.Text.IO      as TIO
+import qualified Control.Exception     as Exception
+import qualified Data.Time.Clock.POSIX as Clock
+import qualified Data.Text             as Text
+import qualified Data.Text.IO          as TIO
 
 import qualified Lox.Evaluator.ControlFlow as CF
 import qualified Lox.Evaluator.World       as World
@@ -36,7 +38,7 @@ main :: IO ()
 main = getArgs >>= processArgs
   where
     processArgs :: [String] -> IO ()
-    processArgs            [] = Exception.handle handler $ runPrompt World.empty
+    processArgs            [] = Exception.handle handler $ runPrompt initialWorld
     processArgs (filePath:[]) = (TIO.readFile filePath) >>= runFile
     processArgs             _ = (TIO.putStrLn "Usage: lox [script]") >> (exitWith $ ExitFailure 64)
 
@@ -50,8 +52,17 @@ runPrompt world =
     line <- TIO.getLine
     when (line /= "exit") $ (run world line) >>= (fst &> runPrompt)
 
+initialWorld :: WorldState
+initialWorld = foldr (uncurry3 definePrimitiveFunc) World.empty primitives
+  where
+    primitives = [clock]
+
+    clock        = ("clock", [], clocker)
+    clocker _ [] = (liftIO Clock.getPOSIXTime) <&> (realToFrac &> NumberV &> CF.Normal &> Success)
+    clocker _  _ = error "Invalid number of arguments to `clock`; expects zero."
+
 runFile :: Text -> IO ()
-runFile = (run World.empty) >=> \(_, errorCode) -> when (errorCode /= 0) $ exitWith $ ExitFailure errorCode
+runFile = (run initialWorld) >=> \(_, errorCode) -> when (errorCode /= 0) $ exitWith $ ExitFailure errorCode
 
 run :: WorldState -> Text -> IO (WorldState, Int)
 run world code =

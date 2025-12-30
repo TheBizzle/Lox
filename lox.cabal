@@ -29,7 +29,8 @@ Executable lox
     containers,
     lox,
     mtl,
-    text
+    text,
+    time >= 1.12.0 && < 1.13.0,
 
 Library
   Import:          common

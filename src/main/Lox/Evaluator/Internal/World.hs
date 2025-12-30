@@ -1,5 +1,5 @@
 module Lox.Evaluator.Internal.World(
-    arity, currentEnvironment, declareVar, defineFunction, empty, getVar, popScope, pushScope, runEffect, runFunction, setVar, transferOwnership
+    arity, currentEnvironment, declareVar, defineFunction, definePrimitiveFunc, empty, getVar, popScope, pushScope, runEffect, runFunction, setVar, transferOwnership
   , World
   , WorldState(scopes, WorldState)
   ) where
@@ -143,6 +143,9 @@ defineFunction name argNames body world = _defineFunction name argNames inner wo
     convert (CF.Normal _) = CF.Normal NilV
     convert (CF.Return x) = CF.Normal x
     convert             x = x
+
+definePrimitiveFunc :: Text -> [Text] -> Func -> WorldState -> WorldState
+definePrimitiveFunc = _defineFunction
 
 _defineFunction :: Text -> [Text] -> Func -> WorldState -> WorldState
 _defineFunction name argNames func world = declareVar name fn funcyWorld
