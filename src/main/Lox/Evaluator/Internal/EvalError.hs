@@ -1,5 +1,5 @@
 module Lox.Evaluator.Internal.EvalError(
-    EvalError(culprit, NotImplemented, mismatches, operator, TypeError, UnknownVariable, varName)
+    EvalError(ArityMismatch, culprit, gotNum, NotCallable, NotImplemented, mismatches, operator, TopLevelReturn, TypeError, UnknownVariable, varName, wantedNum)
   ) where
 
 import Lox.Scanner.Token(TokenPlus)
@@ -9,7 +9,10 @@ import Lox.Evaluator.Internal.Value(Value)
 
 
 data EvalError
-  = NotImplemented { culprit :: TokenPlus }
+  = ArityMismatch { culprit :: TokenPlus, wantedNum :: Word, gotNum :: Word }
+  | NotCallable { culprit :: TokenPlus }
+  | NotImplemented { culprit :: TokenPlus }
+  | TopLevelReturn
   | TypeError { operator :: TokenPlus, mismatches :: [(Type, Value)] }
   | UnknownVariable { culprit :: TokenPlus, varName :: Text }
   deriving Show

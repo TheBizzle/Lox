@@ -3,10 +3,11 @@ module Lox.Evaluator.Evaluator(eval) where
 import Control.Monad.State(get, modify)
 
 import Lox.Parser.Program(
-    Expr(Assign, Binary, Call, Get, Grouping, LiteralExpr, Logical, Set, Super, This, Unary, Variable),
+    Expr(Assign, Binary, Call, Get, Grouping, LiteralExpr, Logical, name, Set, Super, This, Unary, Variable),
+    exprToToken,
     Literal(BooleanLit, DoubleLit, NilLit, StringLit),
     Program(statements),
-    Statement(Block, DeclareVar, ExpressionStatement, IfElse, PrintStatement, WhileStatement)
+    Statement(Block, DeclareVar, ExpressionStatement, Function, IfElse, PrintStatement, ReturnStatement, WhileStatement)
   )
 
 import Lox.Scanner.Token(
@@ -16,14 +17,14 @@ import Lox.Scanner.Token(
 
 import Lox.Evaluator.Internal.Effect(Effect(Print))
 import Lox.Evaluator.Internal.Type(typecheck)
-import Lox.Evaluator.Internal.Value(Value(BooleanV, NumberV, StringV, NilV))
+import Lox.Evaluator.Internal.Value(Value(BooleanV, FunctionV, NumberV, StringV, NilV))
 
 import Lox.Evaluator.Internal.EvalError(
-    EvalError(NotImplemented, TypeError, UnknownVariable)
+    EvalError(ArityMismatch, NotCallable, NotImplemented, TopLevelReturn, TypeError, UnknownVariable)
   )
 
 import Lox.Evaluator.Internal.World(
-    currentEnvironment, declareVar, defineFunction, getVar, popScope, pushScope, runEffect, setVar, World
+    arity, currentEnvironment, declareVar, defineFunction, getVar, popScope, pushScope, runEffect, runFunction, setVar, transferOwnership, World
   )
 
 import qualified Data.List          as List
@@ -45,6 +46,7 @@ evaluated = (<&> (validation Failure helper))
   where
     helper (CF.Exception    ex) = Failure $ NE.singleton ex
     helper (CF.Normal    value) = Success value
+    helper (CF.Return        _) = Failure $ NE.singleton TopLevelReturn
 
 evalStatement :: Statement -> Evaluating
 evalStatement (Block               statements          ) = evalBlock statements
@@ -52,12 +54,14 @@ evalStatement (DeclareVar          name       _    expr) = evalDeclaration name 
 evalStatement (ExpressionStatement                 expr) = evalExpr expr
 evalStatement (IfElse              ant        con  alt ) = evalIfElse ant con alt
 evalStatement (PrintStatement      _               expr) = evalPrint expr
+evalStatement (ReturnStatement     _          expM     ) = evalReturn expM
 evalStatement (WhileStatement      pred       stmt     ) = evalWhile pred stmt
+evalStatement (Function            tp         ps   body) = evalFunction tp ps body
 
 evalExpr :: Expr -> Evaluating
 evalExpr (Assign      name token value)        = evalAssign name token value
 evalExpr (Binary      left operator right)     = evalBinary left operator right
-evalExpr (Call        callee paren arguments)  = unimplemented paren
+evalExpr (Call        callee _ arguments)      = evalCall callee arguments
 evalExpr (Get         object name token)       = unimplemented token
 evalExpr (Grouping    expression)              = evalExpr expression
 evalExpr (LiteralExpr literal _)               = win $ evalLiteral literal
@@ -108,6 +112,37 @@ evalBlock statements =
     modify popScope
     return result
 
+evalCall :: Expr -> [Expr] -> Evaluating
+evalCall fnExpr argExprs =
+  do
+    fnV   <- evalExpr fnExpr
+    argVs <- forM argExprs evalExpr
+    ((,) <$> fnV <*> (sequenceA argVs)) `onSuccessEval2Seq` helper
+  where
+    helper (f@(FunctionV _ _ _ idNum _), args) =
+      if arityMatches f args then
+        runFunction evalStatement args idNum
+      else
+        lose $ ArityMismatch (exprToToken fnExpr) (wantedNum f) $ gotNum args
+
+    helper (_, _) =
+      lose $ NotCallable $ exprToToken fnExpr
+
+    arityMatches f args = maybe False (== (gotNum args)) $ arity f
+
+    wantedNum f = maybe 0 id $ arity f
+    gotNum args = args |> length &> fromIntegral
+
+
+evalFunction :: Expr -> [Expr] -> [Statement] -> Evaluating
+evalFunction nameExpr paramExprs body =
+  do
+    modify $ defineFunction fnName params body
+    nothing
+  where
+    fnName = nameExpr.name
+    params = map name paramExprs
+
 evalIfElse :: Expr -> Statement -> (Maybe Statement) -> Evaluating
 evalIfElse antecedentExpr consequent alternativeM =
   do
@@ -136,6 +171,15 @@ evalLogical left operator right =
               (TokenPlus  Or _) -> if (      asBool   l) then return (succeed l) else evalExpr right
               tp                -> error $ "Impossible logical operator: " <> (showText tp)
       )
+
+evalReturn :: Maybe Expr -> Evaluating
+evalReturn exprM = maybe (return $ Success $ CF.Return $ NilV) (evalExpr >=> helper) exprM
+  where
+    helper = validation (Failure &> return) helper2
+
+    helper2 ex@(CF.Exception _) = return $ Success ex
+    helper2    (CF.Normal    v) = (transferOwnership v) $> (Success $ CF.Return v)
+    helper2    (CF.Return    _) = error "`return return x;` should not be possible!"
 
 evalUnary :: TokenPlus -> Expr -> Evaluating
 evalUnary operator rightExpr =

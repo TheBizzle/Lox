@@ -5,15 +5,15 @@ import Control.Monad.State(runStateT)
 import System.Environment(getArgs)
 import System.Exit(exitWith, ExitCode(ExitFailure))
 
-import Lox.Evaluator.EvalError(EvalError(NotImplemented, TypeError, UnknownVariable))
-import Lox.Evaluator.World(World, WorldState(effects))
+import Lox.Evaluator.EvalError(EvalError(ArityMismatch, NotCallable, NotImplemented, TopLevelReturn, TypeError, UnknownVariable))
+import Lox.Evaluator.World(definePrimitiveFunc, World, WorldState)
 import Lox.Evaluator.Value(Value)
 
 import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Succeeded))
 
 import Lox.Parser.ParserError(
     ParserError(lineNumber, offender, typ),
-    ParserErrorType(Backtrack, ExpectedIdentifier, InvalidExpression, Missing, ReservedName)
+    ParserErrorType(Backtrack, ExpectedIdentifier, InvalidExpression, Missing, ReservedName, TooMuchArguing)
   )
 
 import Lox.Scanner.ScannerError(
@@ -81,8 +81,12 @@ evalErrorAsText :: EvalError -> Text
 evalErrorAsText = errorText
   where
     lineNum tp = showText tp.lineNumber
+
+    errorText (ArityMismatch  tp wd gt) = "Runtime error (on line " <> (lineNum tp) <> "): Expected " <> (showText wd) <> " arguments, but got " <> (showText gt)
+    errorText (NotCallable    tp)       = "Runtime error (on line " <> (lineNum tp) <> "): Only functions and classes are callable"
     errorText (NotImplemented tp)       = "Runtime error (on line " <> (lineNum tp) <> "): Functionality not yet implemented"
     errorText (UnknownVariable tp name) = "Runtime error (on line " <> (lineNum tp) <> "): `" <> name <> "` is not defined"
+    errorText TopLevelReturn            = "Runtime error (on line ???): `return` is only allowed inside functions"
     errorText (TypeError t pairs)       = Text.intercalate "\n" $ map (typeError t) pairs
       where
         typeError tp (typ, value) = "Type error (on line " <> (lineNum tp) <> "): `" <> (showText tp.token) <>
@@ -96,6 +100,7 @@ parserErrorAsText error = line
     suffix t   = ", at \"" <> (showText t) <> "\""
     errorText Backtrack           token = withLoc token "Expected something here (this shouldn't be able to happen)"
     errorText (ReservedName _)    token = withLoc token "Illegal use of reserved name"
+    errorText TooMuchArguing      token = withLoc token "Functions are limited to 254 arguments."
     errorText ExpectedIdentifier  token = withLoc token "Expected an identifier"
     errorText InvalidExpression   token = withLoc token "Expected an expression"
     errorText (Missing LeftParen) token = withLoc token $ "No matching '('"

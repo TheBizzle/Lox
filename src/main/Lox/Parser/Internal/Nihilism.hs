@@ -1,7 +1,7 @@
 module Lox.Parser.Internal.Nihilism(errorParser) where
 
 import Lox.Scanner.Token(
-    Token(And, Bang, BangEqual, Else, EOF, Equal, EqualEqual, For, Greater, GreaterEqual, If, LeftBrace, LeftParen, Less, LessEqual, Minus, Or, Plus, Print, RightBrace, RightParen, Semicolon, Slash, Star, Var, While)
+    Token(And, Bang, BangEqual, Else, EOF, Equal, EqualEqual, For, Greater, GreaterEqual, If, LeftBrace, LeftParen, Less, LessEqual, Minus, Or, Plus, Print, Return, RightBrace, RightParen, Semicolon, Slash, Star, Var, While)
   , TokenPlus(lineNumber, token, TokenPlus)
   )
 
@@ -43,6 +43,7 @@ badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
                  badFor <|>
                  badIfElse <|> badIf <|>
                  badWhile <|>
+                 badReturn <|>
                  badBlock1 <|> badBlock2 <|> badBlock3 <|> badBlock4 <|>
                  badExprStatement1 <|> badExprStatement2
   where
@@ -56,6 +57,8 @@ badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
     badIf     = (throwaway If  ) *> (whineIf EOF $ Missing EOF) -- TODO
 
     badWhile = (throwaway While) *> (whineIf EOF $ Missing EOF) -- TODO
+
+    badReturn = (throwaway Return) *> (whineIf EOF $ Missing EOF) -- TODO
 
     badBlock1 = (throwaway LeftBrace) *> (many declaration) *> badDeclaration
     badBlock2 = (throwaway LeftBrace) *> (many declaration) *> (whineIfNot RightBrace)
@@ -84,8 +87,9 @@ badUnary :: Parser a
 badUnary = (many $ oneOf [Bang, Minus]) *> badPrimary
 
 badPrimary :: Parser a
-badPrimary = badGrouping1 <|> badGrouping2 <|> badGrouping3 <|> badGrouping4 <|> badGrouping5 <|> (whine InvalidExpression)
+badPrimary = badGrouping1 <|> badGrouping2 <|> badGrouping3 <|> badGrouping4 <|> badGrouping5 <|> badFnCall <|> (whine InvalidExpression)
   where
+    badFnCall    = (throwaway For) *> (whineIf EOF $ Missing EOF) -- TODO
     badGrouping1 = (throwaway LeftParen) *> (whineIf RightParen InvalidExpression)
     badGrouping2 = (throwaway LeftParen) *> expression *> (whineIfNot RightParen)
     badGrouping3 = (throwaway LeftParen) *> badExpression

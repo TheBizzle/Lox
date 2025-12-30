@@ -1,16 +1,18 @@
 module Lox.Parser.Internal.ExpressionParser(expression, unary) where
 
 import Lox.Scanner.Token(
-    Token(And, Bang, BangEqual, Equal, EqualEqual, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Nil, Number, Or, Plus, RightParen, TokenFalse, TokenTrue, Slash, Star, String),
+    Token(And, Bang, BangEqual, Comma, Equal, EqualEqual, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Nil, Number, Or, Plus, RightParen, TokenFalse, TokenTrue, Slash, Star, String),
     TokenPlus(TokenPlus)
   )
 
 import Lox.Parser.Internal.Parse(
-    (=#>), backtrack, convert, one, oneOf, Parser, parserFrom, throwaway, variable, win
+    (=#>), backtrack, convert, one, oneOf, Parser, parserFrom, throwaway, variable, win, whineAbout
   )
 
+import Lox.Parser.Internal.ParserError(ParserErrorType(TooMuchArguing))
+
 import Lox.Parser.Internal.Program(
-    Expr(Assign, Binary, Grouping, LiteralExpr, Logical, Unary, Variable),
+    Expr(Assign, Binary, Call, Grouping, LiteralExpr, Logical, Unary, Variable),
     Literal(BooleanLit, DoubleLit, NilLit, StringLit)
   )
 
@@ -57,9 +59,23 @@ factor = factorOperation <|> unary
     factorOperation = Binary <$> unary <*> (oneOf [Slash, Star]) <*> factor
 
 unary :: Parser Expr
-unary = unaryOperation <|> primary
+unary = unaryOperation <|> fnCall
   where
     unaryOperation = Unary <$> (oneOf [Bang, Minus]) <*> unary
+
+fnCall :: Parser Expr
+fnCall = call <|> primary
+  where
+    call       = makeCalls <$> primary <*> (some invocation)
+    invocation = (,) <$> (one LeftParen) <*> (args <* (throwaway RightParen))
+
+    args       = (limited existent) <|> nullary
+    existent   = (:) <$> expression <*> (many $ (throwaway Comma) *> expression)
+    nullary    = pure []
+    limited p  = p >>= (\args -> if (length args) < 255 then return args else whineAbout TooMuchArguing)
+
+    makeCalls p ((lp, as):is) = foldl (\acc (lp_, as_) -> Call acc lp_ as_) (Call p lp as) is
+    makeCalls _            [] = error "Not possible!  `some` produces as list of at least length 1!"
 
 primary :: Parser Expr
 primary = number <|> string <|> true <|> false <|> nil <|> fullVariable <|> grouping
