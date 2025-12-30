@@ -226,7 +226,12 @@ declareVar varName value world = world { variables = newVars, scopes = newScopes
     varAddr            = VarAddress varName oldScope.address
     newScope           = oldScope { environ = Map.insert varName varAddr oldScope.environ }
     newScopes          = maybe (NE.singleton newScope) (NE.cons newScope) tailML
-    newVars            = Map.insert varAddr value world.variables
+    newVars            = Map.alter (updater value) varAddr world.variables
+    updater value old  =
+      if (isNothing old) || (isNothing tailML) then
+        Just value
+      else
+        error $ "There is already a variable named '" <> varName <> "' in this scope."
 
 getVar :: Text -> WorldState -> Maybe Value
 getVar varName world = world |> (lookupVarAddr varName) &> getValue
