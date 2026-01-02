@@ -8,15 +8,15 @@ import Lox.Parser.ParserError(ParserError)
 
 import Lox.Evaluator.Evaluator(eval)
 import Lox.Evaluator.EvalError(EvalError)
+import Lox.Evaluator.Program(Program)
 import Lox.Evaluator.Value(Value)
-import Lox.Evaluator.World(World)
 
 
 data Result
   = ScannerFailure (NonEmpty ScannerError)
   | ParserFailure  (NonEmpty ParserError)
   | OtherFailure   (NonEmpty Void)
-  | Succeeded      (World (Validation (NonEmpty EvalError) Value))
+  | Succeeded      (Program (Validation (NonEmpty EvalError) Value))
 
 interpret :: Text -> Result
 interpret = runM

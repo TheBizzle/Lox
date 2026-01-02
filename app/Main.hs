@@ -9,7 +9,7 @@ import System.Environment(getArgs)
 import System.Exit(exitWith, ExitCode(ExitFailure))
 
 import Lox.Evaluator.EvalError(EvalError(ArityMismatch, NotCallable, NotImplemented, TopLevelReturn, TypeError, UnknownVariable))
-import Lox.Evaluator.World(definePrimitiveFunc, World, WorldState)
+import Lox.Evaluator.Program(definePrimitiveFunc, Program, ProgramState)
 import Lox.Evaluator.Value(Value(NumberV))
 
 import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Succeeded))
@@ -32,29 +32,29 @@ import qualified Data.Text             as Text
 import qualified Data.Text.IO          as TIO
 
 import qualified Lox.Evaluator.ControlFlow as CF
-import qualified Lox.Evaluator.World       as World
+import qualified Lox.Evaluator.Program     as Program
 
 
 main :: IO ()
 main = getArgs >>= processArgs
   where
     processArgs :: [String] -> IO ()
-    processArgs            [] = Exception.handle handler $ runPrompt initialWorld
+    processArgs            [] = Exception.handle handler $ runPrompt initialState
     processArgs (filePath:[]) = (TIO.readFile filePath) >>= runFile
     processArgs             _ = (TIO.putStrLn "Usage: lox [script]") >> (exitWith $ ExitFailure 64)
 
     handler :: Exception.IOException -> IO ()
     handler _ = TIO.putStrLn "EOF reached.  Exiting...." >> return ()
 
-runPrompt :: WorldState -> IO ()
-runPrompt world =
+runPrompt :: ProgramState -> IO ()
+runPrompt program =
   do
     putStrFlush "> "
     line <- TIO.getLine
-    when (line /= "exit") $ (run world line) >>= (fst &> runPrompt)
+    when (line /= "exit") $ (run program line) >>= (fst &> runPrompt)
 
-initialWorld :: WorldState
-initialWorld = foldr (uncurry3 definePrimitiveFunc) World.empty primitives
+initialState :: ProgramState
+initialState = foldr (uncurry3 definePrimitiveFunc) Program.empty primitives
   where
     primitives = [clock]
 
@@ -63,26 +63,26 @@ initialWorld = foldr (uncurry3 definePrimitiveFunc) World.empty primitives
     clocker _  _ = error "Invalid number of arguments to `clock`; expects zero."
 
 runFile :: Text -> IO ()
-runFile = (run initialWorld) >=> \(_, errorCode) -> when (errorCode /= 0) $ exitWith $ ExitFailure errorCode
+runFile = (run initialState) >=> \(_, errorCode) -> when (errorCode /= 0) $ exitWith $ ExitFailure errorCode
 
-run :: WorldState -> Text -> IO (WorldState, Int)
-run world code =
+run :: ProgramState -> Text -> IO (ProgramState, Int)
+run state code =
   case (interpret code) of
-    ScannerFailure errors  -> (handleError scannerErrorAsText errors) $> (world, 65)
-    ParserFailure  errors  -> (handleError  parserErrorAsText errors) $> (world, 65)
-    OtherFailure   errors  -> (handleError          anyAsText errors) $> (world, 65)
-    Succeeded      program -> runWorld program world
+    ScannerFailure errors  -> (handleError scannerErrorAsText errors) $> (state, 65)
+    ParserFailure  errors  -> (handleError  parserErrorAsText errors) $> (state, 65)
+    OtherFailure   errors  -> (handleError          anyAsText errors) $> (state, 65)
+    Succeeded      program -> runProgram program state
 
 handleError :: Traversable t => (a -> Text) -> t a -> IO ()
 handleError errorToText errors = for_ errors $ errorToText &> TIO.putStrLn
 
-runWorld :: World (Validation (NonEmpty EvalError) Value) -> WorldState -> IO (WorldState, Int)
-runWorld program world =
+runProgram :: Program (Validation (NonEmpty EvalError) Value) -> ProgramState -> IO (ProgramState, Int)
+runProgram program state =
   do
-    (resultV, newWorld) <- runStateT program world
+    (resultV, newState) <- runStateT program state
     output              <- validation handleBad handleGood resultV
-    let !strictWorld     = force newWorld
-    return (strictWorld, output)
+    let !strictState     = force newState
+    return (strictState, output)
   where
     handleBad  = (handleError evalErrorAsText) &> ($> 70)
     handleGood = showText &> TIO.putStrLn      &> ($>  0)

@@ -33,10 +33,10 @@ import qualified Data.List.NonEmpty as NE
 import qualified Lox.Evaluator.Internal.ControlFlow as CF
 
 
-type Result  t  = Validation (NonEmpty EvalError) t
-type Worldly t  = World (Result t)
-type Evaluated  = Worldly Value
-type Evaluating = Worldly CF.ControlFlow
+type Result t   = Validation (NonEmpty EvalError) t
+type Prog   t   = Program (Result t)
+type Evaluated  = Prog Value
+type Evaluating = Prog CF.ControlFlow
 
 eval :: AST -> Evaluated
 eval = statements &> runStatements &> evaluated
