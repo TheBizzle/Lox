@@ -1,20 +1,21 @@
-module Lox.Parser.Internal.Optimism(declaration, program, statement) where
+module Lox.Parser.Internal.Optimism(ast, declaration, statement) where
 
 import Lox.Scanner.Token(Token(Comma, Else, EOF, Equal, For, Fun, If, LeftBrace, LeftParen, Print, Return, RightBrace, RightParen, Semicolon, Var, While))
+
+import Lox.Parser.Internal.AST(
+    AST(AST),
+    Expr(LiteralExpr, Variable),
+    Literal(BooleanLit, NilLit),
+    Statement(Block, contents, DeclareVar, ExpressionStatement, Function, IfElse, PrintStatement, ReturnStatement, WhileStatement)
+  )
 
 import Lox.Parser.Internal.ExpressionParser(expression)
 import Lox.Parser.Internal.Parse(one, Parser, throwaway, variable, whineAbout)
 import Lox.Parser.Internal.ParserError(ParserErrorType(TooMuchArguing))
-import Lox.Parser.Internal.Program(
-    Expr(LiteralExpr, Variable),
-    Literal(BooleanLit, NilLit),
-    Program(Program),
-    Statement(Block, contents, DeclareVar, ExpressionStatement, Function, IfElse, PrintStatement, ReturnStatement, WhileStatement)
-  )
 
 
-program :: Parser Program
-program = Program <$> (many declaration) <* (throwaway EOF)
+ast :: Parser AST
+ast = AST <$> (many declaration) <* (throwaway EOF)
 
 declaration :: Parser Statement
 declaration = fnDeclaration <|> varDeclaration <|> statement

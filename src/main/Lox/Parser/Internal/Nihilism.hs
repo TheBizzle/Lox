@@ -5,6 +5,8 @@ import Lox.Scanner.Token(
   , TokenPlus(lineNumber, token, TokenPlus)
   )
 
+import Lox.Parser.Internal.AST(exprToToken)
+
 import Lox.Parser.Internal.ExpressionParser(expression, unary)
 import Lox.Parser.Internal.Optimism(declaration)
 import Lox.Parser.Internal.Parse(errorWith, keywords, oneOf, Parser, parserFrom, throwaway, variable)
@@ -14,8 +16,6 @@ import Lox.Parser.Internal.ParserError(
   , ParserError(ParserError)
   , ParserErrorType(Backtrack, ExpectedIdentifier, InvalidExpression, Missing)
   )
-
-import Lox.Parser.Internal.Program(exprToToken)
 
 
 errorParser :: Parser a

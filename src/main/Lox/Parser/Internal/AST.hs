@@ -1,15 +1,15 @@
-module Lox.Parser.Internal.Program(
+module Lox.Parser.Internal.AST(
+    AST(AST, statements),
     Expr(..),
     exprToToken,
     Literal(BooleanLit, DoubleLit, NilLit, StringLit),
-    Program(Program, statements),
     Statement(Block, body, contents, DeclareVar, expr, ExpressionStatement, fnBody, fnName, Function, IfElse, newVarName, params, predicate, PrintStatement, ReturnStatement, term, WhileStatement)
   ) where
 
 import Lox.Scanner.Token(TokenPlus)
 
-data Program
-  = Program { statements :: [Statement] }
+data AST
+  = AST { statements :: [Statement] }
   deriving Show
 
 data Statement

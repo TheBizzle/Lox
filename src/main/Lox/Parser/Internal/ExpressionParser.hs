@@ -5,16 +5,16 @@ import Lox.Scanner.Token(
     TokenPlus(TokenPlus)
   )
 
+import Lox.Parser.Internal.AST(
+    Expr(Assign, Binary, Call, Grouping, LiteralExpr, Logical, Unary, Variable),
+    Literal(BooleanLit, DoubleLit, NilLit, StringLit)
+  )
+
 import Lox.Parser.Internal.Parse(
     (=#>), backtrack, convert, one, oneOf, Parser, parserFrom, throwaway, variable, win, whineAbout
   )
 
 import Lox.Parser.Internal.ParserError(ParserErrorType(TooMuchArguing))
-
-import Lox.Parser.Internal.Program(
-    Expr(Assign, Binary, Call, Grouping, LiteralExpr, Logical, Unary, Variable),
-    Literal(BooleanLit, DoubleLit, NilLit, StringLit)
-  )
 
 
 expression :: Parser Expr

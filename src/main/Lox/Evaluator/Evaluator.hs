@@ -2,11 +2,11 @@ module Lox.Evaluator.Evaluator(eval) where
 
 import Control.Monad.State(get, modify)
 
-import Lox.Parser.Program(
+import Lox.Parser.AST(
+    AST(statements),
     Expr(Assign, Binary, Call, Get, Grouping, LiteralExpr, Logical, name, Set, Super, This, Unary, Variable),
     exprToToken,
     Literal(BooleanLit, DoubleLit, NilLit, StringLit),
-    Program(statements),
     Statement(Block, DeclareVar, ExpressionStatement, Function, IfElse, PrintStatement, ReturnStatement, WhileStatement)
   )
 
@@ -23,8 +23,8 @@ import Lox.Evaluator.Internal.EvalError(
     EvalError(ArityMismatch, NotCallable, NotImplemented, TopLevelReturn, TypeError, UnknownVariable)
   )
 
-import Lox.Evaluator.Internal.World(
-    arity, currentEnvironment, declareVar, defineFunction, getVar, popScope, pushScope, runEffect, runFunction, setVar, transferOwnership, World
+import Lox.Evaluator.Internal.Program(
+    arity, currentEnvironment, declareVar, defineFunction, getVar, popScope, Program, pushScope, runEffect, runFunction, setVar, transferOwnership
   )
 
 import qualified Data.List          as List
@@ -38,7 +38,7 @@ type Worldly t  = World (Result t)
 type Evaluated  = Worldly Value
 type Evaluating = Worldly CF.ControlFlow
 
-eval :: Program -> Evaluated
+eval :: AST -> Evaluated
 eval = statements &> runStatements &> evaluated
 
 evaluated :: Evaluating -> Evaluated
