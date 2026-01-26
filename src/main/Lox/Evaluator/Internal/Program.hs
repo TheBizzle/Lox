@@ -308,7 +308,7 @@ initObject evaluator className args =
         forM_ classes $ fillInClass thisAddr instID
 
         initializerAddrM <- findInObject obj initName
-        initializerM     <- gets $ \p -> (initializerAddrM :: Maybe VarAddress) >>= (flip Map.lookup p.variables)
+        initializerM     <- gets $ \p -> initializerAddrM >>= (flip Map.lookup p.variables)
         forM_ initializerM $ \initializer -> runFunction evaluator initializer.function.idNum args
 
         void $ removeInits (map cName classes) instID
