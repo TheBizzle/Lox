@@ -3,7 +3,7 @@ module Lox.Parser.Internal.AST(
     Expr(..),
     exprToToken,
     Literal(BooleanLit, DoubleLit, NilLit, StringLit),
-    Statement(Block, body, contents, DeclareVar, expr, ExpressionStatement, fnBody, fnName, Function, IfElse, newVarName, params, predicate, PrintStatement, ReturnStatement, term, WhileStatement)
+    Statement(Block, body, Class, contents, DeclareVar, expr, ExpressionStatement, fnBody, fnName, Function, IfElse, newVarName, params, predicate, PrintStatement, ReturnStatement, term, WhileStatement)
   ) where
 
 import Lox.Scanner.Token(TokenPlus)
@@ -14,6 +14,7 @@ data AST
 
 data Statement
   = Block { contents :: [Statement] }
+  | Class { className :: Text, classToken :: TokenPlus, superNameTokenM :: Maybe (Text, TokenPlus), methods :: [Statement] }
   | DeclareVar { newVarName :: Text, token :: TokenPlus, initial :: Expr }
   | ExpressionStatement { expr :: Expr }
   | Function { fnName :: Expr, params :: [Expr], fnBody :: [Statement] }
@@ -21,14 +22,14 @@ data Statement
   | PrintStatement { term :: TokenPlus, expr :: Expr }
   | ReturnStatement { term :: TokenPlus, exprM :: Maybe Expr }
   | WhileStatement { predicate :: Expr, body :: Statement }
-  deriving Show
+  deriving (Eq, Show)
 
 data Literal
   = BooleanLit Bool
   | DoubleLit  Double
   | StringLit  Text
   | NilLit
-  deriving Show
+  deriving (Eq, Show)
 
 data Expr
   = Assign      { name :: Text, nameToken :: TokenPlus, value :: Expr }
@@ -39,11 +40,11 @@ data Expr
   | LiteralExpr { literal :: Literal, literalToken :: TokenPlus }
   | Logical     { left :: Expr, operator :: TokenPlus, right :: Expr }
   | Set         { object :: Expr, name :: Text, nameToken :: TokenPlus, value :: Expr }
-  | Super       { keyword :: TokenPlus, method :: TokenPlus }
+  | Super       { keyword :: TokenPlus, methodName :: Text, method :: TokenPlus }
   | This        { keyword :: TokenPlus }
   | Unary       { operator :: TokenPlus, right :: Expr }
   | Variable    { name :: Text, nameToken :: TokenPlus }
-  deriving Show
+  deriving (Eq, Show)
 
 exprToToken :: Expr -> TokenPlus
 exprToToken (Assign      _      token _  ) = token
@@ -54,7 +55,7 @@ exprToToken (Grouping    expr            ) = exprToToken expr
 exprToToken (LiteralExpr _      token    ) = token
 exprToToken (Logical     left   _     _  ) = exprToToken left
 exprToToken (Set         obj    _     _ _) = exprToToken obj
-exprToToken (Super       kword  _        ) = kword
+exprToToken (Super       kword  _     _  ) = kword
 exprToToken (This        kword           ) = kword
 exprToToken (Unary       op     _        ) = op
 exprToToken (Variable    _      token    ) = token

@@ -1,6 +1,6 @@
 module Lox.Parser.Internal.Optimism(ast, declaration, statement) where
 
-import Lox.Scanner.Token(Token(Comma, Else, EOF, Equal, For, Fun, If, LeftBrace, LeftParen, Print, Return, RightBrace, RightParen, Semicolon, Var, While))
+import Lox.Scanner.Token(Token(Class, Comma, Else, EOF, Equal, For, Fun, If, LeftBrace, LeftParen, Less, Print, Return, RightBrace, RightParen, Semicolon, Var, While))
 
 import Lox.Parser.Internal.AST(
     AST(AST),
@@ -13,15 +13,25 @@ import Lox.Parser.Internal.ExpressionParser(expression)
 import Lox.Parser.Internal.Parse(one, Parser, throwaway, variable, whineAbout)
 import Lox.Parser.Internal.ParserError(ParserErrorType(TooMuchArguing))
 
+import qualified Lox.Parser.Internal.AST as AST
+
 
 ast :: Parser AST
 ast = AST <$> (many declaration) <* (throwaway EOF)
 
 declaration :: Parser Statement
-declaration = fnDeclaration <|> varDeclaration <|> statement
+declaration = classDeclaration <|> fnDeclaration <|> varDeclaration <|> statement
+
+classDeclaration :: Parser Statement
+classDeclaration =
+  (uncurry AST.Class) <$>
+    ((throwaway Class) *> variable) <*> (optional $ (throwaway Less) *> variable) <*>
+    ((throwaway LeftBrace) *> (many methodDeclaration) <* (throwaway RightBrace))
+  where
+    methodDeclaration = (uncurry3 Function) <$> function
 
 fnDeclaration :: Parser Statement
-fnDeclaration =  (uncurry3 Function) <$> ((throwaway Fun) *> function)
+fnDeclaration = (uncurry3 Function) <$> ((throwaway Fun) *> function)
 
 function :: Parser (Expr, [Expr], [Statement])
 function = (,,) <$> fnName <*> ((throwaway LeftParen) *> fnParams <* (throwaway RightParen)) <*> fnBlock

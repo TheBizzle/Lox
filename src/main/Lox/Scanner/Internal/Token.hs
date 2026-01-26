@@ -5,6 +5,7 @@ import qualified Data.Text as Text
 
 data TokenPlus =
   TokenPlus { token :: Token, lineNumber :: Word }
+  deriving Eq
 
 instance Show TokenPlus where
   show (TokenPlus t ln) = (show t) <> "_L" <> (show ln)

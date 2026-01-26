@@ -1,5 +1,5 @@
 module Lox.Parser.Internal.Parse(
-    (=#>), backtrack, convert, debug, errorWith, keywords, one, oneOf, Parsed, Parser(Parser, run), parserFrom, throwaway, variable, whineAbout, win
+    (=#>), backtrack, convert, debug, errorWith, keywords, notFollowedBy, one, oneOf, Parsed, Parser(Parser, run), parserFrom, throwaway, variable, whineAbout, win
   ) where
 
 import Control.Applicative(Alternative(empty))
@@ -55,6 +55,12 @@ oneOf = (map one) &> foldr (<|>) aempty
 
 one :: Token -> Parser TokenPlus
 one token = parserFrom $ \tp -> if (tp.token == token) then win tp else backtrack [tp]
+
+notFollowedBy :: Parser a -> Parser ()
+notFollowedBy (Parser p) = Parser $ \tps -> runner tps $ p tps
+  where
+    runner tps (Left       _) = Right ((), tps)
+    runner tps (Right (_, _)) = backtrack tps
 
 win :: a -> Parsed a
 win = Right

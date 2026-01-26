@@ -1,13 +1,13 @@
 module Lox.Evaluator.Evaluator(eval) where
 
-import Control.Monad.State(get, modify)
+import Control.Monad.State(get, gets, modify)
 
 import Lox.Parser.AST(
     AST(statements),
     Expr(Assign, Binary, Call, Get, Grouping, LiteralExpr, Logical, name, Set, Super, This, Unary, Variable),
     exprToToken,
     Literal(BooleanLit, DoubleLit, NilLit, StringLit),
-    Statement(Block, DeclareVar, ExpressionStatement, Function, IfElse, PrintStatement, ReturnStatement, WhileStatement)
+    Statement(Block, Class, DeclareVar, ExpressionStatement, Function, IfElse, PrintStatement, ReturnStatement, WhileStatement)
   )
 
 import Lox.Scanner.Token(
@@ -17,20 +17,21 @@ import Lox.Scanner.Token(
 
 import Lox.Evaluator.Internal.Effect(Effect(Print))
 import Lox.Evaluator.Internal.Type(typecheck)
-import Lox.Evaluator.Internal.Value(Value(BooleanV, FunctionV, NumberV, StringV, NilV))
+import Lox.Evaluator.Internal.Value(Value(BooleanV, ClassV, FunctionV, NilV, NumberV, ObjectV, StringV))
 
 import Lox.Evaluator.Internal.EvalError(
-    EvalError(ArityMismatch, NotCallable, NotImplemented, TopLevelReturn, TypeError, UnknownVariable)
+    EvalError(ArityMismatch, ClassesCanOnlyContainFns, CanOnlyRefThisInsideClass, NotAnObject, NotCallable, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, TypeError, UnknownVariable)
   )
 
 import Lox.Evaluator.Internal.Program(
-    arity, currentEnvironment, declareVar, defineFunction, getVar, popScope, Program, pushScope, runEffect, runFunction, setVar, transferOwnership
+    arity, assignIntoObject, currentEnvironment, declareVar, defineClass, defineFunction, failOrM, getVar, indexObject, indexSuper, initObject, popScope, Program, pushScope, runEffect, runFunction, setVar, transferOwnership
   )
 
 import qualified Data.List          as List
 import qualified Data.List.NonEmpty as NE
 
 import qualified Lox.Evaluator.Internal.ControlFlow as CF
+import qualified Lox.Evaluator.Internal.Value       as V
 
 
 type Result t   = Validation (NonEmpty EvalError) t
@@ -49,28 +50,29 @@ evaluated = (<&> (validation Failure helper))
     helper (CF.Return        _) = Failure $ NE.singleton TopLevelReturn
 
 evalStatement :: Statement -> Evaluating
-evalStatement (Block               statements          ) = evalBlock statements
-evalStatement (DeclareVar          name       _    expr) = evalDeclaration name expr
-evalStatement (ExpressionStatement                 expr) = evalExpr expr
-evalStatement (IfElse              ant        con  alt ) = evalIfElse ant con alt
-evalStatement (PrintStatement      _               expr) = evalPrint expr
-evalStatement (ReturnStatement     _          expM     ) = evalReturn expM
-evalStatement (WhileStatement      pred       stmt     ) = evalWhile pred stmt
-evalStatement (Function            tp         ps   body) = evalFunction tp ps body
+evalStatement (Block               statements             ) = evalBlock statements
+evalStatement (Class               name       tp   sntm ms) = evalClass name tp sntm ms
+evalStatement (DeclareVar          name       _    expr   ) = evalDeclaration name expr
+evalStatement (ExpressionStatement                 expr   ) = evalExpr expr
+evalStatement (IfElse              ant        con  alt    ) = evalIfElse ant con alt
+evalStatement (PrintStatement      _               expr   ) = evalPrint expr
+evalStatement (ReturnStatement     _          expM        ) = evalReturn expM
+evalStatement (WhileStatement      pred       stmt        ) = evalWhile pred stmt
+evalStatement (Function            tp         ps   body   ) = evalFunction tp ps body
 
 evalExpr :: Expr -> Evaluating
-evalExpr (Assign      name token value)        = evalAssign name token value
-evalExpr (Binary      left operator right)     = evalBinary left operator right
-evalExpr (Call        callee _ arguments)      = evalCall callee arguments
-evalExpr (Get         object name token)       = unimplemented token
-evalExpr (Grouping    expression)              = evalExpr expression
-evalExpr (LiteralExpr literal _)               = win $ evalLiteral literal
-evalExpr (Logical     left operator right)     = evalLogical left operator right
-evalExpr (Set         object name token value) = unimplemented token
-evalExpr (Super       keyword method)          = unimplemented keyword
-evalExpr (This        keyword)                 = unimplemented keyword
-evalExpr (Unary       operator right)          = evalUnary operator right
-evalExpr (Variable    name token)              = lookupVar name token
+evalExpr (Assign      name token value)    = evalAssign name token value
+evalExpr (Binary      left operator right) = evalBinary left operator right
+evalExpr (Call        callee _ arguments)  = evalCall callee arguments
+evalExpr (Get         object name _)       = evalGet object name
+evalExpr (Grouping    expression)          = evalExpr expression
+evalExpr (LiteralExpr literal _)           = win $ evalLiteral literal
+evalExpr (Logical     left operator right) = evalLogical left operator right
+evalExpr (Set         object name _ value) = evalSet object name value
+evalExpr (Super       keyword method _)    = indexSuper keyword method
+evalExpr (This        keyword)             = evalThis keyword
+evalExpr (Unary       operator right)      = evalUnary operator right
+evalExpr (Variable    name token)          = lookupVar name token
 
 evalAssign :: Text -> TokenPlus -> Expr -> Evaluating
 evalAssign name token value = (evalExpr value) >>= (flip onSuccessEval $ \v -> setVariable name v token)
@@ -113,35 +115,66 @@ evalBlock statements =
     return result
 
 evalCall :: Expr -> [Expr] -> Evaluating
-evalCall fnExpr argExprs =
+evalCall callableExpr argExprs =
   do
-    fnV   <- evalExpr fnExpr
-    argVs <- forM argExprs evalExpr
-    ((,) <$> fnV <*> (sequenceA argVs)) `onSuccessEval2Seq` helper
+    callableV <- evalExpr callableExpr
+    argVs     <- forM argExprs evalExpr
+    ((,) <$> callableV <*> (sequenceA argVs)) `onSuccessEval2Seq` helper
   where
-    helper (f@(FunctionV _ _ _ idNum _), args) =
-      if arityMatches f args then
-        runFunction evalStatement args idNum
-      else
-        lose $ ArityMismatch (exprToToken fnExpr) (wantedNum f) $ gotNum args
+    helper (callableV, args) =
+      case (arity callableV, callableV) of
+        (Nothing  ,               _)                         -> lose $ NotCallable $ exprToToken callableExpr
+        (Just arty,               _) | doesntMatch arty args -> lose $ ArityMismatch (exprToToken callableExpr) arty $ numGotten args
+        (        _, FunctionV    fn)                         -> runFunction evalStatement fn.idNum    args
+        (        _, ClassV    clazz)                         -> initObject  evalStatement clazz.cName args
+        x                                                    -> error $ "This isn't the callable we're looking for: " <> (showText x)
 
-    helper (_, _) =
-      lose $ NotCallable $ exprToToken fnExpr
+    doesntMatch arity args = arity /= (numGotten args)
 
-    arityMatches f args = maybe False (== (gotNum args)) $ arity f
+    numGotten args = args |> length &> fromIntegral
 
-    wantedNum f = maybe 0 id $ arity f
-    gotNum args = args |> length &> fromIntegral
+evalClass :: Text -> TokenPlus -> Maybe (Text, TokenPlus) -> [Statement] -> Evaluating
+evalClass className classTP superNameTokenM methods =
+  do
+    superClassMV      <- processSuperPair superNameTokenM
+    tripleVs          <- forM methods asTriple
+    let triplesSuperV  = (,) <$> (sequenceA tripleVs) <*> superClassMV
+    triplesSuperV `failOrM` defClass
+  where
+    asTriple (Function tp ps body) = return $ Success (tp.name, map name ps, body)
+    asTriple _                     = lose $ ClassesCanOnlyContainFns classTP
 
+    processSuperPair Nothing                               = return $ Success Nothing
+    processSuperPair (Just (name, tp)) | name == className = lose $ SuperCannotBeSelf tp name
+    processSuperPair (Just (name, tp))                     =
+      do
+        valM <- gets $ getVar name
+        maybe (lose $ UnknownVariable tp name) processSuperValue valM
+      where
+        processSuperValue (ClassV clazz) = return $ Success $ Just clazz
+        processSuperValue              _ = lose $ SuperMustBeAClass tp name
+
+    defClass (triples, superClassM) =
+      do
+        void $ defineClass className superClassM triples
+        nothing
 
 evalFunction :: Expr -> [Expr] -> [Statement] -> Evaluating
 evalFunction nameExpr paramExprs body =
   do
-    modify $ defineFunction fnName params body
+    void $ defineFunction fnName params body
     nothing
   where
     fnName = nameExpr.name
     params = map name paramExprs
+
+evalGet :: Expr -> Text -> Evaluating
+evalGet objectExpr propName =
+  do
+    valueV <- evalExpr objectExpr
+    valueV `onSuccessEval` (
+        \v -> (asObject v) `failOrM` (flip indexObject propName)
+      )
 
 evalIfElse :: Expr -> Statement -> (Maybe Statement) -> Evaluating
 evalIfElse antecedentExpr consequent alternativeM =
@@ -175,11 +208,22 @@ evalLogical left operator right =
 evalReturn :: Maybe Expr -> Evaluating
 evalReturn exprM = maybe (return $ Success $ CF.Return $ NilV) (evalExpr >=> helper) exprM
   where
-    helper = validation (Failure &> return) helper2
+    helper = flip failOrM $ \case
+      ex@(CF.Exception _) -> return $ Success ex
+      (   CF.Normal    v) -> (transferOwnership v) $> (Success $ CF.Return v)
+      (   CF.Return    _) -> error "`return return x;` should not be possible!"
 
-    helper2 ex@(CF.Exception _) = return $ Success ex
-    helper2    (CF.Normal    v) = (transferOwnership v) $> (Success $ CF.Return v)
-    helper2    (CF.Return    _) = error "`return return x;` should not be possible!"
+evalSet :: Expr -> Text -> Expr -> Evaluating
+evalSet objectExpr propName valueExpr =
+  do
+    objValV <- evalExpr objectExpr
+    anyValV <- evalExpr valueExpr
+    ((,) <$> objValV <*> anyValV) `onSuccessEval2` (
+        \(objVal, anyVal) -> (asObject objVal) `failOrM` (\obj -> assignIntoObject obj propName anyVal)
+      )
+
+evalThis :: TokenPlus -> Evaluating
+evalThis keyword = get >>= ((getVar "this") &> maybe (lose $ CanOnlyRefThisInsideClass keyword) win)
 
 evalUnary :: TokenPlus -> Expr -> Evaluating
 evalUnary operator rightExpr =
@@ -232,8 +276,7 @@ runStatements = foldM helper $ succeed NilV
 lookupVar :: Text -> TokenPlus -> Evaluating
 lookupVar varName vnTP =
   do
-    w <- get
-    let valM = getVar varName w
+    valM <- gets $ getVar varName
     maybe (lose $ UnknownVariable vnTP varName) win valM
 
 setVariable :: Text -> Value -> TokenPlus -> Evaluating
@@ -255,20 +298,20 @@ asBool (BooleanV False) = False
 asBool _                = True
 
 onSuccessEval :: Result CF.ControlFlow -> (Value -> Evaluating) -> Evaluating
-onSuccessEval vali f = validation (Failure &> return) runIfNormal vali
+onSuccessEval vali f = vali `failOrM` runIfNormal
   where
     runIfNormal (CF.Normal v) = f v
     runIfNormal             x = return $ Success x
 
 onSuccessEval2 :: Result (CF.ControlFlow, CF.ControlFlow) -> ((Value, Value) -> Evaluating) -> Evaluating
-onSuccessEval2 vali f = validation (Failure &> return) runIfNormal vali
+onSuccessEval2 vali f = vali `failOrM` runIfNormal
   where
     runIfNormal ((CF.Normal v), (CF.Normal w)) = f (v, w)
     runIfNormal ((CF.Normal _),             x) = return $ Success x
     runIfNormal (            x,             _) = return $ Success x
 
 onSuccessEval2Seq :: Result (CF.ControlFlow, [CF.ControlFlow]) -> ((Value, [Value]) -> Evaluating) -> Evaluating
-onSuccessEval2Seq vali f = validation (Failure &> return) runIfNormal vali
+onSuccessEval2Seq vali f = vali `failOrM` runIfNormal
   where
     runIfNormal ((CF.Normal v), ws) = either (Success &> return) ((v, ) &> f) $ purify [] ws
     runIfNormal (            x,  _) = return $ Success x
@@ -277,10 +320,14 @@ onSuccessEval2Seq vali f = validation (Failure &> return) runIfNormal vali
     purify acc ((CF.Normal v):t) = purify (v:acc) t
     purify   _ (            h:_) = Left h
 
+asObject :: Value -> Result V.Object
+asObject (ObjectV obj) = Success obj
+asObject             x = Failure $ NE.singleton $ NotAnObject x
+
 nothing :: Evaluating
 nothing = win NilV
 
-fail :: EvalError -> Result CF.ControlFlow
+fail :: EvalError -> Result a
 fail err = Failure $ NE.singleton err
 
 succeed :: Value -> Result CF.ControlFlow
@@ -289,8 +336,5 @@ succeed = CF.Normal &> Success
 win :: Value -> Evaluating
 win = succeed &> return
 
-lose :: EvalError -> Evaluating
+lose :: EvalError -> Prog a
 lose = fail &> return
-
-unimplemented :: TokenPlus -> Evaluating
-unimplemented = NotImplemented &> lose
