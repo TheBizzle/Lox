@@ -9,7 +9,7 @@ import System.Environment(getArgs)
 import System.Exit(exitWith, ExitCode(ExitFailure))
 
 import Lox.Evaluator.EvalError(
-    EvalError(ArityMismatch, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, ClassesCanOnlyContainFns, ClassNotFound, NotAClass, NotAnObject, NotCallable, NotImplemented, ObjectLacksKey, SuperCannotBeSelf, SuperMustBeAClass, ThisClassHasNoSupers, TopLevelReturn, TypeError, UnknownVariable)
+    EvalError(ArityMismatch, CanOnlyGetObj, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassesCanOnlyContainFns, ClassNotFound, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperCannotBeSelf, SuperMustBeAClass, ThisClassHasNoSupers, TopLevelReturn, UnknownVariable)
   )
 
 import Lox.Evaluator.Program(definePrimitiveFunc, Program, ProgramState)
@@ -27,11 +27,10 @@ import Lox.Scanner.ScannerError(
     ScannerErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString)
   )
 
-import Lox.Scanner.Token(Token(EOF, LeftBrace, LeftParen), TokenPlus(lineNumber, token))
+import Lox.Scanner.Token(Token(EOF, LeftBrace, LeftParen), TokenPlus(lineNumber))
 
 import qualified Control.Exception     as Exception
 import qualified Data.Time.Clock.POSIX as Clock
-import qualified Data.Text             as Text
 import qualified Data.Text.IO          as TIO
 
 import qualified Lox.Evaluator.ControlFlow as CF
@@ -96,27 +95,29 @@ anyAsText _ = error "Unimplemented error handler"
 evalErrorAsText :: EvalError -> Text
 evalErrorAsText = errorText
   where
-    lineNum tp = showText tp.lineNumber
+    prefix token = "runtime error: [line " <> (showText token.lineNumber) <> "] "
 
-    errorText (ArityMismatch    tp wd gt)     = "Runtime error (on line " <> (lineNum tp) <> "): Expected " <> (showText wd) <> " arguments, but got " <> (showText gt)
-    errorText (CanOnlyRefSuperInsideClass tp) = "Runtime error (on line " <> (lineNum tp) <> "): `super` can only can referenced inside of a class"
-    errorText (CanOnlyRefThisInsideClass  tp) = "Runtime error (on line " <> (lineNum tp) <> "): `this` can only can referenced inside of a class"
-    errorText (ClassNotFound    name)         = "Runtime error (on line ???): Did not find any value matching class name \"" <> name <> "\""
-    errorText (NotAClass        value)        = "Runtime error (on line ???): This value is not a class: " <> (showText value)
-    errorText (NotAnObject      value)        = "Runtime error (on line ???): This value is not an object: " <> (showText value)
-    errorText (NotCallable      tp)           = "Runtime error (on line " <> (lineNum tp) <> "): Only functions and classes are callable"
-    errorText (NotImplemented   tp)           = "Runtime error (on line " <> (lineNum tp) <> "): Functionality not yet implemented"
-    errorText (ObjectLacksKey   name)         = "Runtime error (on line ???): This object does not have anything named \"" <> name <> "\""
-    errorText (ClassesCanOnlyContainFns tp)   = "Runtime error (on line " <> (lineNum tp) <> "): Class bodies may only contain function definitions"
-    errorText (UnknownVariable   tp name)     = "Runtime error (on line " <> (lineNum tp) <> "): `" <> name <> "` is not defined"
-    errorText (SuperCannotBeSelf tp name)     = "Runtime error (on line " <> (lineNum tp) <> "): `" <> name <> "` can't inherit from itself"
-    errorText (SuperMustBeAClass tp name)     = "Runtime error (on line " <> (lineNum tp) <> "): Superclass `" <> name <> "` must be a class"
-    errorText TopLevelReturn                  = "Runtime error (on line ???): `return` is only allowed inside functions"
-    errorText (ThisClassHasNoSupers tp)       = "Runtime error (on line " <> (lineNum tp) <> "): Can't use `super` in a class with no superclass"
-    errorText (TypeError t pairs)             = Text.intercalate "\n" $ map (typeError t) pairs
-      where
-        typeError tp (typ, value) = "Type error (on line " <> (lineNum tp) <> "): `" <> (showText tp.token) <>
-          "` expected a value of type '" <> (showText typ) <> "', but got `" <> (showText value) <> "`"
+    prefixBad = "fix my message: "
+
+    errorText (ArityMismatch    tp wd gt)     = (prefix tp) <> "Expected " <> (showText wd) <> " arguments, but got " <> (showText gt)
+    errorText (CanOnlyGetObj tp)              = (prefix tp) <> "Only instances have properties."
+    errorText (CanOnlyRefSuperInsideClass tp) = (prefix tp) <> "`super` can only can referenced inside of a class"
+    errorText (CanOnlyRefThisInsideClass  tp) = (prefix tp) <> "`this` can only can referenced inside of a class"
+    errorText (CanOnlySetObj tp)              = (prefix tp) <> "Only instances have fields."
+    errorText (ClassNotFound    name)         = (prefixBad) <> "Did not find any value matching class name \"" <> name <> "\""
+    errorText (NotAClass        value)        = (prefixBad) <> "This value is not a class: " <> (showText value)
+    errorText (NotCallable      tp)           = (prefix tp) <> "Can only call functions and classes."
+    errorText (NotImplemented   tp)           = (prefix tp) <> "Functionality not yet implemented"
+    errorText (ObjectLacksKey   name)         = (prefixBad) <> "This object does not have anything named \"" <> name <> "\""
+    errorText (OperandMustBeNumber tp)        = (prefix tp) <> "Operand must be a number."
+    errorText (OperandsMustBeNumbers tp)      = (prefix tp) <> "Operands must be numbers."
+    errorText (OperandsMustBeNumsOrStrs tp)   = (prefix tp) <> "Operands must be two numbers or two strings."
+    errorText (ClassesCanOnlyContainFns tp)   = (prefix tp) <> "Class bodies may only contain function definitions"
+    errorText (UnknownVariable   tp name)     = (prefix tp) <> "Undefined variable '" <> name <> "'."
+    errorText (SuperCannotBeSelf tp name)     = (prefix tp) <> "`" <> name <> "` can't inherit from itself"
+    errorText (SuperMustBeAClass tp name)     = (prefix tp) <> "Superclass `" <> name <> "` must be a class"
+    errorText TopLevelReturn                  = (prefixBad) <> "`return` is only allowed inside functions"
+    errorText (ThisClassHasNoSupers tp)       = (prefix tp) <> "Can't use `super` in a class with no superclass"
 
 parserErrorAsText :: ParserError -> Text
 parserErrorAsText error = line
@@ -137,7 +138,7 @@ parserErrorAsText error = line
 scannerErrorAsText :: ScannerError -> Text
 scannerErrorAsText error = line
   where
-    line = "[line " <> (showText error.lineNumber) <> "] Error - " <> (errorText error.typ)
+    line = "[line " <> (showText error.lineNumber) <> "] Error: " <> (errorText error.typ)
     errorText (InvalidNumberFormat c) = "Invalid number format: " <> c
-    errorText (UnknownToken c)        = "Unknown token: " <> c
+    errorText (UnknownToken _)        = "Unexpected character."
     errorText UnterminatedString      = "Unterminated string"

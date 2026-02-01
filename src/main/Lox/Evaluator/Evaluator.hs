@@ -16,11 +16,10 @@ import Lox.Scanner.Token(
   )
 
 import Lox.Evaluator.Internal.Effect(Effect(Print))
-import Lox.Evaluator.Internal.Type(typecheck)
 import Lox.Evaluator.Internal.Value(Value(BooleanV, ClassV, FunctionV, NilV, NumberV, ObjectV, StringV))
 
 import Lox.Evaluator.Internal.EvalError(
-    EvalError(ArityMismatch, ClassesCanOnlyContainFns, CanOnlyRefThisInsideClass, NotAnObject, NotCallable, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, TypeError, UnknownVariable)
+    EvalError(ArityMismatch, CanOnlyGetObj, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassesCanOnlyContainFns, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, NotCallable, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
   )
 
 import Lox.Evaluator.Internal.Program(
@@ -64,11 +63,11 @@ evalExpr :: Expr -> Evaluating
 evalExpr (Assign      name token value)    = evalAssign name token value
 evalExpr (Binary      left operator right) = evalBinary left operator right
 evalExpr (Call        callee _ arguments)  = evalCall callee arguments
-evalExpr (Get         object name _)       = evalGet object name
+evalExpr (Get         object name tp)      = evalGet object name tp
 evalExpr (Grouping    expression)          = evalExpr expression
 evalExpr (LiteralExpr literal _)           = win $ evalLiteral literal
 evalExpr (Logical     left operator right) = evalLogical left operator right
-evalExpr (Set         object name _ value) = evalSet object name value
+evalExpr (Set         object name t value) = evalSet object name value t
 evalExpr (Super       keyword method _)    = indexSuper keyword method
 evalExpr (This        keyword)             = evalThis keyword
 evalExpr (Unary       operator right)      = evalUnary operator right
@@ -95,9 +94,10 @@ evalBinary left operator right =
     helper (NumberV l) Minus        (NumberV r) = num  l (- ) r
     helper (NumberV l) Plus         (NumberV r) = num  l (+ ) r
     helper (StringV l) Plus         (StringV r) = str  l (<>) r
+    helper _           Plus         _           = fail $ OperandsMustBeNumsOrStrs operator
     helper (NumberV l) Slash        (NumberV r) = num  l (/#) r
     helper (NumberV l) Star         (NumberV r) = num  l (* ) r
-    helper l           _            r           = typeError operator [l, r]
+    helper _           _            _           = fail $ OperandsMustBeNumbers operator
 
     bool = succ BooleanV
     num  = succ NumberV
@@ -168,12 +168,12 @@ evalFunction nameExpr paramExprs body =
     fnName = nameExpr.name
     params = map name paramExprs
 
-evalGet :: Expr -> Text -> Evaluating
-evalGet objectExpr propName =
+evalGet :: Expr -> Text -> TokenPlus -> Evaluating
+evalGet objectExpr propName tp =
   do
     valueV <- evalExpr objectExpr
     valueV `onSuccessEval` (
-        \v -> (asObject v) `failOrM` (flip indexObject propName)
+        \v -> (asObject v $ CanOnlyGetObj tp) `failOrM` (flip indexObject propName)
       )
 
 evalIfElse :: Expr -> Statement -> (Maybe Statement) -> Evaluating
@@ -213,13 +213,13 @@ evalReturn exprM = maybe (return $ Success $ CF.Return $ NilV) (evalExpr >=> hel
       (   CF.Normal    v) -> (transferOwnership v) $> (Success $ CF.Return v)
       (   CF.Return    _) -> error "`return return x;` should not be possible!"
 
-evalSet :: Expr -> Text -> Expr -> Evaluating
-evalSet objectExpr propName valueExpr =
+evalSet :: Expr -> Text -> Expr -> TokenPlus -> Evaluating
+evalSet objectExpr propName valueExpr tp =
   do
     objValV <- evalExpr objectExpr
     anyValV <- evalExpr valueExpr
     ((,) <$> objValV <*> anyValV) `onSuccessEval2` (
-        \(objVal, anyVal) -> (asObject objVal) `failOrM` (\obj -> assignIntoObject obj propName anyVal)
+        \(objVal, anyVal) -> (asObject objVal $ CanOnlySetObj tp) `failOrM` (\obj -> assignIntoObject obj propName anyVal)
       )
 
 evalThis :: TokenPlus -> Evaluating
@@ -231,9 +231,9 @@ evalUnary operator rightExpr =
     rightV <- evalExpr rightExpr
     rightV `onSuccessEval` ((helper operator.token) &> return)
   where
-    helper Bang  v           = succeed $ BooleanV $ not $ asBool v
+    helper Bang            v = succeed $ BooleanV $ not $ asBool v
     helper Minus (NumberV d) = succeed $ NumberV $ -d
-    helper _     v           = typeError operator [v]
+    helper _               _ = fail $ OperandMustBeNumber operator
 
 evalWhile :: Expr -> Statement -> Evaluating
 evalWhile predExpr body =
@@ -289,9 +289,6 @@ setVariable varName value vnTP =
         win value
       )
 
-typeError :: TokenPlus -> [Value] -> Result a
-typeError tp args = Failure $ NE.singleton $ TypeError tp $ catMaybes $ typecheck tp.token args
-
 asBool :: Value -> Bool
 asBool NilV             = False
 asBool (BooleanV False) = False
@@ -320,9 +317,9 @@ onSuccessEval2Seq vali f = vali `failOrM` runIfNormal
     purify acc ((CF.Normal v):t) = purify (v:acc) t
     purify   _ (            h:_) = Left h
 
-asObject :: Value -> Result V.Object
-asObject (ObjectV obj) = Success obj
-asObject             x = Failure $ NE.singleton $ NotAnObject x
+asObject :: Value -> EvalError -> Result V.Object
+asObject (ObjectV obj) _ = Success obj
+asObject             _ e = Failure $ NE.singleton e
 
 nothing :: Evaluating
 nothing = win NilV
