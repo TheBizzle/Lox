@@ -7,6 +7,7 @@ import GHC.Real(realToFrac)
 
 import System.Environment(getArgs)
 import System.Exit(exitWith, ExitCode(ExitFailure))
+import System.IO(stderr)
 
 import Lox.Evaluator.EvalError(
     EvalError(ArityMismatch, CanOnlyGetObj, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassesCanOnlyContainFns, ClassNotFound, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperCannotBeSelf, SuperMustBeAClass, ThisClassHasNoSupers, TopLevelReturn, UnknownVariable)
@@ -76,7 +77,7 @@ run state code =
     Succeeded      program -> runProgram program state
 
 handleError :: Traversable t => (a -> Text) -> t a -> IO ()
-handleError errorToText errors = for_ errors $ errorToText &> TIO.putStrLn
+handleError errorToText errors = for_ errors $ errorToText &> TIO.hPutStrLn stderr
 
 runProgram :: Program (Validation (NonEmpty EvalError) Value) -> ProgramState -> IO (ProgramState, Int)
 runProgram program state =
