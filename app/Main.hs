@@ -109,8 +109,8 @@ evalErrorAsText = errorText
 
     errorText (ArityMismatch    tp wd gt)     = (prefix tp) <> "Expected " <> (showText wd) <> " arguments, but got " <> (showText gt)
     errorText (CanOnlyGetObj tp)              = (prefix tp) <> "Only instances have properties."
-    errorText (CanOnlyRefSuperInsideClass tp) = (prefix tp) <> "`super` can only can referenced inside of a class"
-    errorText (CanOnlyRefThisInsideClass  tp) = (prefix tp) <> "`this` can only can referenced inside of a class"
+    errorText (CanOnlyRefSuperInsideClass tp) = (prefix tp) <> "Error at 'super': Can't use 'super' outside of a class."
+    errorText (CanOnlyRefThisInsideClass  tp) = (prefix tp) <> "Error at 'this': Can't use 'this' outside of a class."
     errorText (CanOnlySetObj tp)              = (prefix tp) <> "Only instances have fields."
     errorText (ClassNotFound    name)         = (prefixBad) <> "Did not find any value matching class name \"" <> name <> "\""
     errorText (NotAClass        value)        = (prefixBad) <> "This value is not a class: " <> (showText value)
