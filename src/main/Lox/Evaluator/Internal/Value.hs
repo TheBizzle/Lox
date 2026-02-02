@@ -69,6 +69,4 @@ showNum = asFP &> asText &> removeTrailingZeroes &> asString
   where
     asFP = printf "%.9f"
 
-    removeTrailingZeroes = (id &&& stripSuffix) &> (\(a, b) -> maybe a id b)
-
-    stripSuffix = Text.dropWhileEnd (== '0') &> Text.stripSuffix "."
+    removeTrailingZeroes = Text.dropWhileEnd (== '0') &> (id &&& (Text.stripSuffix ".")) &> (\(a, b) -> maybe a id b)
