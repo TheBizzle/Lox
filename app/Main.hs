@@ -132,11 +132,11 @@ evalErrorAsText = errorText
 parserErrorAsText :: ParserError -> Text
 parserErrorAsText error = line
   where
-    line = "[line " <> (showText error.lineNumber) <> "] Error - " <> (errorText error.typ error.offender)
+    line = "[line " <> (showText error.lineNumber) <> "] " <> (errorText error.typ error.offender)
     suffix EOF = ", at end"
     suffix t   = ", at \"" <> (showText t) <> "\""
     errorText Backtrack           token = withLoc token "Expected something here (this shouldn't be able to happen)"
-    errorText (ReservedName _)    token = withLoc token "Illegal use of reserved name"
+    errorText (ReservedName t)    token = withLoc token $ "Error at '" <> (showText t) <> "': Expect variable name."
     errorText TooMuchArguing      token = withLoc token "Functions are limited to 254 arguments."
     errorText ExpectedIdentifier  token = withLoc token "Expected an identifier"
     errorText InvalidExpression   token = withLoc token "Expected an expression"
