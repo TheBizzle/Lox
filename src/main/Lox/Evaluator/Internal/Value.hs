@@ -59,7 +59,7 @@ instance Show Value where
   show NilV                                       = "nil"
   show (ObjectV (Object (Class cName _ _ _ _) _)) = (asString cName) <> " instance"
   show (NumberV x)                                = showNum x
-  show (StringV x)                                = "\"" <> asString x <> "\""
+  show (StringV x)                                = asString x
 
 showNum :: Double -> String
 showNum = asFP &> asText &> removeTrailingZeroes &> asString
