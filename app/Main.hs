@@ -14,7 +14,7 @@ import Lox.Evaluator.EvalError(
   )
 
 import Lox.Evaluator.Program(definePrimitiveFunc, Program, ProgramState)
-import Lox.Evaluator.Value(Value(NumberV))
+import Lox.Evaluator.Value(Value(Nada, NumberV))
 
 import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Succeeded))
 
@@ -94,8 +94,10 @@ runProgram program state =
     let !strictState     = force newState
     return (strictState, output)
   where
-    handleBad  = (handleError evalErrorAsText) &> ($> 70)
-    handleGood = showText &> TIO.putStrLn      &> ($>  0)
+    handleBad = (handleError evalErrorAsText) &> ($> 70)
+
+    handleGood Nada   = return 0
+    handleGood result = result |> showText &> TIO.putStrLn &> ($> 0)
 
 anyAsText :: a -> Text
 anyAsText _ = error "Unimplemented error handler"

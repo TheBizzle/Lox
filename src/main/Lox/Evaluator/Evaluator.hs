@@ -16,7 +16,7 @@ import Lox.Scanner.Token(
   )
 
 import Lox.Evaluator.Internal.Effect(Effect(Print))
-import Lox.Evaluator.Internal.Value(Value(BooleanV, ClassV, FunctionV, NilV, NumberV, ObjectV, StringV))
+import Lox.Evaluator.Internal.Value(Value(BooleanV, ClassV, FunctionV, Nada, NilV, NumberV, ObjectV, StringV))
 
 import Lox.Evaluator.Internal.EvalError(
     EvalError(ArityMismatch, CanOnlyGetObj, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassesCanOnlyContainFns, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, NotCallable, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
@@ -322,7 +322,7 @@ asObject (ObjectV obj) _ = Success obj
 asObject             _ e = Failure $ NE.singleton e
 
 nothing :: Evaluating
-nothing = win NilV
+nothing = win Nada
 
 fail :: EvalError -> Result a
 fail err = Failure $ NE.singleton err

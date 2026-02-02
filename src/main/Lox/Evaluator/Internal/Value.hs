@@ -1,4 +1,4 @@
-module Lox.Evaluator.Internal.Value(Class(baseEnv, Class, cName, initOutlineM, methodOutlines, superclassM), Function(argNames, env, Function, idNum, name, owner), Object(instanceID, myClass, Object), Value(BooleanV, ClassV, clazz, function, FunctionV, NilV, NumberV, object, ObjectV, StringV)) where
+module Lox.Evaluator.Internal.Value(Class(baseEnv, Class, cName, initOutlineM, methodOutlines, superclassM), Function(argNames, env, Function, idNum, name, owner), Object(instanceID, myClass, Object), Value(BooleanV, ClassV, clazz, function, FunctionV, Nada, NilV, NumberV, object, ObjectV, StringV)) where
 
 import Control.DeepSeq(NFData, rnf)
 
@@ -40,6 +40,7 @@ data Value
   | NumberV   Double
   | ObjectV   { object :: Object }
   | StringV   Text
+  | Nada
   | NilV
   deriving Eq
 
@@ -50,12 +51,14 @@ instance NFData Value where
   rnf (NumberV   x) = rnf x
   rnf (ObjectV   x) = rnf x
   rnf (StringV   x) = rnf x
+  rnf  Nada         = ()
   rnf  NilV         = ()
 
 instance Show Value where
   show (BooleanV x)                               = x |> showText &> Text.toLower &> asString
   show (ClassV (Class cName _ _ _ _))             = "class " <> (asString cName)
   show (FunctionV (Function name args _ _ _))     = "<function " <> (asString name) <> "(" <> (asString $ Text.intercalate "," args) <> "){ ... }>"
+  show Nada                                       = "you_cant_see_this"
   show NilV                                       = "nil"
   show (ObjectV (Object (Class cName _ _ _ _) _)) = (asString cName) <> " instance"
   show (NumberV x)                                = showNum x
