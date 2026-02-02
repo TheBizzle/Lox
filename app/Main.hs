@@ -54,7 +54,9 @@ runPrompt program =
   do
     putStrFlush "> "
     line <- TIO.getLine
-    when (line /= "exit") $ (run program line) >>= (fst &> runPrompt)
+    when (line /= "exit") $ do
+      (state, _) <- run program line
+      runPrompt state
 
 initialized :: IO ProgramState
 initialized = (runStateT (forM_ primitives $ uncurry3 definePrimitiveFunc) Program.empty) <&> snd
@@ -66,7 +68,12 @@ initialized = (runStateT (forM_ primitives $ uncurry3 definePrimitiveFunc) Progr
     clocker _  _ = error "Invalid number of arguments to `clock`; expects zero."
 
 runFile :: Text -> IO ()
-runFile code = initialized >>= (flip run code) >=> \(_, errorCode) -> when (errorCode /= 0) $ exitWith $ ExitFailure errorCode
+runFile code =
+  do
+    initted        <- initialized
+    (_, errorCode) <- run initted code
+    when (errorCode /= 0) $
+      exitWith $ ExitFailure errorCode
 
 run :: ProgramState -> Text -> IO (ProgramState, Int)
 run state code =
