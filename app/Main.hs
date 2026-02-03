@@ -105,29 +105,29 @@ anyAsText _ = error "Unimplemented error handler"
 evalErrorAsText :: EvalError -> Text
 evalErrorAsText = errorText
   where
-    prefix token = "runtime error: [line " <> (showText token.lineNumber) <> "] "
+    suffix token s = s <> "\n[line " <> (showText token.lineNumber) <> "]"
 
-    prefixBad = "fix my message: "
+    suffixBad = ("fix my message: " <>)
 
-    errorText (ArityMismatch    tp wd gt)     = (prefix tp) <> "Expected " <> (showText wd) <> " arguments, but got " <> (showText gt)
-    errorText (CanOnlyGetObj tp)              = (prefix tp) <> "Only instances have properties."
-    errorText (CanOnlyRefSuperInsideClass tp) = (prefix tp) <> "Error at 'super': Can't use 'super' outside of a class."
-    errorText (CanOnlyRefThisInsideClass  tp) = (prefix tp) <> "Error at 'this': Can't use 'this' outside of a class."
-    errorText (CanOnlySetObj tp)              = (prefix tp) <> "Only instances have fields."
-    errorText (ClassNotFound    name)         = (prefixBad) <> "Did not find any value matching class name \"" <> name <> "\""
-    errorText (NotAClass        value)        = (prefixBad) <> "This value is not a class: " <> (showText value)
-    errorText (NotCallable      tp)           = (prefix tp) <> "Can only call functions and classes."
-    errorText (NotImplemented   tp)           = (prefix tp) <> "Functionality not yet implemented"
-    errorText (ObjectLacksKey   name)         = (prefixBad) <> "This object does not have anything named \"" <> name <> "\""
-    errorText (OperandMustBeNumber tp)        = (prefix tp) <> "Operand must be a number."
-    errorText (OperandsMustBeNumbers tp)      = (prefix tp) <> "Operands must be numbers."
-    errorText (OperandsMustBeNumsOrStrs tp)   = (prefix tp) <> "Operands must be two numbers or two strings."
-    errorText (ClassesCanOnlyContainFns tp)   = (prefix tp) <> "Class bodies may only contain function definitions"
-    errorText (UnknownVariable   tp name)     = (prefix tp) <> "Undefined variable '" <> name <> "'."
-    errorText (SuperCannotBeSelf tp name)     = (prefix tp) <> "`" <> name <> "` can't inherit from itself"
-    errorText (SuperMustBeAClass tp name)     = (prefix tp) <> "Superclass `" <> name <> "` must be a class"
-    errorText TopLevelReturn                  = (prefixBad) <> "`return` is only allowed inside functions"
-    errorText (ThisClassHasNoSupers tp)       = (prefix tp) <> "Can't use `super` in a class with no superclass"
+    errorText (ArityMismatch    tp wd gt)     = suffix tp $ "Expected " <> (showText wd) <> " arguments, but got " <> (showText gt)
+    errorText (CanOnlyGetObj tp)              = suffix tp $ "Only instances have properties."
+    errorText (CanOnlyRefSuperInsideClass tp) = suffix tp $ "Error at 'super': Can't use 'super' outside of a class."
+    errorText (CanOnlyRefThisInsideClass  tp) = suffix tp $ "Error at 'this': Can't use 'this' outside of a class."
+    errorText (CanOnlySetObj tp)              = suffix tp $ "Only instances have fields."
+    errorText (ClassNotFound    name)         = suffixBad $ "Did not find any value matching class name \"" <> name <> "\""
+    errorText (NotAClass        value)        = suffixBad $ "This value is not a class: " <> (showText value)
+    errorText (NotCallable      tp)           = suffix tp $ "Can only call functions and classes."
+    errorText (NotImplemented   tp)           = suffix tp $ "Functionality not yet implemented"
+    errorText (ObjectLacksKey   name)         = suffixBad $ "This object does not have anything named \"" <> name <> "\""
+    errorText (OperandMustBeNumber tp)        = suffix tp $ "Operand must be a number."
+    errorText (OperandsMustBeNumbers tp)      = suffix tp $ "Operands must be numbers."
+    errorText (OperandsMustBeNumsOrStrs tp)   = suffix tp $ "Operands must be two numbers or two strings."
+    errorText (ClassesCanOnlyContainFns tp)   = suffix tp $ "Class bodies may only contain function definitions"
+    errorText (UnknownVariable   tp name)     = suffix tp $ "Undefined variable '" <> name <> "'."
+    errorText (SuperCannotBeSelf tp name)     = suffix tp $ "`" <> name <> "` can't inherit from itself"
+    errorText (SuperMustBeAClass tp    _)     = suffix tp $ "Superclass must be a class."
+    errorText TopLevelReturn                  = suffixBad $ "`return` is only allowed inside functions"
+    errorText (ThisClassHasNoSupers tp)       = suffix tp $ "Can't use `super` in a class with no superclass"
 
 parserErrorAsText :: ParserError -> Text
 parserErrorAsText error = line
