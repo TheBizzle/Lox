@@ -109,7 +109,7 @@ evalErrorAsText = errorText
 
     suffixBad = ("fix my message: " <>)
 
-    errorText (ArityMismatch    tp wd gt)     = suffix tp $ "Expected " <> (showText wd) <> " arguments, but got " <> (showText gt)
+    errorText (ArityMismatch    tp wd gt)     = suffix tp $ "Expected " <> (showText wd) <> " arguments but got " <> (showText gt) <> "."
     errorText (CanOnlyGetObj tp)              = suffix tp $ "Only instances have properties."
     errorText (CanOnlyRefSuperInsideClass tp) = suffix tp $ "Error at 'super': Can't use 'super' outside of a class."
     errorText (CanOnlyRefThisInsideClass  tp) = suffix tp $ "Error at 'this': Can't use 'this' outside of a class."
