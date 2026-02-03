@@ -29,7 +29,7 @@ import Lox.Evaluator.Internal.Value(
     Class(baseEnv, Class, cName, initOutlineM, methodOutlines, superclassM)
   , Function(argNames, env, Function, idNum, name)
   , Object(instanceID, myClass, Object)
-  , Value(ClassV, function, FunctionV, NilV, ObjectV)
+  , Value(ClassV, function, FunctionV, Nada, NilV, ObjectV)
   )
 
 import qualified Data.List          as List
@@ -211,7 +211,7 @@ buildFunction name argNames body =
         modify $ pushScope envir
         let bindings = argNames `List.zip` args
         modify $ \w -> foldr (uncurry declareVar) w bindings
-        resultV <- foldM (whileNormal eval) (Success $ CF.Normal NilV) body
+        resultV <- foldM (whileNormal eval) (Success $ CF.Normal Nada) body
         modify popScope
         return $ second convert resultV
 
@@ -219,7 +219,7 @@ buildFunction name argNames body =
     whileNormal _ (Success             x) _ = return $ Success x
     whileNormal _                       x _ = return x
 
-    convert (CF.Normal _) = CF.Normal NilV
+    convert (CF.Normal _) = CF.Normal Nada
     convert (CF.Return x) = CF.Normal x
     convert             x = x
 
@@ -296,7 +296,7 @@ initObject evaluator className args =
     initialize clazz =
       do
         thisAddr <- gets $ \p -> VarAddress thisName $ ScopeAddress $ p.lastScopeAddr.n + 1
-        modify $ \p -> p { variables = Map.insert thisAddr NilV p.variables } -- Temp value; see below
+        modify $ \p -> p { variables = Map.insert thisAddr Nada p.variables } -- Temp value; see below
 
         instID      <- gets nextInstanceID
         let classes  = toSuperChain clazz
@@ -320,7 +320,7 @@ initObject evaluator className args =
       do
         modify $ pushScope $ Map.insert thisName thisAddr clazz.baseEnv
 
-        declareVarM superName $ maybe NilV ClassV clazz.superclassM
+        declareVarM superName $ maybe Nada ClassV clazz.superclassM
 
         method2s <- mapM (\(n, as, b) -> (buildFunction n as b) <&> (n, ))               clazz.methodOutlines
         init2M   <- mapM (\(n, as, b) -> (buildFunction n as b) <&> (n, )) $ maybeToList clazz.initOutlineM
@@ -360,7 +360,7 @@ runFunction evaluator idNum args =
     whinerMsg = "Critical error!  You should never be able to run a non-existent function: " <> (showText idNum)
 
 runEffect :: Effect -> Evaluated
-runEffect (Print x) = (liftIO $ TIO.putStrLn x) $> (Success NilV)
+runEffect (Print x) = (liftIO $ TIO.putStrLn x) $> (Success Nada)
 
 transferOwnership :: Value -> Program ()
 transferOwnership (FunctionV fn) = _transferOwnership fn.name fn.idNum

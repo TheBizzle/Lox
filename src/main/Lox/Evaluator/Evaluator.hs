@@ -206,7 +206,7 @@ evalLogical left operator right =
       )
 
 evalReturn :: Maybe Expr -> Evaluating
-evalReturn exprM = maybe (return $ Success $ CF.Return $ NilV) (evalExpr >=> helper) exprM
+evalReturn exprM = maybe (return $ Success $ CF.Return $ Nada) (evalExpr >=> helper) exprM
   where
     helper = flip failOrM $ \case
       ex@(CF.Exception _) -> return $ Success ex
@@ -269,7 +269,7 @@ evalPrint expr =
       )
 
 runStatements :: [Statement] -> Evaluating
-runStatements = foldM helper $ succeed NilV
+runStatements = foldM helper $ succeed Nada
   where
     helper acc s = acc `onSuccessEval` (const $ evalStatement s)
 
