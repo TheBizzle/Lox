@@ -264,7 +264,8 @@ evalPrint expr =
     valueV <- evalExpr expr
     valueV `onSuccessEval` (
       \value -> do
-        void $ runEffect $ Print $ showText value
+        let text = showText $ if value == Nada then NilV else value
+        void $ runEffect $ Print text
         nothing
       )
 
