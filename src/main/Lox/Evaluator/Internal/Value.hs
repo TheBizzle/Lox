@@ -57,7 +57,7 @@ instance NFData Value where
 instance Show Value where
   show (BooleanV x)                               = x |> showText &> Text.toLower &> asString
   show (ClassV (Class cName _ _ _ _))             = asString cName
-  show (FunctionV (Function name args _ _ _))     = "<function " <> (asString name) <> "(" <> (asString $ Text.intercalate "," args) <> "){ ... }>"
+  show (FunctionV (Function name _ _ _ _))        = "<fn " <> (asString name) <> ">"
   show Nada                                       = "you_cant_see_this"
   show NilV                                       = "nil"
   show (ObjectV (Object (Class cName _ _ _ _) _)) = (asString cName) <> " instance"
