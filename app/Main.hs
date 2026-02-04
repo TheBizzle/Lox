@@ -132,23 +132,22 @@ evalErrorAsText = errorText
 parserErrorAsText :: ParserError -> Text
 parserErrorAsText error = line
   where
-    line = "[line " <> (showText error.lineNumber) <> "] " <> (errorText error.typ error.offender)
-    suffix EOF = ", at end"
-    suffix t   = ", at \"" <> (showText t) <> "\""
-    errorText Backtrack           token = withLoc token "Expected something here (this shouldn't be able to happen)"
-    errorText (ReservedName t)    token = withLoc token $ "Error at '" <> (showText t) <> "': Expect variable name."
-    errorText TooMuchArguing      token = withLoc token "Functions are limited to 254 arguments."
-    errorText ExpectedIdentifier  token = withLoc token "Expected an identifier"
-    errorText InvalidExpression   token = withLoc token "Expected an expression"
-    errorText (Missing LeftParen) token = withLoc token $ "No matching '('"
-    errorText (Missing LeftBrace) token = withLoc token $ "No matching '{'"
-    errorText (Missing t)         token = withLoc token $ "Expected '" <> (showText t) <> "'"
-    withLoc token = (<> (suffix token))
+    line = "[" <> (showText error.lineNumber) <> "] Error at " <> (desc error.offender) <> (errorText error.typ)
+    desc EOF = "end: "
+    desc t   = "'" <> (showText t) <> "': "
+    errorText Backtrack           = "Expected something here (this shouldn't be able to happen)"
+    errorText (ReservedName _)    = "Expect variable name."
+    errorText TooMuchArguing      = "Functions are limited to 254 arguments."
+    errorText ExpectedIdentifier  = "Expected an identifier"
+    errorText InvalidExpression   = "Expect expression"
+    errorText (Missing LeftParen) = "No matching '('"
+    errorText (Missing LeftBrace) = "No matching '{'"
+    errorText (Missing t)         = "Expected '" <> (showText t) <> "'"
 
 scannerErrorAsText :: ScannerError -> Text
 scannerErrorAsText error = line
   where
-    line = "[line " <> (showText error.lineNumber) <> "] Error: " <> (errorText error.typ)
+    line = "[" <> (showText error.lineNumber) <> "] Error: " <> (errorText error.typ)
     errorText (InvalidNumberFormat c) = "Invalid number format: " <> c
     errorText (UnknownToken _)        = "Unexpected character."
-    errorText UnterminatedString      = "Unterminated string"
+    errorText UnterminatedString      = "Unterminated string."
