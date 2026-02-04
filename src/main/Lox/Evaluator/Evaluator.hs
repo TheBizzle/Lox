@@ -125,7 +125,7 @@ evalCall callableExpr argExprs =
       case (arity callableV, callableV) of
         (Nothing  ,               _)                         -> lose $ NotCallable $ exprToToken callableExpr
         (Just arty,               _) | doesntMatch arty args -> lose $ ArityMismatch (exprToToken callableExpr) arty $ numGotten args
-        (        _, FunctionV    fn)                         -> runFunction evalStatement fn.idNum    args
+        (        _, FunctionV  _ fn)                         -> runFunction evalStatement fn.idNum    args
         (        _, ClassV    clazz)                         -> initObject  evalStatement clazz.cName args
         x                                                    -> error $ "This isn't the callable we're looking for: " <> (showText x)
 

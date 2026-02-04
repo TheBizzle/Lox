@@ -57,9 +57,9 @@ instance Show Func where
   show _ = "<underlying_function>"
 
 arity :: Value -> Maybe Word
-arity (FunctionV fn) = fn |> argNames &> length &> fromIntegral &> Just
-arity (ClassV     c) = c  |> initOutlineM &> maybe 0 (snd3 &> length &> fromIntegral) |> Just
-arity _              = Nothing
+arity (FunctionV _ fn) = fn |> argNames &> length &> fromIntegral &> Just
+arity (ClassV       c) = c  |> initOutlineM &> maybe 0 (snd3 &> length &> fromIntegral) |> Just
+arity _                = Nothing
 
 data ProgramState
   = ProgramState { variables        :: Map VarAddress Value      -- The central registry of all variables' values
@@ -165,15 +165,15 @@ cleanupScope scope program = program { variables = cleanedVars, closures = clean
 
     checkIsFunction = checkVar isFunction noBueno
       where
-        isFunction (FunctionV _) = True
-        isFunction             _ = False
-        noBueno                  = "You can't possibly be cleaning up a variable that's already been cleaned up...."
+        isFunction (FunctionV _ _) = True
+        isFunction               _ = False
+        noBueno                    = "You can't possibly be cleaning up a variable that's already been cleaned up...."
 
     checkWasTransferred = checkVar wasTransferred noBueno
       where
-        wasTransferred (FunctionV fn) = Map.member fn.idNum program.transferredFuncs
-        wasTransferred              _ = error "Not possible!  We already proved these are only functions!"
-        noBueno                       = "You can't possibly be checking a function that's already been cleaned up...."
+        wasTransferred (FunctionV _ fn) = Map.member fn.idNum program.transferredFuncs
+        wasTransferred                _ = error "Not possible!  We already proved these are only functions!"
+        noBueno                         = "You can't possibly be checking a function that's already been cleaned up...."
 
     toFnID = checkVar (function &> idNum) "You can't possibly be getting the FnID of a function that's already been cleaned up...."
 
@@ -196,7 +196,7 @@ defineFunction :: Text -> [Text] -> [Statement] -> Program Function
 defineFunction name argNames body =
   do
     fn <- buildFunction name argNames body
-    modify $ declareVar name $ FunctionV fn
+    modify $ declareVar name $ FunctionV False fn
     return fn
 
 buildFunction :: Text -> [Text] -> [Statement] -> Program Function
@@ -227,7 +227,7 @@ definePrimitiveFunc :: Text -> [Text] -> Func -> Program ()
 definePrimitiveFunc name args func =
   do
     fn <- _defineFunction name args func
-    modify $ declareVar name $ FunctionV fn
+    modify $ declareVar name $ FunctionV True fn
 
 _defineFunction :: Text -> [Text] -> Func -> Program Function
 _defineFunction name argNames func =
@@ -278,7 +278,7 @@ indexSuper superTP propName =
     returnSuperMethod (name, args, statements) =
       do
         methodM <- get <&> (getVar trueName)
-        fnV     <- maybe (buildSuperMethod <&> FunctionV) return methodM
+        fnV     <- maybe (buildSuperMethod <&> (FunctionV False)) return methodM
         return $ Success fnV
       where
         trueName         = "__super_" <> name
@@ -326,7 +326,7 @@ initObject evaluator className args =
         init2M   <- mapM (\(n, as, b) -> (buildFunction n as b) <&> (n, )) $ maybeToList clazz.initOutlineM
 
         modify $ \p -> p { scopes = (((NE.head p.scopes) { environ = Map.empty }) :| (NE.tail p.scopes)) }
-        forM_ (method2s <> init2M) (\(name, fn) -> declareVarM name $ FunctionV fn)
+        forM_ (method2s <> init2M) (\(name, fn) -> declareVarM name $ FunctionV False fn)
 
         modify $ popInstanceScope clazz.cName instID
 
@@ -347,8 +347,8 @@ initObject evaluator className args =
                                , variables      = Map.delete fa  p.variables
                                }
       where
-        getFID (FunctionV fn) = fn.idNum
-        getFID              _ = error "Function is not a function!"
+        getFID (FunctionV _ fn) = fn.idNum
+        getFID                _ = error "Function is not a function!"
 
 runFunction :: Evaluator -> FnID -> [Value] -> Evaluating
 runFunction evaluator idNum args =
@@ -363,8 +363,8 @@ runEffect :: Effect -> Evaluated
 runEffect (Print x) = (liftIO $ TIO.putStrLn x) $> (Success Nada)
 
 transferOwnership :: Value -> Program ()
-transferOwnership (FunctionV fn) = _transferOwnership fn.name fn.idNum
-transferOwnership              _ = return ()
+transferOwnership (FunctionV _ fn) = _transferOwnership fn.name fn.idNum
+transferOwnership                _ = return ()
 
 _transferOwnership :: Text -> FnID -> Program ()
 _transferOwnership fnName idNum = modify $ \program -> program { transferredFuncs = newXferred program }
