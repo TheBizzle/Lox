@@ -242,10 +242,11 @@ evalWhile predExpr body =
     predV `onSuccessEval` (
       \predicate ->
         do
-          when (asBool predicate) $ do
+          if asBool predicate then do
             resultV <- evalStatement body
-            void $ resultV `onSuccessEval` (const $ evalWhile predExpr body)
-          nothing
+            resultV `onSuccessEval` (const $ evalWhile predExpr body)
+          else
+            win Nada
       )
 
 evalDeclaration :: Text -> Expr -> Evaluating
