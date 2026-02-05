@@ -253,12 +253,12 @@ findInObject (Object clazz instID) propName =
     let addrMs  = map (Map.lookup propName) envChain
     return $ join $ find isJust addrMs
 
-indexObject :: Object -> Text -> Evaluating
-indexObject object propName =
+indexObject :: TokenPlus -> Object -> Text -> Evaluating
+indexObject tp object propName =
   do
     addr <- findInObject object propName
     case addr of
-      Nothing     -> return $ Failure $ NE.singleton $ ObjectLacksKey propName
+      Nothing     -> return $ Failure $ NE.singleton $ ObjectLacksKey tp propName
       (Just addr) -> get <&> (variables &> Map.lookup addr &> Maybe.fromJust &> CF.Normal &> Success)
 
 indexSuper :: TokenPlus -> Text -> Evaluating
@@ -271,7 +271,7 @@ indexSuper superTP propName =
     indexSuper (ClassV s) = (lookupInSupers $ toSuperChain s) <&> (<&> CF.Normal)
     indexSuper          _ = error "Not possible to resolve `super` to something other than a class or nil"
 
-    lookupInSupers supers = maybe (return $ Failure $ NE.singleton $ ObjectLacksKey propName) returnSuperMethod tripleM
+    lookupInSupers supers = maybe (return $ Failure $ NE.singleton $ ObjectLacksKey superTP propName) returnSuperMethod tripleM
       where
         tripleM = find (fst3 &> (== propName)) $ supers >>= methodOutlines
 

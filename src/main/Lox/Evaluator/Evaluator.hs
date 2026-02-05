@@ -173,7 +173,7 @@ evalGet objectExpr propName tp =
   do
     valueV <- evalExpr objectExpr
     valueV `onSuccessEval` (
-        \v -> (asObject v $ CanOnlyGetObj tp) `failOrM` (flip indexObject propName)
+        \v -> (asObject v $ CanOnlyGetObj tp) `failOrM` (\x -> indexObject tp x propName)
       )
 
 evalIfElse :: Expr -> Statement -> (Maybe Statement) -> Evaluating

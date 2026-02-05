@@ -18,7 +18,7 @@ data EvalError
   | NotAClass { value :: Value }
   | NotCallable { culprit :: TokenPlus }
   | NotImplemented { culprit :: TokenPlus }
-  | ObjectLacksKey { keyName :: Text }
+  | ObjectLacksKey { culprit :: TokenPlus, keyName :: Text }
   | OperandMustBeNumber { culprit :: TokenPlus }
   | OperandsMustBeNumbers { culprit :: TokenPlus }
   | OperandsMustBeNumsOrStrs { culprit :: TokenPlus }
