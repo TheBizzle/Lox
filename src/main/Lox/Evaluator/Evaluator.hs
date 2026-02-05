@@ -46,7 +46,7 @@ evaluated = (<&> (validation Failure helper))
   where
     helper (CF.Exception    ex) = Failure $ NE.singleton ex
     helper (CF.Normal    value) = Success value
-    helper (CF.Return        _) = Failure $ NE.singleton TopLevelReturn
+    helper (CF.Return    tp  _) = Failure $ NE.singleton $ TopLevelReturn tp
 
 evalStatement :: Statement -> Evaluating
 evalStatement (Block               statements             ) = evalBlock statements
@@ -55,14 +55,14 @@ evalStatement (DeclareVar          name       _    expr   ) = evalDeclaration na
 evalStatement (ExpressionStatement                 expr   ) = evalExpr expr
 evalStatement (IfElse              ant        con  alt    ) = evalIfElse ant con alt
 evalStatement (PrintStatement      _               expr   ) = evalPrint expr
-evalStatement (ReturnStatement     _          expM        ) = evalReturn expM
+evalStatement (ReturnStatement     tp         expM        ) = evalReturn tp expM
 evalStatement (WhileStatement      pred       stmt        ) = evalWhile pred stmt
 evalStatement (Function            tp         ps   body   ) = evalFunction tp ps body
 
 evalExpr :: Expr -> Evaluating
 evalExpr (Assign      name token value)    = evalAssign name token value
 evalExpr (Binary      left operator right) = evalBinary left operator right
-evalExpr (Call        callee _ arguments)  = evalCall callee arguments
+evalExpr (Call        callee tp arguments) = evalCall callee arguments tp
 evalExpr (Get         object name tp)      = evalGet object name tp
 evalExpr (Grouping    expression)          = evalExpr expression
 evalExpr (LiteralExpr literal _)           = win $ evalLiteral literal
@@ -114,8 +114,8 @@ evalBlock statements =
     modify popScope
     return result
 
-evalCall :: Expr -> [Expr] -> Evaluating
-evalCall callableExpr argExprs =
+evalCall :: Expr -> [Expr] -> TokenPlus -> Evaluating
+evalCall callableExpr argExprs tp =
   do
     callableV <- evalExpr callableExpr
     argVs     <- forM argExprs evalExpr
@@ -125,8 +125,8 @@ evalCall callableExpr argExprs =
       case (arity callableV, callableV) of
         (Nothing  ,               _)                         -> lose $ NotCallable $ exprToToken callableExpr
         (Just arty,               _) | doesntMatch arty args -> lose $ ArityMismatch (exprToToken callableExpr) arty $ numGotten args
-        (        _, FunctionV  _ fn)                         -> runFunction evalStatement fn.idNum    args
-        (        _, ClassV    clazz)                         -> initObject  evalStatement clazz.cName args
+        (        _, FunctionV  _ fn)                         -> runFunction    evalStatement fn.idNum    args
+        (        _, ClassV    clazz)                         -> initObject  tp evalStatement clazz.cName args
         x                                                    -> error $ "This isn't the callable we're looking for: " <> (showText x)
 
     doesntMatch arity args = arity /= (numGotten args)
@@ -205,13 +205,13 @@ evalLogical left operator right =
               tp                -> error $ "Impossible logical operator: " <> (showText tp)
       )
 
-evalReturn :: Maybe Expr -> Evaluating
-evalReturn exprM = maybe (return $ Success $ CF.Return $ Nada) (evalExpr >=> helper) exprM
+evalReturn :: TokenPlus -> Maybe Expr -> Evaluating
+evalReturn tp exprM = maybe (return $ Success $ CF.Return tp Nada) (evalExpr >=> helper) exprM
   where
     helper = flip failOrM $ \case
       ex@(CF.Exception _) -> return $ Success ex
-      (   CF.Normal    v) -> (transferOwnership v) $> (Success $ CF.Return v)
-      (   CF.Return    _) -> error "`return return x;` should not be possible!"
+      (   CF.Normal    v) -> (transferOwnership v) $> (Success $ CF.Return tp v)
+      (   CF.Return  _ _) -> error "`return return x;` should not be possible!"
 
 evalSet :: Expr -> Text -> Expr -> TokenPlus -> Evaluating
 evalSet objectExpr propName valueExpr tp =

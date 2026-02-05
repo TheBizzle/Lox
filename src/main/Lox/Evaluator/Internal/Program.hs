@@ -219,9 +219,9 @@ buildFunction name argNames body =
     whileNormal _ (Success             x) _ = return $ Success x
     whileNormal _                       x _ = return x
 
-    convert (CF.Normal _) = CF.Normal Nada
-    convert (CF.Return x) = CF.Normal x
-    convert             x = x
+    convert (CF.Normal   _) = CF.Normal Nada
+    convert (CF.Return _ x) = CF.Normal x
+    convert               x = x
 
 definePrimitiveFunc :: Text -> [Text] -> Func -> Program ()
 definePrimitiveFunc name args func =
@@ -284,14 +284,14 @@ indexSuper superTP propName =
         trueName         = "__super_" <> name
         buildSuperMethod = defineFunction trueName args statements
 
-initObject :: Evaluator -> Text -> [Value] -> Evaluating
-initObject evaluator className args =
+initObject :: TokenPlus -> Evaluator -> Text -> [Value] -> Evaluating
+initObject tp evaluator className args =
   do
     program <- get
     case getVar className program of
-      Nothing               -> return $ Failure $ NE.singleton $ ClassNotFound className
+      Nothing               -> return $ Failure $ NE.singleton $ ClassNotFound tp className
       (Just (ClassV clazz)) -> initialize clazz
-      (Just              x) -> return $ Failure $ NE.singleton $ NotAClass x
+      (Just              x) -> return $ Failure $ NE.singleton $ NotAClass tp x
   where
     initialize clazz =
       do

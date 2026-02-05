@@ -14,8 +14,8 @@ data EvalError
   | CanOnlyRefThisInsideClass { culprit :: TokenPlus }
   | CanOnlySetObj { culprit :: TokenPlus }
   | ClassesCanOnlyContainFns { culprit :: TokenPlus }
-  | ClassNotFound { className :: Text }
-  | NotAClass { value :: Value }
+  | ClassNotFound { culprit :: TokenPlus, className :: Text }
+  | NotAClass { culprit :: TokenPlus, value :: Value }
   | NotCallable { culprit :: TokenPlus }
   | NotImplemented { culprit :: TokenPlus }
   | ObjectLacksKey { culprit :: TokenPlus, keyName :: Text }
@@ -25,6 +25,6 @@ data EvalError
   | SuperCannotBeSelf { culprit :: TokenPlus, className :: Text }
   | SuperMustBeAClass { culprit :: TokenPlus, className :: Text }
   | ThisClassHasNoSupers { culprit :: TokenPlus }
-  | TopLevelReturn
+  | TopLevelReturn { culprit :: TokenPlus }
   | UnknownVariable { culprit :: TokenPlus, varName :: Text }
   deriving Show

@@ -107,15 +107,13 @@ evalErrorAsText = errorText
   where
     suffix token s = s <> "\n[line " <> (showText token.lineNumber) <> "]"
 
-    suffixBad = ("fix my message: " <>)
-
     errorText (ArityMismatch    tp wd gt)     = suffix tp $ "Expected " <> (showText wd) <> " arguments but got " <> (showText gt) <> "."
     errorText (CanOnlyGetObj tp)              = suffix tp $ "Only instances have properties."
     errorText (CanOnlyRefSuperInsideClass tp) = suffix tp $ "Error at 'super': Can't use 'super' outside of a class."
     errorText (CanOnlyRefThisInsideClass  tp) = suffix tp $ "Error at 'this': Can't use 'this' outside of a class."
     errorText (CanOnlySetObj tp)              = suffix tp $ "Only instances have fields."
-    errorText (ClassNotFound    name)         = suffixBad $ "Did not find any value matching class name \"" <> name <> "\""
-    errorText (NotAClass        value)        = suffixBad $ "This value is not a class: " <> (showText value)
+    errorText (ClassNotFound    tp name)      = suffix tp $ "Did not find any value matching class name \"" <> name <> "\""
+    errorText (NotAClass        tp value)     = suffix tp $ "This value is not a class: " <> (showText value)
     errorText (NotCallable      tp)           = suffix tp $ "Can only call functions and classes."
     errorText (NotImplemented   tp)           = suffix tp $ "Functionality not yet implemented"
     errorText (ObjectLacksKey   tp name)      = suffix tp $ "Undefined property \'" <> name <> "\'."
@@ -126,7 +124,7 @@ evalErrorAsText = errorText
     errorText (UnknownVariable   tp name)     = suffix tp $ "Undefined variable '" <> name <> "'."
     errorText (SuperCannotBeSelf tp name)     = suffix tp $ "`" <> name <> "` can't inherit from itself"
     errorText (SuperMustBeAClass tp    _)     = suffix tp $ "Superclass must be a class."
-    errorText TopLevelReturn                  = suffixBad $ "`return` is only allowed inside functions"
+    errorText (TopLevelReturn tp)             = suffix tp $ "`return` is only allowed inside functions"
     errorText (ThisClassHasNoSupers tp)       = suffix tp $ "Can't use `super` in a class with no superclass"
 
 parserErrorAsText :: ParserError -> Text
