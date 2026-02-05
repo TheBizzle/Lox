@@ -265,11 +265,11 @@ indexSuper :: TokenPlus -> Text -> Evaluating
 indexSuper superTP propName =
   do
     superM <- get <&> (getVar superName)
-    maybe (return $ Failure $ NE.singleton $ CanOnlyRefSuperInsideClass superTP) indexSuper superM
+    maybe (return $ Failure $ NE.singleton $ CanOnlyRefSuperInsideClass superTP) helper superM
   where
-    indexSuper NilV       = return $ Failure $ NE.singleton $ ThisClassHasNoSupers superTP
-    indexSuper (ClassV s) = (lookupInSupers $ toSuperChain s) <&> (<&> CF.Normal)
-    indexSuper          _ = error "Not possible to resolve `super` to something other than a class or nil"
+    helper NilV       = return $ Failure $ NE.singleton $ ThisClassHasNoSupers superTP
+    helper (ClassV s) = (lookupInSupers $ toSuperChain s) <&> (<&> CF.Normal)
+    helper          _ = error "Not possible to resolve `super` to something other than a class or nil"
 
     lookupInSupers supers = maybe (return $ Failure $ NE.singleton $ ObjectLacksKey superTP propName) returnSuperMethod tripleM
       where
