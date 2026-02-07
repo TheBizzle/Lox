@@ -55,7 +55,7 @@ runPrompt program =
     putStrFlush "> "
     line <- TIO.getLine
     when (line /= "exit") $ do
-      (state, _) <- run program line
+      (state, _) <- run True program line
       runPrompt state
 
 initialized :: IO ProgramState
@@ -71,23 +71,23 @@ runFile :: Text -> IO ()
 runFile code =
   do
     initted        <- initialized
-    (_, errorCode) <- run initted code
+    (_, errorCode) <- run False initted code
     when (errorCode /= 0) $
       exitWith $ ExitFailure errorCode
 
-run :: ProgramState -> Text -> IO (ProgramState, Int)
-run state code =
+run :: Bool -> ProgramState -> Text -> IO (ProgramState, Int)
+run isREPL state code =
   case (interpret code) of
     ScannerFailure errors  -> (handleError scannerErrorAsText errors) $> (state, 65)
     ParserFailure  errors  -> (handleError  parserErrorAsText errors) $> (state, 65)
     OtherFailure   errors  -> (handleError          anyAsText errors) $> (state, 65)
-    Succeeded      program -> runProgram program state
+    Succeeded      program -> runProgram isREPL program state
 
 handleError :: Traversable t => (a -> Text) -> t a -> IO ()
 handleError errorToText errors = for_ errors $ errorToText &> TIO.hPutStrLn stderr
 
-runProgram :: Program (Validation (NonEmpty EvalError) Value) -> ProgramState -> IO (ProgramState, Int)
-runProgram program state =
+runProgram :: Bool -> Program (Validation (NonEmpty EvalError) Value) -> ProgramState -> IO (ProgramState, Int)
+runProgram isREPL program state =
   do
     (resultV, newState) <- runStateT program state
     output              <- validation handleBad handleGood resultV
@@ -97,7 +97,11 @@ runProgram program state =
     handleBad = (handleError evalErrorAsText) &> ($> 70)
 
     handleGood Nada   = return 0
-    handleGood result = result |> showText &> TIO.putStrLn &> ($> 0)
+    handleGood result =
+      if isREPL then
+        result |> showText &> TIO.putStrLn &> ($> 0)
+      else
+        return 0
 
 anyAsText :: a -> Text
 anyAsText _ = error "Unimplemented error handler"
