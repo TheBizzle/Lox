@@ -149,7 +149,7 @@ parserErrorAsText error = line
 scannerErrorAsText :: ScannerError -> Text
 scannerErrorAsText error = line
   where
-    line = "[" <> (showText error.lineNumber) <> "] Error: " <> (errorText error.typ)
+    line = "[line " <> (showText error.lineNumber) <> "] Error: " <> (errorText error.typ)
     errorText (InvalidNumberFormat c) = "Invalid number format: " <> c
     errorText (UnknownToken _)        = "Unexpected character."
     errorText UnterminatedString      = "Unterminated string."
