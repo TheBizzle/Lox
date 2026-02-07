@@ -273,7 +273,11 @@ indexSuper superTP propName =
 
     lookupInSupers supers = maybe (return $ Failure $ NE.singleton $ ObjectLacksKey superTP propName) returnSuperMethod tripleM
       where
-        tripleM = find (fst3 &> (== propName)) $ supers >>= methodOutlines
+        tripleM =
+          if propName /= initName then
+            find (fst3 &> (== propName)) $ supers >>= methodOutlines
+          else
+            (listToMaybe supers) >>= initOutlineM
 
     returnSuperMethod (name, args, statements) =
       do
