@@ -16,7 +16,7 @@ import Lox.Evaluator.EvalError(
 import Lox.Evaluator.Program(definePrimitiveFunc, Program, ProgramState)
 import Lox.Evaluator.Value(Value(Nada, NumberV))
 
-import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Succeeded))
+import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Succeeded, VerifierFailure))
 
 import Lox.Parser.ParserError(
     ParserError(lineNumber, offender, typ),
@@ -29,6 +29,8 @@ import Lox.Scanner.ScannerError(
   )
 
 import Lox.Scanner.Token(Token(EOF, LeftBrace, LeftParen), TokenPlus(lineNumber))
+
+import Lox.Verify.VerifierError(VerifierError)
 
 import qualified Control.Exception     as Exception
 import qualified Data.Time.Clock.POSIX as Clock
@@ -78,10 +80,11 @@ runFile code =
 run :: Bool -> ProgramState -> Text -> IO (ProgramState, Int)
 run isREPL state code =
   case (interpret code) of
-    ScannerFailure errors  -> (handleError scannerErrorAsText errors) $> (state, 65)
-    ParserFailure  errors  -> (handleError  parserErrorAsText errors) $> (state, 65)
-    OtherFailure   errors  -> (handleError          anyAsText errors) $> (state, 65)
-    Succeeded      program -> runProgram isREPL program state
+    ScannerFailure  errors  -> (handleError  scannerErrorAsText errors) $> (state, 65)
+    ParserFailure   errors  -> (handleError   parserErrorAsText errors) $> (state, 65)
+    VerifierFailure errors  -> (handleError verifierErrorAsText errors) $> (state, 65)
+    OtherFailure    errors  -> (handleError           anyAsText errors) $> (state, 65)
+    Succeeded       program -> runProgram isREPL program state
 
 handleError :: Traversable t => (a -> Text) -> t a -> IO ()
 handleError errorToText errors = for_ errors $ errorToText &> TIO.hPutStrLn stderr
@@ -153,3 +156,6 @@ scannerErrorAsText error = line
     errorText (InvalidNumberFormat c) = "Invalid number format: " <> c
     errorText (UnknownToken _)        = "Unexpected character."
     errorText UnterminatedString      = "Unterminated string."
+
+verifierErrorAsText :: VerifierError -> Text
+verifierErrorAsText error = ""
