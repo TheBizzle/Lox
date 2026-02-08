@@ -67,7 +67,7 @@ instance Show Token where
   show Fun            = "function"
   show Greater        = ">"
   show GreaterEqual   = ">="
-  show (Identifier x) = "(identifier: " <> asString x <> ")"
+  show (Identifier x) = asString x
   show If             = "if"
   show LeftBrace      = "{"
   show LeftParen      = "("
