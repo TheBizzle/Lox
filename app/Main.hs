@@ -1,7 +1,7 @@
 module Main(main) where
 
 import Control.DeepSeq(force)
-import Control.Monad.State(runStateT)
+import Control.Monad.State(execStateT, runStateT)
 
 import GHC.Real(realToFrac)
 
@@ -61,7 +61,7 @@ runPrompt program =
       runPrompt state
 
 initialized :: IO ProgramState
-initialized = (runStateT (forM_ primitives $ uncurry3 definePrimitiveFunc) Program.empty) <&> snd
+initialized = (execStateT (forM_ primitives $ uncurry3 definePrimitiveFunc) Program.empty)
   where
     primitives = [clock]
 
