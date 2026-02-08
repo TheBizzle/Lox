@@ -3,10 +3,11 @@ module Lox.Parser.Internal.Optimism(ast, declaration, statement) where
 import Lox.Scanner.Token(Token(Class, Comma, Else, EOF, Equal, For, Fun, If, LeftBrace, LeftParen, Less, Print, Return, RightBrace, RightParen, Semicolon, Var, While))
 
 import Lox.Parser.Internal.AST(
-    AST(AST),
-    Expr(LiteralExpr, Variable),
-    Literal(BooleanLit, NilLit),
-    Statement(Block, contents, DeclareVar, ExpressionStatement, Function, IfElse, PrintStatement, ReturnStatement, WhileStatement)
+    AST(AST)
+  , Expr(LiteralExpr)
+  , Literal(BooleanLit, NilLit)
+  , Statement(Block, contents, DeclareVar, ExpressionStatement, Function, IfElse, PrintStatement, ReturnStatement, WhileStatement)
+  , Variable
   )
 
 import Lox.Parser.Internal.ExpressionParser(expression)
@@ -24,7 +25,7 @@ declaration = classDeclaration <|> fnDeclaration <|> varDeclaration <|> statemen
 
 classDeclaration :: Parser Statement
 classDeclaration =
-  (uncurry AST.Class) <$>
+  AST.Class <$>
     ((throwaway Class) *> variable) <*> (optional $ (throwaway Less) *> variable) <*>
     ((throwaway LeftBrace) *> (many methodDeclaration) <* (throwaway RightBrace))
   where
@@ -33,16 +34,16 @@ classDeclaration =
 fnDeclaration :: Parser Statement
 fnDeclaration = (uncurry3 Function) <$> ((throwaway Fun) *> function)
 
-function :: Parser (Expr, [Expr], [Statement])
+function :: Parser (Variable, [Variable], [Statement])
 function = (,,) <$> fnName <*> ((throwaway LeftParen) *> fnParams <* (throwaway RightParen)) <*> fnBlock
   where
-    fnName  = fullVariable
+    fnName  = variable
     fnBlock = contents <$> block
 
-fnParams :: Parser [Expr]
+fnParams :: Parser [Variable]
 fnParams = (limited existent) <|> nullary
   where
-    existent  = (:) <$> fullVariable <*> (many $ (throwaway Comma) *> fullVariable)
+    existent  = (:) <$> variable <*> (many $ (throwaway Comma) *> variable)
     nullary   = pure []
     limited p = p >>= (\args -> if (length args) < 255 then return args else whineAbout TooMuchArguing)
 
@@ -50,7 +51,7 @@ varDeclaration :: Parser Statement
 varDeclaration = declare <$> ((throwaway Var) *> variable) <*>
                              ((optional $ (throwaway Equal) *> expression) <* (throwaway Semicolon))
   where
-    declare (vn, ident) initialM = DeclareVar vn ident $ maybe (LiteralExpr NilLit ident) id initialM
+    declare var initialM = DeclareVar var $ maybe (LiteralExpr NilLit var.varToken) id initialM
 
 statement :: Parser Statement
 statement = forStatement <|> ifStatement <|> printStatement <|> returnStatement <|> whileStatement <|> exprStatement <|> block
@@ -100,6 +101,3 @@ whileStatement :: Parser Statement
 whileStatement = WhileStatement <$>
                    ((throwaway While) *> (throwaway LeftParen) *> expression <* (throwaway RightParen)) <*>
                    statement
-
-fullVariable :: Parser Expr
-fullVariable = (uncurry Variable) <$> variable

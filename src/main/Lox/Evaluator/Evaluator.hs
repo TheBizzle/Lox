@@ -3,16 +3,17 @@ module Lox.Evaluator.Evaluator(eval) where
 import Control.Monad.State(get, gets, modify)
 
 import Lox.Parser.AST(
-    AST(statements),
-    Expr(Assign, Binary, Call, Get, Grouping, LiteralExpr, Logical, name, Set, Super, This, Unary, Variable),
-    exprToToken,
-    Literal(BooleanLit, DoubleLit, NilLit, StringLit),
-    Statement(Block, Class, DeclareVar, ExpressionStatement, Function, IfElse, PrintStatement, ReturnStatement, WhileStatement)
+    AST(statements)
+  , Expr(Assign, Binary, Call, Get, Grouping, LiteralExpr, Logical, Set, Super, This, Unary, VarRef)
+  , exprToToken
+  , Literal(BooleanLit, DoubleLit, NilLit, StringLit)
+  , Statement(Block, Class, DeclareVar, ExpressionStatement, Function, IfElse, PrintStatement, ReturnStatement, WhileStatement)
+  , Variable(Variable, varName)
   )
 
 import Lox.Scanner.Token(
-    TokenPlus(token, TokenPlus),
-    Token(And, Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Or, Plus, Slash, Star)
+    TokenPlus(token, TokenPlus)
+  , Token(And, Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Or, Plus, Slash, Star)
   )
 
 import Lox.Evaluator.Internal.Effect(Effect(Print))
@@ -49,32 +50,32 @@ evaluated = (<&> (validation Failure helper))
     helper (CF.Return    tp  _) = Failure $ NE.singleton $ TopLevelReturn tp
 
 evalStatement :: Statement -> Evaluating
-evalStatement (Block               statements             ) = evalBlock statements
-evalStatement (Class               name       tp   sntm ms) = evalClass name tp sntm ms
-evalStatement (DeclareVar          name       _    expr   ) = evalDeclaration name expr
-evalStatement (ExpressionStatement                 expr   ) = evalExpr expr
-evalStatement (IfElse              ant        con  alt    ) = evalIfElse ant con alt
-evalStatement (PrintStatement      _               expr   ) = evalPrint expr
-evalStatement (ReturnStatement     tp         expM        ) = evalReturn tp expM
-evalStatement (WhileStatement      pred       stmt        ) = evalWhile pred stmt
-evalStatement (Function            tp         ps   body   ) = evalFunction tp ps body
+evalStatement (Block               statements           ) = evalBlock statements
+evalStatement (Class               var        stmts ms  ) = evalClass var stmts ms
+evalStatement (DeclareVar          var        expr      ) = evalDeclaration var expr
+evalStatement (ExpressionStatement                  expr) = evalExpr expr
+evalStatement (IfElse              ant        con   alt ) = evalIfElse ant con alt
+evalStatement (PrintStatement      _                expr) = evalPrint expr
+evalStatement (ReturnStatement     tp         expM      ) = evalReturn tp expM
+evalStatement (WhileStatement      pred       stmt      ) = evalWhile pred stmt
+evalStatement (Function            var        ps    body) = evalFunction var ps body
 
 evalExpr :: Expr -> Evaluating
-evalExpr (Assign      name token value)    = evalAssign name token value
+evalExpr (Assign      var value)           = evalAssign var value
 evalExpr (Binary      left operator right) = evalBinary left operator right
 evalExpr (Call        callee tp arguments) = evalCall callee arguments tp
-evalExpr (Get         object name tp)      = evalGet object name tp
+evalExpr (Get         object var)          = evalGet object var
 evalExpr (Grouping    expression)          = evalExpr expression
 evalExpr (LiteralExpr literal _)           = win $ evalLiteral literal
 evalExpr (Logical     left operator right) = evalLogical left operator right
-evalExpr (Set         object name t value) = evalSet object name value t
-evalExpr (Super       keyword method _)    = indexSuper keyword method
+evalExpr (Set         object var value)    = evalSet object var value
+evalExpr (Super       keyword var     )    = indexSuper keyword var
 evalExpr (This        keyword)             = evalThis keyword
 evalExpr (Unary       operator right)      = evalUnary operator right
-evalExpr (Variable    name token)          = lookupVar name token
+evalExpr (VarRef      var)                 = lookupVar var
 
-evalAssign :: Text -> TokenPlus -> Expr -> Evaluating
-evalAssign name token value = (evalExpr value) >>= (flip onSuccessEval $ \v -> setVariable name v token)
+evalAssign :: Variable -> Expr -> Evaluating
+evalAssign var value = (evalExpr value) >>= (flip onSuccessEval $ \v -> setVariable var v)
 
 evalBinary :: Expr -> TokenPlus -> Expr -> Evaluating
 evalBinary left operator right =
@@ -133,20 +134,20 @@ evalCall callableExpr argExprs tp =
 
     numGotten args = args |> length &> fromIntegral
 
-evalClass :: Text -> TokenPlus -> Maybe (Text, TokenPlus) -> [Statement] -> Evaluating
-evalClass className classTP superNameTokenM methods =
+evalClass :: Variable -> Maybe Variable -> [Statement] -> Evaluating
+evalClass (Variable className classTP) superNameTokenM methods =
   do
-    superClassMV      <- processSuperPair superNameTokenM
+    superClassMV      <- processSuperVar superNameTokenM
     tripleVs          <- forM methods asTriple
     let triplesSuperV  = (,) <$> (sequenceA tripleVs) <*> superClassMV
     triplesSuperV `failOrM` defClass
   where
-    asTriple (Function tp ps body) = return $ Success (tp.name, map name ps, body)
+    asTriple (Function var ps body) = return $ Success (var.varName, map varName ps, body)
     asTriple _                     = lose $ ClassesCanOnlyContainFns classTP
 
-    processSuperPair Nothing                               = return $ Success Nothing
-    processSuperPair (Just (name, tp)) | name == className = lose $ SuperCannotBeSelf tp name
-    processSuperPair (Just (name, tp))                     =
+    processSuperVar Nothing                                       = return $ Success Nothing
+    processSuperVar (Just (Variable name tp)) | name == className = lose $ SuperCannotBeSelf tp name
+    processSuperVar (Just (Variable name tp))                     =
       do
         valM <- gets $ getVar name
         maybe (lose $ UnknownVariable tp name) processSuperValue valM
@@ -159,17 +160,16 @@ evalClass className classTP superNameTokenM methods =
         void $ defineClass className superClassM triples
         nothing
 
-evalFunction :: Expr -> [Expr] -> [Statement] -> Evaluating
-evalFunction nameExpr paramExprs body =
+evalFunction :: Variable -> [Variable] -> [Statement] -> Evaluating
+evalFunction var params body =
   do
-    void $ defineFunction fnName params body
+    void $ defineFunction var.varName pNames body
     nothing
   where
-    fnName = nameExpr.name
-    params = map name paramExprs
+    pNames = map varName params
 
-evalGet :: Expr -> Text -> TokenPlus -> Evaluating
-evalGet objectExpr propName tp =
+evalGet :: Expr -> Variable -> Evaluating
+evalGet objectExpr (Variable propName tp) =
   do
     valueV <- evalExpr objectExpr
     valueV `onSuccessEval` (
@@ -213,8 +213,8 @@ evalReturn tp exprM = maybe (return $ Success $ CF.Return tp Nada) (evalExpr >=>
       (   CF.Normal    v) -> (transferOwnership v) $> (Success $ CF.Return tp v)
       (   CF.Return  _ _) -> error "`return return x;` should not be possible!"
 
-evalSet :: Expr -> Text -> Expr -> TokenPlus -> Evaluating
-evalSet objectExpr propName valueExpr tp =
+evalSet :: Expr -> Variable -> Expr -> Evaluating
+evalSet objectExpr (Variable propName tp) valueExpr =
   do
     objValV <- evalExpr objectExpr
     anyValV <- evalExpr valueExpr
@@ -249,8 +249,8 @@ evalWhile predExpr body =
             win Nada
       )
 
-evalDeclaration :: Text -> Expr -> Evaluating
-evalDeclaration varName expr =
+evalDeclaration :: Variable -> Expr -> Evaluating
+evalDeclaration (Variable varName _) expr =
   do
     valueV <- evalExpr expr
     valueV `onSuccessEval` (
@@ -275,19 +275,19 @@ runStatements = foldM helper $ succeed Nada
   where
     helper acc s = acc `onSuccessEval` (const $ evalStatement s)
 
-lookupVar :: Text -> TokenPlus -> Evaluating
-lookupVar varName vnTP =
+lookupVar :: Variable -> Evaluating
+lookupVar (Variable varName vnTP) =
   do
     valM <- gets $ getVar varName
     maybe (lose $ UnknownVariable vnTP varName) win valM
 
-setVariable :: Text -> Value -> TokenPlus -> Evaluating
-setVariable varName value vnTP =
+setVariable :: Variable -> Value -> Evaluating
+setVariable var value =
   do
-    varV <- lookupVar varName vnTP
+    varV <- lookupVar var
     varV `onSuccessEval` (
       const $ do
-        modify $ setVar varName value
+        modify $ setVar var.varName value
         win value
       )
 

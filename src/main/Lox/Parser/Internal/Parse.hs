@@ -9,6 +9,8 @@ import Lox.Scanner.Token(
     TokenPlus(lineNumber, token, TokenPlus)
   )
 
+import Lox.Parser.Internal.AST(Variable(Variable))
+
 import Lox.Parser.Internal.ParserError(
     ErrorPriority(Unimportant, VeryHigh)
   , ParserError(ParserError, prio)
@@ -22,10 +24,10 @@ newtype Parser a =
   Parser { run :: [TokenPlus] -> Parsed (a, [TokenPlus]) }
   deriving Functor
 
-variable :: Parser (Text, TokenPlus)
+variable :: Parser Variable
 variable = parserFrom helper
   where
-    helper tp@(TokenPlus (Identifier s) _) = win $ (s, tp)
+    helper tp@(TokenPlus (Identifier s) _) = win $ Variable s tp
     helper tp@(TokenPlus t              _) =
       if not $ isReserved t then
         backtrack [tp]

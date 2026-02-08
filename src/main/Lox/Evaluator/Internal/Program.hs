@@ -13,7 +13,7 @@ import Data.Maybe(fromJust)
 
 import Lox.Scanner.Token(TokenPlus)
 
-import Lox.Parser.AST(Statement)
+import Lox.Parser.AST(Statement, Variable(Variable))
 
 import Lox.Evaluator.Internal.Data(
     Environment
@@ -261,8 +261,8 @@ indexObject tp object propName =
       Nothing     -> return $ Failure $ NE.singleton $ ObjectLacksKey tp propName
       (Just addr) -> get <&> (variables &> Map.lookup addr &> Maybe.fromJust &> CF.Normal &> Success)
 
-indexSuper :: TokenPlus -> Text -> Evaluating
-indexSuper superTP propName =
+indexSuper :: TokenPlus -> Variable -> Evaluating
+indexSuper superTP (Variable propName _) =
   do
     superM <- get <&> (getVar superName)
     maybe (return $ Failure $ NE.singleton $ CanOnlyRefSuperInsideClass superTP) helper superM

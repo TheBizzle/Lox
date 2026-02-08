@@ -3,7 +3,8 @@ module Lox.Parser.Internal.AST(
     Expr(..),
     exprToToken,
     Literal(BooleanLit, DoubleLit, NilLit, StringLit),
-    Statement(Block, body, Class, contents, DeclareVar, expr, ExpressionStatement, fnBody, fnName, Function, IfElse, newVarName, params, predicate, PrintStatement, ReturnStatement, term, WhileStatement)
+    Statement(Block, body, Class, contents, DeclareVar, expr, ExpressionStatement, fnBody, fnDecl, Function, IfElse, newVar, params, predicate, PrintStatement, ReturnStatement, term, WhileStatement),
+    Variable(Variable, varName, varToken)
   ) where
 
 import Lox.Scanner.Token(TokenPlus)
@@ -14,10 +15,10 @@ data AST
 
 data Statement
   = Block { contents :: [Statement] }
-  | Class { className :: Text, classToken :: TokenPlus, superNameTokenM :: Maybe (Text, TokenPlus), methods :: [Statement] }
-  | DeclareVar { newVarName :: Text, token :: TokenPlus, initial :: Expr }
+  | Class { classVar :: Variable, superNameTokenM :: Maybe Variable, methods :: [Statement] }
+  | DeclareVar { newVar :: Variable, initial :: Expr }
   | ExpressionStatement { expr :: Expr }
-  | Function { fnName :: Expr, params :: [Expr], fnBody :: [Statement] }
+  | Function { fnDecl :: Variable, params :: [Variable], fnBody :: [Statement] }
   | IfElse { antecedent :: Expr, consequent :: Statement, alternative :: Maybe Statement }
   | PrintStatement { term :: TokenPlus, expr :: Expr }
   | ReturnStatement { term :: TokenPlus, exprM :: Maybe Expr }
@@ -31,31 +32,35 @@ data Literal
   | NilLit
   deriving (Eq, Show)
 
+data Variable
+  = Variable { varName :: Text, varToken :: TokenPlus }
+  deriving (Eq, Show)
+
 data Expr
-  = Assign      { name :: Text, nameToken :: TokenPlus, value :: Expr }
+  = Assign      { var :: Variable, value :: Expr }
   | Binary      { left :: Expr, operator :: TokenPlus, right :: Expr }
   | Call        { callee :: Expr, paren :: TokenPlus, arguments :: [Expr] }
-  | Get         { object :: Expr, name :: Text, nameToken :: TokenPlus }
+  | Get         { object :: Expr, var :: Variable }
   | Grouping    { expression :: Expr }
   | LiteralExpr { literal :: Literal, literalToken :: TokenPlus }
   | Logical     { left :: Expr, operator :: TokenPlus, right :: Expr }
-  | Set         { object :: Expr, name :: Text, nameToken :: TokenPlus, value :: Expr }
-  | Super       { keyword :: TokenPlus, methodName :: Text, method :: TokenPlus }
+  | Set         { object :: Expr, var :: Variable, value :: Expr }
+  | Super       { keyword :: TokenPlus, var :: Variable }
   | This        { keyword :: TokenPlus }
   | Unary       { operator :: TokenPlus, right :: Expr }
-  | Variable    { name :: Text, nameToken :: TokenPlus }
+  | VarRef      { var :: Variable }
   deriving (Eq, Show)
 
 exprToToken :: Expr -> TokenPlus
-exprToToken (Assign      _      token _  ) = token
-exprToToken (Binary      left   _     _  ) = exprToToken left
-exprToToken (Call        callee _     _  ) = exprToToken callee
-exprToToken (Get         obj    _     _  ) = exprToToken obj
-exprToToken (Grouping    expr            ) = exprToToken expr
-exprToToken (LiteralExpr _      token    ) = token
-exprToToken (Logical     left   _     _  ) = exprToToken left
-exprToToken (Set         obj    _     _ _) = exprToToken obj
-exprToToken (Super       kword  _     _  ) = kword
-exprToToken (This        kword           ) = kword
-exprToToken (Unary       op     _        ) = op
-exprToToken (Variable    _      token    ) = token
+exprToToken a@(Assign      _      _      ) = a.var.varToken
+exprToToken   (Binary      left   _     _) = exprToToken left
+exprToToken   (Call        callee _     _) = exprToToken callee
+exprToToken   (Get         obj    _      ) = exprToToken obj
+exprToToken   (Grouping    expr          ) = exprToToken expr
+exprToToken   (LiteralExpr _      token  ) = token
+exprToToken   (Logical     left   _     _) = exprToToken left
+exprToToken   (Set         obj    _     _) = exprToToken obj
+exprToToken   (Super       kword  _      ) = kword
+exprToToken   (This        kword         ) = kword
+exprToToken   (Unary       op     _      ) = op
+exprToToken v@(VarRef      _             ) = v.var.varToken

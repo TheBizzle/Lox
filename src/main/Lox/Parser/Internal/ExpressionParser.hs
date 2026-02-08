@@ -1,13 +1,14 @@
 module Lox.Parser.Internal.ExpressionParser(expression, unary) where
 
 import Lox.Scanner.Token(
-    Token(And, Bang, BangEqual, Comma, Dot, Equal, EqualEqual, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Nil, Number, Or, Plus, RightParen, This, TokenFalse, TokenTrue, Slash, Super, Star, String),
-    TokenPlus(TokenPlus)
+    Token(And, Bang, BangEqual, Comma, Dot, Equal, EqualEqual, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Nil, Number, Or, Plus, RightParen, This, TokenFalse, TokenTrue, Slash, Super, Star, String)
+  , TokenPlus(TokenPlus)
   )
 
 import Lox.Parser.Internal.AST(
-    Expr(Assign, Binary, Call, Get, Grouping, LiteralExpr, Logical, Set, Unary, Variable),
-    Literal(BooleanLit, DoubleLit, NilLit, StringLit)
+    Expr(Assign, Binary, Call, Get, Grouping, LiteralExpr, Logical, Set, Unary, VarRef)
+  , Literal(BooleanLit, DoubleLit, NilLit, StringLit)
+  , Variable
   )
 
 import Lox.Parser.Internal.Parse(
@@ -29,11 +30,10 @@ assignment :: Parser Expr
 assignment = setOperation <|> assignOperation <|> logicalOr
   where
     assignOperation =
-      (uncurry Assign) <$> variable <*> ((throwaway Equal) *> assignment)
+      Assign <$> variable <*> ((throwaway Equal) *> assignment)
 
     setOperation =
-      (\obj -> uncurry $ Set obj) <$>
-        (fnCall <* (throwaway Dot)) <*> variable <*> ((throwaway Equal) *> assignment)
+      Set <$> (fnCall <* (throwaway Dot)) <*> variable <*> ((throwaway Equal) *> assignment)
 
 logicalOr :: Parser Expr
 logicalOr = orOperation <|> logicalAnd
@@ -72,7 +72,7 @@ unary = unaryOperation <|> fnCall
 
 data CallType
   = Simple TokenPlus [Expr]
-  | Method Text      TokenPlus
+  | Method Variable
 
 fnCall :: Parser Expr
 fnCall = call <|> primary
@@ -80,8 +80,8 @@ fnCall = call <|> primary
     call       = makeCalls <$> primary <*> (some invocation)
     invocation = simpleCall <|> getMethod
 
-    simpleCall =          Simple  <$> (one LeftParen) <*> (args <* (throwaway RightParen))
-    getMethod  = (uncurry Method) <$> ((throwaway Dot) *> variable) <* (notFollowedBy $ one Equal)
+    simpleCall = Simple <$> (one LeftParen) <*> (args <* (throwaway RightParen))
+    getMethod  = Method <$> ((throwaway Dot) *> variable) <* (notFollowedBy $ one Equal)
 
     args       = (limited existent) <|> nullary
     existent   = (:) <$> expression <*> (many $ (throwaway Comma) *> expression)
@@ -92,7 +92,7 @@ fnCall = call <|> primary
     makeCalls _         [] = error "Not possible!  `some` produces a list of at least length 1!"
 
     mkCall acc (Simple lpTP args) = Call acc lpTP args
-    mkCall acc (Method name   tp) = Get  acc name tp
+    mkCall acc (Method var      ) = Get  acc var
 
 primary :: Parser Expr
 primary = number <|> string <|> true <|> false <|> nil <|> this <|> fullVariable <|> grouping <|> super
@@ -104,7 +104,7 @@ primary = number <|> string <|> true <|> false <|> nil <|> this <|> fullVariable
 
     grouping = Grouping <$> (throwaway LeftParen *> expr <* throwaway RightParen)
 
-    super = (\s -> uncurry $ AST.Super s) <$> (one Super) <*> (throwaway Dot *> variable)
+    super = AST.Super <$> (one Super) <*> (throwaway Dot *> variable)
 
     number = parserFrom helper
       where
@@ -117,4 +117,4 @@ primary = number <|> string <|> true <|> false <|> nil <|> this <|> fullVariable
         helper                          tp = backtrack [tp]
 
 fullVariable :: Parser Expr
-fullVariable = (uncurry Variable) <$> variable
+fullVariable = VarRef <$> variable
