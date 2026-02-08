@@ -1,6 +1,5 @@
 module Lox.Verify.Internal.Verifier(verify) where
 
-import Data.Foldable(asum)
 
 import Lox.Parser.AST(
     AST(statements)
@@ -17,12 +16,15 @@ verify ast = ast.statements |>
                maybe (Success ast) (NE.singleton &> Failure)
 
 findErrorInStmt :: Statement -> Maybe VerifierError
-findErrorInStmt (Block               _ _ _  ) = Nothing
-findErrorInStmt (Class               _ _ _ _) = Nothing
-findErrorInStmt (DeclareVar          _ _ _  ) = Nothing
-findErrorInStmt (ExpressionStatement _ _ _  ) = Nothing
-findErrorInStmt (Function            _ _ _  ) = Nothing
-findErrorInStmt (IfElse              _ _ _  ) = Nothing
-findErrorInStmt (PrintStatement      _ _ _  ) = Nothing
-findErrorInStmt (ReturnStatement     _ _ _  ) = Nothing
-findErrorInStmt (WhileStatement      _ _ _  ) = Nothing
+findErrorInStmt (Block               _       ) = Nothing
+findErrorInStmt (Class               _  _   _) = Nothing
+findErrorInStmt (DeclareVar          _  _    ) = Nothing
+findErrorInStmt (ExpressionStatement _       ) = Nothing
+findErrorInStmt (Function            _ ps bod) = findErrorInFn ps bod
+findErrorInStmt (IfElse              _  _   _) = Nothing
+findErrorInStmt (PrintStatement      _  _    ) = Nothing
+findErrorInStmt (ReturnStatement     _  _    ) = Nothing
+findErrorInStmt (WhileStatement      _  _    ) = Nothing
+
+findErrorInFn :: [Variable] -> [Statement] -> Maybe VerifierError
+findErrorInFn _ _ = Nothing
