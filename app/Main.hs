@@ -28,9 +28,9 @@ import Lox.Scanner.ScannerError(
     ScannerErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString)
   )
 
-import Lox.Scanner.Token(Token(EOF, LeftBrace, LeftParen), TokenPlus(lineNumber))
+import Lox.Scanner.Token(Token(EOF, LeftBrace, LeftParen), TokenPlus(lineNumber, token))
 
-import Lox.Verify.VerifierError(VerifierError)
+import Lox.Verify.VerifierError(VerifierError(offender, typ), VerifierErrorType(DuplicateVar))
 
 import qualified Control.Exception     as Exception
 import qualified Data.Time.Clock.POSIX as Clock
@@ -158,4 +158,9 @@ scannerErrorAsText error = line
     errorText UnterminatedString      = "Unterminated string."
 
 verifierErrorAsText :: VerifierError -> Text
-verifierErrorAsText error = ""
+verifierErrorAsText error = line
+  where
+    line = "[line " <> (showText error.offender.lineNumber) <> "] Error at " <> (desc error.offender.token) <> (errorText error.typ)
+    desc EOF = "end: "
+    desc t   = "'" <> (showText t) <> "': "
+    errorText DuplicateVar = "Already a variable with this name in this scope."
