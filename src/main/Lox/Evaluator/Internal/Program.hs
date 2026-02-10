@@ -427,12 +427,7 @@ declareVar varName value program = program { variables = newVars, scopes = newSc
     varAddr            = predictVarAddr varName program
     newScope           = oldScope { environ = Map.insert varName varAddr oldScope.environ }
     newScopes          = maybe (NE.singleton newScope) (NE.cons newScope) tailML
-    newVars            = Map.alter (updater value) varAddr program.variables
-    updater value old  =
-      if (isNothing old) || (isNothing tailML) then
-        Just value
-      else
-        error $ "There is already a variable named '" <> varName <> "' in this scope."
+    newVars            = Map.alter (const $ Just value) varAddr program.variables
 
 getVar :: Text -> ProgramState -> Maybe Value
 getVar varName program = program |> (lookupVarAddr varName) &> getValue
