@@ -1,10 +1,11 @@
 module Lox.Parser.Internal.AST(
-    AST(AST, statements),
-    Expr(..),
-    exprToToken,
-    Literal(BooleanLit, DoubleLit, NilLit, StringLit),
-    Statement(Block, body, Class, contents, DeclareVar, expr, ExpressionStatement, fnBody, fnDecl, Function, IfElse, newVar, params, predicate, PrintStatement, ReturnStatement, term, WhileStatement),
-    Variable(Variable, varName, varToken)
+    AST(AST, statements)
+  , Expr(..)
+  , exprToToken
+  , Function(fnBody, fnDecl, Function, params)
+  , Literal(BooleanLit, DoubleLit, NilLit, StringLit)
+  , Statement(Block, body, Class, contents, DeclareVar, expr, ExpressionStatement, FunctionStatement, IfElse, newVar, predicate, PrintStatement, ReturnStatement, term, WhileStatement)
+  , Variable(Variable, varName, varToken)
   ) where
 
 import Lox.Scanner.Token(TokenPlus)
@@ -13,12 +14,16 @@ data AST
   = AST { statements :: [Statement] }
   deriving Show
 
+data Function
+  = Function { fnDecl :: Variable, params :: [Variable], fnBody :: [Statement] }
+  deriving (Eq, Show)
+
 data Statement
   = Block { contents :: [Statement] }
-  | Class { classVar :: Variable, superNameTokenM :: Maybe Variable, methods :: [Statement] }
+  | Class { classVar :: Variable, superNameTokenM :: Maybe Variable, methods :: [Function] }
   | DeclareVar { newVar :: Variable, initial :: Expr }
   | ExpressionStatement { expr :: Expr }
-  | Function { fnDecl :: Variable, params :: [Variable], fnBody :: [Statement] }
+  | FunctionStatement { func :: Function }
   | IfElse { antecedent :: Expr, consequent :: Statement, alternative :: Maybe Statement }
   | PrintStatement { term :: TokenPlus, expr :: Expr }
   | ReturnStatement { term :: TokenPlus, exprM :: Maybe Expr }

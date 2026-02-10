@@ -13,7 +13,7 @@ import Data.Maybe(fromJust)
 
 import Lox.Scanner.Token(TokenPlus)
 
-import Lox.Parser.AST(Statement, Variable(Variable))
+import Lox.Parser.AST(Statement, Variable(Variable, varName))
 
 import Lox.Evaluator.Internal.Data(
     Environment
@@ -26,7 +26,7 @@ import Lox.Evaluator.Internal.Effect(Effect(Print))
 import Lox.Evaluator.Internal.EvalError(EvalError(CanOnlyRefSuperInsideClass, ClassNotFound, NotAClass, ObjectLacksKey, ThisClassHasNoSupers))
 
 import Lox.Evaluator.Internal.Value(
-    Class(baseEnv, Class, cName, initOutlineM, methodOutlines, superclassM)
+    Class(baseEnv, Class, cName, initFnM, methodFns, superclassM)
   , Function(argNames, env, Function, idNum, name)
   , Object(instanceID, myClass, Object)
   , Value(ClassV, function, FunctionV, Nada, NilV, ObjectV)
@@ -39,6 +39,7 @@ import qualified Data.Maybe         as Maybe
 import qualified Data.Set           as Set
 import qualified Data.Text.IO       as TIO
 
+import qualified Lox.Parser.AST                     as AST
 import qualified Lox.Evaluator.Internal.ControlFlow as CF
 
 
@@ -56,9 +57,10 @@ type ClassScopes = Map Text Scope
 instance Show Func where
   show _ = "<underlying_function>"
 
+
 arity :: Value -> Maybe Word
 arity (FunctionV _ fn) = fn |> argNames &> length &> fromIntegral &> Just
-arity (ClassV       c) = c  |> initOutlineM &> maybe 0 (snd3 &> length &> fromIntegral) |> Just
+arity (ClassV       c) = c  |> initFnM &> maybe 0 (AST.params &> length &> fromIntegral) |> Just
 arity _                = Nothing
 
 data ProgramState
@@ -180,17 +182,17 @@ cleanupScope scope program = program { variables = cleanedVars, closures = clean
     checkVar :: (Value -> a) -> Text -> VarAddress -> a
     checkVar conversion errorMsg = (flip Map.lookup program.variables) &> maybe (error errorMsg) conversion
 
-defineClass :: Text -> Maybe Class -> [(Text, [Text], [Statement])] -> Program Class
-defineClass className superClassM methodTriples =
+defineClass :: Text -> Maybe Class -> [AST.Function] -> Program Class
+defineClass className superClassM functions =
   do
     program       <- get
     let basestEnv  = (currentScope program).environ
     let baseEnv    = Map.insert className (predictVarAddr className program) basestEnv
-    let clz        = Class className superClassM (listToMaybe init) triples baseEnv
+    let clz        = Class className superClassM (listToMaybe init) methods baseEnv
     modify $ declareVar className $ ClassV clz
     return clz
   where
-    (init, triples) = List.partition (fst3 &> (== initName)) methodTriples
+    (init, methods) = List.partition (AST.fnDecl &> varName &> (== initName)) functions
 
 defineFunction :: Text -> [Text] -> [Statement] -> Program Function
 defineFunction name argNames body =
@@ -271,22 +273,22 @@ indexSuper superTP (Variable propName _) =
     helper (ClassV s) = (lookupInSupers $ toSuperChain s) <&> (<&> CF.Normal)
     helper          _ = error "Not possible to resolve `super` to something other than a class or nil"
 
-    lookupInSupers supers = maybe (return $ Failure $ NE.singleton $ ObjectLacksKey superTP propName) returnSuperMethod tripleM
+    lookupInSupers supers = maybe (return $ Failure $ NE.singleton $ ObjectLacksKey superTP propName) returnSuperMethod fnM
       where
-        tripleM =
+        fnM =
           if propName /= initName then
-            find (fst3 &> (== propName)) $ supers >>= methodOutlines
+            find (AST.fnDecl &> varName &> (== propName)) $ supers >>= methodFns
           else
-            (listToMaybe supers) >>= initOutlineM
+            (listToMaybe supers) >>= initFnM
 
-    returnSuperMethod (name, args, statements) =
+    returnSuperMethod (AST.Function name args statements) =
       do
         methodM <- get <&> (getVar trueName)
         fnV     <- maybe (buildSuperMethod <&> (FunctionV False)) return methodM
         return $ Success fnV
       where
-        trueName         = "__super_" <> name
-        buildSuperMethod = defineFunction trueName args statements
+        trueName         = "__super_" <> name.varName
+        buildSuperMethod = defineFunction trueName (map varName args) statements
 
 initObject :: TokenPlus -> Evaluator -> Text -> [Value] -> Evaluating
 initObject tp evaluator className args =
@@ -326,13 +328,16 @@ initObject tp evaluator className args =
 
         declareVarM superName $ maybe Nada ClassV clazz.superclassM
 
-        method2s <- mapM (\(n, as, b) -> (buildFunction n as b) <&> (n, ))               clazz.methodOutlines
-        init2M   <- mapM (\(n, as, b) -> (buildFunction n as b) <&> (n, )) $ maybeToList clazz.initOutlineM
+        method2s <- mapM buildFn               clazz.methodFns
+        init2M   <- mapM buildFn $ maybeToList clazz.initFnM
 
         modify $ \p -> p { scopes = (((NE.head p.scopes) { environ = Map.empty }) :| (NE.tail p.scopes)) }
         forM_ (method2s <> init2M) (\(name, fn) -> declareVarM name $ FunctionV False fn)
 
         modify $ popInstanceScope clazz.cName instID
+
+    buildFn :: AST.Function -> Program (Text, Function)
+    buildFn (AST.Function decl args body) = (buildFunction decl.varName (map varName args) body) <&> (decl.varName, )
 
     removeInits classNames instID =
       do

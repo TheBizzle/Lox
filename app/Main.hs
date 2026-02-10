@@ -10,7 +10,7 @@ import System.Exit(exitWith, ExitCode(ExitFailure))
 import System.IO(stderr)
 
 import Lox.Evaluator.EvalError(
-    EvalError(ArityMismatch, CanOnlyGetObj, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassesCanOnlyContainFns, ClassNotFound, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperCannotBeSelf, SuperMustBeAClass, ThisClassHasNoSupers, TopLevelReturn, UnknownVariable)
+    EvalError(ArityMismatch, CanOnlyGetObj, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassNotFound, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperCannotBeSelf, SuperMustBeAClass, ThisClassHasNoSupers, TopLevelReturn, UnknownVariable)
   )
 
 import Lox.Evaluator.Program(definePrimitiveFunc, Program, ProgramState)
@@ -127,7 +127,6 @@ evalErrorAsText = errorText
     errorText (OperandMustBeNumber tp)        = suffix tp $ "Operand must be a number."
     errorText (OperandsMustBeNumbers tp)      = suffix tp $ "Operands must be numbers."
     errorText (OperandsMustBeNumsOrStrs tp)   = suffix tp $ "Operands must be two numbers or two strings."
-    errorText (ClassesCanOnlyContainFns tp)   = suffix tp $ "Class bodies may only contain function definitions"
     errorText (UnknownVariable   tp name)     = suffix tp $ "Undefined variable '" <> name <> "'."
     errorText (SuperCannotBeSelf tp name)     = suffix tp $ "`" <> name <> "` can't inherit from itself"
     errorText (SuperMustBeAClass tp    _)     = suffix tp $ "Superclass must be a class."

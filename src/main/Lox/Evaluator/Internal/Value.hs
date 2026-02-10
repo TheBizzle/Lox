@@ -1,4 +1,4 @@
-module Lox.Evaluator.Internal.Value(Class(baseEnv, Class, cName, initOutlineM, methodOutlines, superclassM), Function(argNames, env, Function, idNum, name, owner), Object(instanceID, myClass, Object), Value(BooleanV, ClassV, clazz, function, FunctionV, isNative, Nada, NilV, NumberV, object, ObjectV, StringV)) where
+module Lox.Evaluator.Internal.Value(Class(baseEnv, Class, cName, initFnM, methodFns, superclassM), Function(argNames, env, Function, idNum, name, owner), Object(instanceID, myClass, Object), Value(BooleanV, ClassV, clazz, function, FunctionV, isNative, Nada, NilV, NumberV, object, ObjectV, StringV)) where
 
 import Control.DeepSeq(NFData, rnf)
 
@@ -6,13 +6,12 @@ import Text.Printf(printf)
 
 import Lox.Evaluator.Internal.Data(Environment, ScopeAddress)
 
-import Lox.Parser.AST(Statement)
-
-import qualified Data.Text as Text
+import qualified Lox.Parser.AST as AST
+import qualified Data.Text      as Text
 
 
 data Class
-  = Class { cName :: Text, superclassM :: Maybe Class, initOutlineM :: Maybe (Text, [Text], [Statement]), methodOutlines :: [(Text, [Text], [Statement])], baseEnv :: Environment }
+  = Class { cName :: Text, superclassM :: Maybe Class, initFnM :: Maybe AST.Function, methodFns :: [AST.Function], baseEnv :: Environment }
   deriving (Eq, Show)
 
 data Function

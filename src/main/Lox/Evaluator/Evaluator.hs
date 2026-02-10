@@ -6,8 +6,9 @@ import Lox.Parser.AST(
     AST(statements)
   , Expr(Assign, Binary, Call, Get, Grouping, LiteralExpr, Logical, Set, Super, This, Unary, VarRef)
   , exprToToken
+  , Function(Function)
   , Literal(BooleanLit, DoubleLit, NilLit, StringLit)
-  , Statement(Block, Class, DeclareVar, ExpressionStatement, Function, IfElse, PrintStatement, ReturnStatement, WhileStatement)
+  , Statement(Block, Class, DeclareVar, ExpressionStatement, FunctionStatement, IfElse, PrintStatement, ReturnStatement, WhileStatement)
   , Variable(Variable, varName)
   )
 
@@ -20,7 +21,7 @@ import Lox.Evaluator.Internal.Effect(Effect(Print))
 import Lox.Evaluator.Internal.Value(Value(BooleanV, ClassV, FunctionV, Nada, NilV, NumberV, ObjectV, StringV))
 
 import Lox.Evaluator.Internal.EvalError(
-    EvalError(ArityMismatch, CanOnlyGetObj, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassesCanOnlyContainFns, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, NotCallable, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
+    EvalError(ArityMismatch, CanOnlyGetObj, CanOnlyRefThisInsideClass, CanOnlySetObj, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, NotCallable, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
   )
 
 import Lox.Evaluator.Internal.Program(
@@ -58,7 +59,7 @@ evalStatement (IfElse              ant        con   alt ) = evalIfElse ant con a
 evalStatement (PrintStatement      _                expr) = evalPrint expr
 evalStatement (ReturnStatement     tp         expM      ) = evalReturn tp expM
 evalStatement (WhileStatement      pred       stmt      ) = evalWhile pred stmt
-evalStatement (Function            var        ps    body) = evalFunction var ps body
+evalStatement (FunctionStatement   func                 ) = evalFunction func
 
 evalExpr :: Expr -> Evaluating
 evalExpr (Assign      var value)           = evalAssign var value
@@ -134,17 +135,12 @@ evalCall callableExpr argExprs tp =
 
     numGotten args = args |> length &> fromIntegral
 
-evalClass :: Variable -> Maybe Variable -> [Statement] -> Evaluating
-evalClass (Variable className classTP) superNameTokenM methods =
+evalClass :: Variable -> Maybe Variable -> [Function] -> Evaluating
+evalClass (Variable className _) superNameTokenM methods =
   do
-    superClassMV      <- processSuperVar superNameTokenM
-    tripleVs          <- forM methods asTriple
-    let triplesSuperV  = (,) <$> (sequenceA tripleVs) <*> superClassMV
-    triplesSuperV `failOrM` defClass
+    superClassMV <- processSuperVar superNameTokenM
+    superClassMV `failOrM` (defClass methods)
   where
-    asTriple (Function var ps body) = return $ Success (var.varName, map varName ps, body)
-    asTriple _                     = lose $ ClassesCanOnlyContainFns classTP
-
     processSuperVar Nothing                                       = return $ Success Nothing
     processSuperVar (Just (Variable name tp)) | name == className = lose $ SuperCannotBeSelf tp name
     processSuperVar (Just (Variable name tp))                     =
@@ -155,13 +151,13 @@ evalClass (Variable className classTP) superNameTokenM methods =
         processSuperValue (ClassV clazz) = return $ Success $ Just clazz
         processSuperValue              _ = lose $ SuperMustBeAClass tp name
 
-    defClass (triples, superClassM) =
+    defClass methods superClassM =
       do
-        void $ defineClass className superClassM triples
+        void $ defineClass className superClassM methods
         nothing
 
-evalFunction :: Variable -> [Variable] -> [Statement] -> Evaluating
-evalFunction var params body =
+evalFunction :: Function -> Evaluating
+evalFunction (Function var params body) =
   do
     void $ defineFunction var.varName pNames body
     nothing

@@ -5,8 +5,9 @@ import Lox.Scanner.Token(Token(Class, Comma, Else, EOF, Equal, For, Fun, If, Lef
 import Lox.Parser.Internal.AST(
     AST(AST)
   , Expr(LiteralExpr)
+  , Function(Function)
   , Literal(BooleanLit, NilLit)
-  , Statement(Block, contents, DeclareVar, ExpressionStatement, Function, IfElse, PrintStatement, ReturnStatement, WhileStatement)
+  , Statement(Block, contents, DeclareVar, ExpressionStatement, FunctionStatement, IfElse, PrintStatement, ReturnStatement, WhileStatement)
   , Variable
   )
 
@@ -29,13 +30,13 @@ classDeclaration =
     ((throwaway Class) *> variable) <*> (optional $ (throwaway Less) *> variable) <*>
     ((throwaway LeftBrace) *> (many methodDeclaration) <* (throwaway RightBrace))
   where
-    methodDeclaration = (uncurry3 Function) <$> function
+    methodDeclaration = function
 
 fnDeclaration :: Parser Statement
-fnDeclaration = (uncurry3 Function) <$> ((throwaway Fun) *> function)
+fnDeclaration = FunctionStatement <$> ((throwaway Fun) *> function)
 
-function :: Parser (Variable, [Variable], [Statement])
-function = (,,) <$> fnName <*> ((throwaway LeftParen) *> fnParams <* (throwaway RightParen)) <*> fnBlock
+function :: Parser Function
+function = Function <$> fnName <*> ((throwaway LeftParen) *> fnParams <* (throwaway RightParen)) <*> fnBlock
   where
     fnName  = variable
     fnBlock = contents <$> block

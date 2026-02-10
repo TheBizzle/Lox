@@ -1,10 +1,9 @@
 module Lox.Verify.Internal.Verifier(verify) where
 
-import Control.Monad.State(gets, modify)
-
 import Lox.Parser.AST(
     AST(statements)
-  , Statement(Block, Class, DeclareVar, ExpressionStatement, Function, IfElse, PrintStatement, ReturnStatement, WhileStatement)
+  , Function(Function)
+  , Statement(Block, Class, DeclareVar, ExpressionStatement, FunctionStatement, IfElse, PrintStatement, ReturnStatement, WhileStatement)
   , Variable(varName, varToken)
   )
 
@@ -31,14 +30,14 @@ findErrorInStmt (Block               _       ) = return Nothing
 findErrorInStmt (Class               _  _   _) = return Nothing
 findErrorInStmt (DeclareVar          _  _    ) = return Nothing
 findErrorInStmt (ExpressionStatement _       ) = return Nothing
-findErrorInStmt (Function            _ ps bod) = findErrorInFn ps bod
+findErrorInStmt (FunctionStatement   fn      ) = findErrorInFn fn
 findErrorInStmt (IfElse              _  _   _) = return Nothing
 findErrorInStmt (PrintStatement      _  _    ) = return Nothing
 findErrorInStmt (ReturnStatement     _  _    ) = return Nothing
 findErrorInStmt (WhileStatement      _  _    ) = return Nothing
 
-findErrorInFn :: [Variable] -> [Statement] -> FnVerification
-findErrorInFn vs stmts =
+findErrorInFn :: Function -> FnVerification
+findErrorInFn (Function _ vs stmts) =
   do
     let (_, result) = foldr func (Set.empty, Nothing) $ List.reverse vs
     if isJust result then
