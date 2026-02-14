@@ -6,7 +6,6 @@
 
 /.ghci
 /.projections.json
-/stack.yaml.lock
 
 /.stack-work/
 /mothership/
