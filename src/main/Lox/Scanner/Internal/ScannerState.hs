@@ -3,10 +3,9 @@ module Lox.Scanner.Internal.ScannerState(addError, addToken, checkForEnd, peek, 
 import Control.Monad.State(get, modify, put)
 
 import Lox.Scanner.Internal.ScannerError(ScannerError(ScannerError), ScannerErrorType)
-import Lox.Scanner.Internal.Token(Token, TokenPlus(token, TokenPlus))
+import Lox.Scanner.Internal.Token(SourceLoc(SourceLoc), Token, TokenPlus(loc, token, TokenPlus))
 
-import qualified Lox.Scanner.Internal.Token as Token
-import qualified Data.Text.Word             as TextW
+import qualified Data.Text.Word as TextW
 
 
 data ScannerState
@@ -25,7 +24,7 @@ addToken :: Token -> State ScannerState ()
 addToken token =
   do
     state <- get
-    let tplus = TokenPlus { token = token, Token.lineNumber = state.lineNumber }
+    let tplus = TokenPlus { token = token, loc = SourceLoc state.lineNumber }
     put $ state { tokens = state.tokens <> [tplus] }
 
 addError :: ScannerErrorType -> State ScannerState ()

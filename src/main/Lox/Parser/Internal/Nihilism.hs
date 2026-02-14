@@ -2,7 +2,7 @@ module Lox.Parser.Internal.Nihilism(errorParser) where
 
 import Lox.Scanner.Token(
     Token(And, Bang, BangEqual, Else, EOF, Equal, EqualEqual, For, Greater, GreaterEqual, If, LeftBrace, LeftParen, Less, LessEqual, Minus, Or, Plus, Print, Return, RightBrace, RightParen, Semicolon, Slash, Star, Var, While)
-  , TokenPlus(lineNumber, token, TokenPlus)
+  , TokenPlus(loc, token, TokenPlus)
   )
 
 import Lox.Parser.Internal.AST(exprToToken)
@@ -100,27 +100,21 @@ whine :: ParserErrorType -> Parser a
 whine = whineWithPrio VeryHigh
 
 whineParsed :: Parser a -> (a -> TokenPlus) -> ParserErrorType -> Parser b
-whineParsed parser toToken typ = parser >>= helper
-  where
-    helper expr = parserFrom $ const $ errorWith $ ParserError typ VeryHigh tplus.lineNumber tplus.token
-      where
-        tplus = toToken expr
+whineParsed parser toToken typ = parser >>= (toToken &> ParserError typ VeryHigh &> errorWith &> const &> parserFrom)
 
 whineIf :: Token -> ParserErrorType -> Parser a
 whineIf token typ = parserFrom helper
   where
-    helper tp@(TokenPlus t _) = if token == t then
-                                  errorWith $ ParserError typ VeryHigh tp.lineNumber tp.token
-                                else
-                                  errorWith $ ParserError Backtrack Unimportant tp.lineNumber tp.token
+    helper tp@(TokenPlus t _)
+      | token == t = errorWith $ ParserError typ       VeryHigh    tp
+      | otherwise  = errorWith $ ParserError Backtrack Unimportant tp
 
 whineIfNot :: Token -> Parser a
 whineIfNot token = parserFrom helper
   where
-    helper tp@(TokenPlus t _) = if token /= t then
-                                  errorWith $ ParserError (Missing token) VeryHigh tp.lineNumber tp.token
-                                else
-                                  errorWith $ ParserError Backtrack Unimportant tp.lineNumber tp.token
+    helper tp@(TokenPlus t _)
+      | token /= t = errorWith $ ParserError (Missing token) VeryHigh    tp
+      | otherwise  = errorWith $ ParserError Backtrack       Unimportant tp
 
 whineWithPrio :: ErrorPriority -> ParserErrorType -> Parser a
-whineWithPrio prio typ = parserFrom $ \t -> errorWith $ ParserError typ prio t.lineNumber t.token
+whineWithPrio prio typ = parserFrom $ \t -> errorWith $ ParserError typ prio $ TokenPlus t.token t.loc

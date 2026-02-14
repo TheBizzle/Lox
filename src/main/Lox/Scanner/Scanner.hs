@@ -2,7 +2,11 @@ module Lox.Scanner.Scanner(scan) where
 
 import Control.Monad.State(get, modify)
 
-import Lox.Scanner.Token(Token(Bang, BangEqual, Comma, Dot, Equal, EqualEqual, EOF, Greater, GreaterEqual, LeftBrace, LeftParen, Less, LessEqual, Minus, Plus, RightBrace, RightParen, Semicolon, Slash, Star), TokenPlus(TokenPlus))
+import Lox.Scanner.Token(
+    SourceLoc(SourceLoc)
+  , Token(Bang, BangEqual, Comma, Dot, Equal, EqualEqual, EOF, Greater, GreaterEqual, LeftBrace, LeftParen, Less, LessEqual, Minus, Plus, RightBrace, RightParen, Semicolon, Slash, Star)
+  , TokenPlus(TokenPlus)
+  )
 
 import Lox.Scanner.Internal.Classify(isAlphabetic, isDigit)
 import Lox.Scanner.Internal.Identifier(slurpIdentifier)
@@ -28,7 +32,7 @@ scan_ =
       scanToken
       scan_
     else do
-      modify $ \s -> s { tokens = s.tokens <> [TokenPlus EOF s.lineNumber] }
+      modify $ \s -> s { tokens = s.tokens <> [TokenPlus EOF $ SourceLoc s.lineNumber] }
       state <- get
       let errorsMaybe = state.errors |> List.reverse &> nonEmpty
       return $ maybe (Success state.tokens) Failure errorsMaybe

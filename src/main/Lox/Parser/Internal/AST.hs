@@ -4,11 +4,11 @@ module Lox.Parser.Internal.AST(
   , exprToToken
   , Function(fnBody, fnDecl, Function, params)
   , Literal(BooleanLit, DoubleLit, NilLit, StringLit)
-  , Statement(Block, body, Class, contents, DeclareVar, expr, ExpressionStatement, FunctionStatement, IfElse, newVar, predicate, PrintStatement, ReturnStatement, term, WhileStatement)
+  , Statement(Block, body, Class, contents, DeclareVar, expr, ExpressionStatement, FunctionStatement, IfElse, loc, newVar, predicate, PrintStatement, ReturnStatement, WhileStatement)
   , Variable(Variable, varName, varToken)
   ) where
 
-import Lox.Scanner.Token(TokenPlus)
+import Lox.Scanner.Token(SourceLoc, TokenPlus)
 
 data AST
   = AST { statements :: [Statement] }
@@ -25,8 +25,8 @@ data Statement
   | ExpressionStatement { expr :: Expr }
   | FunctionStatement { func :: Function }
   | IfElse { antecedent :: Expr, consequent :: Statement, alternative :: Maybe Statement }
-  | PrintStatement { term :: TokenPlus, expr :: Expr }
-  | ReturnStatement { term :: TokenPlus, exprM :: Maybe Expr }
+  | PrintStatement { loc :: SourceLoc, expr :: Expr }
+  | ReturnStatement { loc :: SourceLoc, exprM :: Maybe Expr }
   | WhileStatement { predicate :: Expr, body :: Statement }
   deriving (Eq, Show)
 

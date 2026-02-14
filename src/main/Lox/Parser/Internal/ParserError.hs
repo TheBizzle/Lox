@@ -1,10 +1,10 @@
 module Lox.Parser.Internal.ParserError(
     ErrorPriority(Extreme, High, Low, Medium, Unimportant, VeryHigh)
   , ParserErrorType(Backtrack, ExpectedIdentifier, InvalidExpression, Missing, ReservedName, token, TooMuchArguing)
-  , ParserError(lineNumber, offender, ParserError, prio, typ)
+  , ParserError(offender, ParserError, prio, typ)
   ) where
 
-import Lox.Scanner.Token(Token)
+import Lox.Scanner.Token(Token, TokenPlus)
 
 
 data ErrorPriority
@@ -18,7 +18,7 @@ data ErrorPriority
 
 data ParserErrorType
   = Backtrack
-  | ReservedName { token :: Token }
+  | ReservedName
   | ExpectedIdentifier
   | InvalidExpression
   | Missing { token :: Token }
@@ -26,4 +26,4 @@ data ParserErrorType
   deriving Eq
 
 data ParserError =
-  ParserError { typ :: ParserErrorType, prio :: ErrorPriority, lineNumber :: Word, offender :: Token }
+  ParserError { typ :: ParserErrorType, prio :: ErrorPriority, offender :: TokenPlus }

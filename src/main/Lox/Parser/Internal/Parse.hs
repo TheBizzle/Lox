@@ -1,12 +1,13 @@
 module Lox.Parser.Internal.Parse(
-    (=#>), backtrack, convert, debug, errorWith, keywords, notFollowedBy, one, oneOf, Parsed, Parser(Parser, run), parserFrom, throwaway, variable, whineAbout, win
+    (=#>), backtrack, convert, debug, errorWith, keywords, locOf, notFollowedBy, one, oneOf, Parsed, Parser(Parser, run), parserFrom, throwaway, variable, whineAbout, win
   ) where
 
 import Control.Applicative(Alternative(empty))
 
 import Lox.Scanner.Token(
-    Token(And, Class, Else, EOF, For, Fun, Identifier, If, Print, Return, Super, This, Var, While),
-    TokenPlus(lineNumber, token, TokenPlus)
+    SourceLoc(SourceLoc)
+  , Token(And, Class, Else, EOF, For, Fun, Identifier, If, Print, Return, Super, This, Var, While)
+  , TokenPlus(loc, token, TokenPlus)
   )
 
 import Lox.Parser.Internal.AST(Variable(Variable))
@@ -32,7 +33,7 @@ variable = parserFrom helper
       if not $ isReserved t then
         backtrack [tp]
       else
-        errorWith $ ParserError (ReservedName t) VeryHigh tp.lineNumber t
+        errorWith $ ParserError ReservedName VeryHigh tp
 
 throwaway :: Token -> Parser ()
 throwaway token = convert $ token =#> (const ())
@@ -50,13 +51,16 @@ parserFrom f = Parser $ parseOneToken f
     parseOneToken f (h:t) = map (, t) $ f h
 
 whineAbout :: ParserErrorType -> Parser a
-whineAbout typ = parserFrom $ \t -> errorWith $ ParserError typ Unimportant t.lineNumber t.token
+whineAbout typ = parserFrom $ \t -> errorWith $ ParserError typ Unimportant t
 
 oneOf :: [Token] -> Parser TokenPlus
 oneOf = (map one) &> foldr (<|>) aempty
 
 one :: Token -> Parser TokenPlus
 one token = parserFrom $ \tp -> if (tp.token == token) then win tp else backtrack [tp]
+
+locOf :: Token -> Parser SourceLoc
+locOf token = map loc $ one token
 
 notFollowedBy :: Parser a -> Parser ()
 notFollowedBy (Parser p) = Parser $ \tps -> runner tps $ p tps
@@ -71,9 +75,9 @@ errorWith :: ParserError -> Parsed a
 errorWith = Left
 
 backtrack :: [TokenPlus] -> Parsed a
-backtrack = listToMaybe &> (maybe dfault id) &> (lineNumber &&& token) &> (uncurry mkError) &> errorWith
+backtrack = listToMaybe &> (maybe dfault id) &> mkError &> errorWith
   where
-    dfault  = TokenPlus EOF 0
+    dfault  = TokenPlus EOF $ SourceLoc 0
     mkError = ParserError Backtrack Unimportant
 
 isReserved :: Token -> Bool

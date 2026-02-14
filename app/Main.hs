@@ -19,7 +19,7 @@ import Lox.Evaluator.Value(Value(Nada, NumberV))
 import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Succeeded, VerifierFailure))
 
 import Lox.Parser.ParserError(
-    ParserError(lineNumber, offender, typ),
+    ParserError(offender, typ),
     ParserErrorType(Backtrack, ExpectedIdentifier, InvalidExpression, Missing, ReservedName, TooMuchArguing)
   )
 
@@ -28,7 +28,7 @@ import Lox.Scanner.ScannerError(
     ScannerErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString)
   )
 
-import Lox.Scanner.Token(Token(EOF, LeftBrace, LeftParen), TokenPlus(lineNumber, token))
+import Lox.Scanner.Token(SourceLoc(lineNumber), Token(EOF, LeftBrace, LeftParen), TokenPlus(loc, token))
 
 import Lox.Verify.VerifierError(VerifierError(offender, typ), VerifierErrorType(DuplicateVar))
 
@@ -112,7 +112,7 @@ anyAsText _ = error "Unimplemented error handler"
 evalErrorAsText :: EvalError -> Text
 evalErrorAsText = errorText
   where
-    suffix token s = s <> "\n[line " <> (showText token.lineNumber) <> "]"
+    suffix token s = s <> "\n[line " <> (showText token.loc.lineNumber) <> "]"
 
     errorText (ArityMismatch    tp wd gt)     = suffix tp $ "Expected " <> (showText wd) <> " arguments but got " <> (showText gt) <> "."
     errorText (CanOnlyGetObj tp)              = suffix tp $ "Only instances have properties."
@@ -136,11 +136,11 @@ evalErrorAsText = errorText
 parserErrorAsText :: ParserError -> Text
 parserErrorAsText error = line
   where
-    line = "[" <> (showText error.lineNumber) <> "] Error at " <> (desc error.offender) <> (errorText error.typ)
+    line = "[" <> (showText error.offender.loc.lineNumber) <> "] Error at " <> (desc error.offender.token) <> (errorText error.typ)
     desc EOF = "end: "
     desc t   = "'" <> (showText t) <> "': "
     errorText Backtrack           = "Expected something here (this shouldn't be able to happen)"
-    errorText (ReservedName _)    = "Expect variable name."
+    errorText ReservedName        = "Expect variable name."
     errorText TooMuchArguing      = "Functions are limited to 254 arguments."
     errorText ExpectedIdentifier  = "Expected an identifier"
     errorText InvalidExpression   = "Expect expression"
@@ -159,7 +159,7 @@ scannerErrorAsText error = line
 verifierErrorAsText :: VerifierError -> Text
 verifierErrorAsText error = line
   where
-    line = "[line " <> (showText error.offender.lineNumber) <> "] Error at " <> (desc error.offender.token) <> (errorText error.typ)
+    line = "[line " <> (showText error.offender.loc.lineNumber) <> "] Error at " <> (desc error.offender.token) <> (errorText error.typ)
     desc EOF = "end: "
     desc t   = "'" <> (showText t) <> "': "
     errorText DuplicateVar = "Already a variable with this name in this scope."

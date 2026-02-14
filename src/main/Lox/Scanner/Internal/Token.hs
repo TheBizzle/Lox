@@ -1,14 +1,18 @@
-module Lox.Scanner.Internal.Token(Token(..), TokenPlus(lineNumber, token, TokenPlus)) where
+module Lox.Scanner.Internal.Token(SourceLoc(lineNumber, SourceLoc), Token(..), TokenPlus(loc, token, TokenPlus)) where
 
 import qualified Data.Text as Text
 
 
+data SourceLoc
+  = SourceLoc { lineNumber :: Word }
+  deriving (Eq, Show)
+
 data TokenPlus =
-  TokenPlus { token :: Token, lineNumber :: Word }
+  TokenPlus { token :: Token, loc :: SourceLoc }
   deriving Eq
 
 instance Show TokenPlus where
-  show (TokenPlus t ln) = (show t) <> "_L" <> (show ln)
+  show (TokenPlus t (SourceLoc ln)) = (show t) <> "_L" <> (show ln)
 
 data Token
   = And

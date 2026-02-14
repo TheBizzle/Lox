@@ -12,7 +12,7 @@ import Lox.Parser.Internal.AST(
   )
 
 import Lox.Parser.Internal.ExpressionParser(expression)
-import Lox.Parser.Internal.Parse(one, Parser, throwaway, variable, whineAbout)
+import Lox.Parser.Internal.Parse(locOf, one, Parser, throwaway, variable, whineAbout)
 import Lox.Parser.Internal.ParserError(ParserErrorType(TooMuchArguing))
 
 import qualified Lox.Parser.Internal.AST as AST
@@ -64,10 +64,10 @@ exprStatement :: Parser Statement
 exprStatement = ExpressionStatement <$> expression <* (throwaway Semicolon)
 
 printStatement :: Parser Statement
-printStatement = PrintStatement <$> (one Print) <*> (expression <* (throwaway Semicolon))
+printStatement = PrintStatement <$> (locOf Print) <*> (expression <* (throwaway Semicolon))
 
 returnStatement :: Parser Statement
-returnStatement = ReturnStatement <$> (one Return) <*> ((optional expression) <* (throwaway Semicolon))
+returnStatement = ReturnStatement <$> (locOf Return) <*> ((optional expression) <* (throwaway Semicolon))
 
 forStatement :: Parser Statement
 forStatement = buildLoop <$>

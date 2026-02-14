@@ -13,8 +13,9 @@ import Lox.Parser.AST(
   )
 
 import Lox.Scanner.Token(
-    TokenPlus(token, TokenPlus)
-  , Token(And, Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Or, Plus, Slash, Star)
+    SourceLoc
+  , TokenPlus(token, TokenPlus)
+  , Token(And, Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Or, Plus, Return, Slash, Star)
   )
 
 import Lox.Evaluator.Internal.Effect(Effect(Print))
@@ -57,7 +58,7 @@ evalStatement (DeclareVar          var        expr      ) = evalDeclaration var 
 evalStatement (ExpressionStatement                  expr) = evalExpr expr
 evalStatement (IfElse              ant        con   alt ) = evalIfElse ant con alt
 evalStatement (PrintStatement      _                expr) = evalPrint expr
-evalStatement (ReturnStatement     tp         expM      ) = evalReturn tp expM
+evalStatement (ReturnStatement     loc        expM      ) = evalReturn loc expM
 evalStatement (WhileStatement      pred       stmt      ) = evalWhile pred stmt
 evalStatement (FunctionStatement   func                 ) = evalFunction func
 
@@ -201,9 +202,10 @@ evalLogical left operator right =
               tp                -> error $ "Impossible logical operator: " <> (showText tp)
       )
 
-evalReturn :: TokenPlus -> Maybe Expr -> Evaluating
-evalReturn tp exprM = maybe (return $ Success $ CF.Return tp Nada) (evalExpr >=> helper) exprM
+evalReturn :: SourceLoc -> Maybe Expr -> Evaluating
+evalReturn loc exprM = maybe (return $ Success $ CF.Return tp Nada) (evalExpr >=> helper) exprM
   where
+    tp     = TokenPlus Return loc
     helper = flip failOrM $ \case
       ex@(CF.Exception _) -> return $ Success ex
       (   CF.Normal    v) -> (transferOwnership v) $> (Success $ CF.Return tp v)
