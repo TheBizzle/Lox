@@ -23,7 +23,10 @@ import Lox.Evaluator.Internal.Data(
   )
 
 import Lox.Evaluator.Internal.Effect(Effect(Print))
-import Lox.Evaluator.Internal.EvalError(EvalError(CanOnlyRefSuperInsideClass, ClassNotFound, NotAClass, ObjectLacksKey, ThisClassHasNoSupers))
+import Lox.Evaluator.Internal.EvalError(
+    EvalError(EvalError)
+  , EvalErrorType(CanOnlyRefSuperInsideClass, ClassNotFound, NotAClass, ObjectLacksKey, ThisClassHasNoSupers)
+  )
 
 import Lox.Evaluator.Internal.Value(
     Class(baseEnv, Class, cName, initFnM, methodFns, superclassM)
@@ -260,20 +263,20 @@ indexObject tp object propName =
   do
     addr <- findInObject object propName
     case addr of
-      Nothing     -> return $ Failure $ NE.singleton $ ObjectLacksKey tp propName
+      Nothing     -> return $ Failure $ NE.singleton $ EvalError (ObjectLacksKey propName) tp
       (Just addr) -> get <&> (variables &> Map.lookup addr &> Maybe.fromJust &> CF.Normal &> Success)
 
 indexSuper :: TokenPlus -> Variable -> Evaluating
 indexSuper superTP (Variable propName _) =
   do
     superM <- get <&> (getVar superName)
-    maybe (return $ Failure $ NE.singleton $ CanOnlyRefSuperInsideClass superTP) helper superM
+    maybe (return $ Failure $ NE.singleton $ EvalError CanOnlyRefSuperInsideClass superTP) helper superM
   where
-    helper NilV       = return $ Failure $ NE.singleton $ ThisClassHasNoSupers superTP
+    helper NilV       = return $ Failure $ NE.singleton $ EvalError ThisClassHasNoSupers superTP
     helper (ClassV s) = (lookupInSupers $ toSuperChain s) <&> (<&> CF.Normal)
     helper          _ = error "Not possible to resolve `super` to something other than a class or nil"
 
-    lookupInSupers supers = maybe (return $ Failure $ NE.singleton $ ObjectLacksKey superTP propName) returnSuperMethod fnM
+    lookupInSupers supers = maybe (return $ Failure $ NE.singleton $ EvalError (ObjectLacksKey propName) superTP) returnSuperMethod fnM
       where
         fnM =
           if propName /= initName then
@@ -295,9 +298,9 @@ initObject tp evaluator className args =
   do
     program <- get
     case getVar className program of
-      Nothing               -> return $ Failure $ NE.singleton $ ClassNotFound tp className
+      Nothing               -> return $ Failure $ NE.singleton $ EvalError (ClassNotFound className) tp
       (Just (ClassV clazz)) -> initialize clazz
-      (Just              x) -> return $ Failure $ NE.singleton $ NotAClass tp x
+      (Just              x) -> return $ Failure $ NE.singleton $ EvalError (NotAClass x) tp
   where
     initialize clazz =
       do

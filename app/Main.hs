@@ -10,7 +10,8 @@ import System.Exit(exitWith, ExitCode(ExitFailure))
 import System.IO(stderr)
 
 import Lox.Evaluator.EvalError(
-    EvalError(ArityMismatch, CanOnlyGetObj, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassNotFound, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperCannotBeSelf, SuperMustBeAClass, ThisClassHasNoSupers, TopLevelReturn, UnknownVariable)
+    EvalError(EvalError)
+  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassNotFound, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperCannotBeSelf, SuperMustBeAClass, ThisClassHasNoSupers, TopLevelReturn, UnknownVariable)
   )
 
 import Lox.Evaluator.Program(definePrimitiveFunc, Program, ProgramState)
@@ -110,28 +111,28 @@ anyAsText :: a -> Text
 anyAsText _ = error "Unimplemented error handler"
 
 evalErrorAsText :: EvalError -> Text
-evalErrorAsText = errorText
+evalErrorAsText (EvalError typ tp) = suffix tp $ errorText typ
   where
     suffix token s = s <> "\n[line " <> (showText token.loc.lineNumber) <> "]"
 
-    errorText (ArityMismatch    tp wd gt)     = suffix tp $ "Expected " <> (showText wd) <> " arguments but got " <> (showText gt) <> "."
-    errorText (CanOnlyGetObj tp)              = suffix tp $ "Only instances have properties."
-    errorText (CanOnlyRefSuperInsideClass tp) = suffix tp $ "Error at 'super': Can't use 'super' outside of a class."
-    errorText (CanOnlyRefThisInsideClass  tp) = suffix tp $ "Error at 'this': Can't use 'this' outside of a class."
-    errorText (CanOnlySetObj tp)              = suffix tp $ "Only instances have fields."
-    errorText (ClassNotFound    tp name)      = suffix tp $ "Did not find any value matching class name \"" <> name <> "\""
-    errorText (NotAClass        tp value)     = suffix tp $ "This value is not a class: " <> (showText value)
-    errorText (NotCallable      tp)           = suffix tp $ "Can only call functions and classes."
-    errorText (NotImplemented   tp)           = suffix tp $ "Functionality not yet implemented"
-    errorText (ObjectLacksKey   tp name)      = suffix tp $ "Undefined property \'" <> name <> "\'."
-    errorText (OperandMustBeNumber tp)        = suffix tp $ "Operand must be a number."
-    errorText (OperandsMustBeNumbers tp)      = suffix tp $ "Operands must be numbers."
-    errorText (OperandsMustBeNumsOrStrs tp)   = suffix tp $ "Operands must be two numbers or two strings."
-    errorText (UnknownVariable   tp name)     = suffix tp $ "Undefined variable '" <> name <> "'."
-    errorText (SuperCannotBeSelf tp name)     = suffix tp $ "`" <> name <> "` can't inherit from itself"
-    errorText (SuperMustBeAClass tp    _)     = suffix tp $ "Superclass must be a class."
-    errorText (TopLevelReturn tp)             = suffix tp $ "`return` is only allowed inside functions"
-    errorText (ThisClassHasNoSupers tp)       = suffix tp $ "Can't use `super` in a class with no superclass"
+    errorText (ArityMismatch wd gt)      = "Expected " <> (showText wd) <> " arguments but got " <> (showText gt) <> "."
+    errorText CanOnlyGetObj              = "Only instances have properties."
+    errorText CanOnlyRefSuperInsideClass = "Error at 'super': Can't use 'super' outside of a class."
+    errorText CanOnlyRefThisInsideClass  = "Error at 'this': Can't use 'this' outside of a class."
+    errorText CanOnlySetObj              = "Only instances have fields."
+    errorText (ClassNotFound name)       = "Did not find any value matching class name \"" <> name <> "\""
+    errorText (NotAClass value)          = "This value is not a class: " <> (showText value)
+    errorText NotCallable                = "Can only call functions and classes."
+    errorText NotImplemented             = "Functionality not yet implemented"
+    errorText (ObjectLacksKey name)      = "Undefined property \'" <> name <> "\'."
+    errorText OperandMustBeNumber        = "Operand must be a number."
+    errorText OperandsMustBeNumbers      = "Operands must be numbers."
+    errorText OperandsMustBeNumsOrStrs   = "Operands must be two numbers or two strings."
+    errorText (UnknownVariable   name)   = "Undefined variable '" <> name <> "'."
+    errorText (SuperCannotBeSelf name)   = "`" <> name <> "` can't inherit from itself"
+    errorText (SuperMustBeAClass _)      = "Superclass must be a class."
+    errorText TopLevelReturn             = "`return` is only allowed inside functions"
+    errorText ThisClassHasNoSupers       = "Can't use `super` in a class with no superclass"
 
 parserErrorAsText :: ParserError -> Text
 parserErrorAsText error = line

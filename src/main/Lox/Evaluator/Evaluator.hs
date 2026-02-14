@@ -22,7 +22,8 @@ import Lox.Evaluator.Internal.Effect(Effect(Print))
 import Lox.Evaluator.Internal.Value(Value(BooleanV, ClassV, FunctionV, Nada, NilV, NumberV, ObjectV, StringV))
 
 import Lox.Evaluator.Internal.EvalError(
-    EvalError(ArityMismatch, CanOnlyGetObj, CanOnlyRefThisInsideClass, CanOnlySetObj, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, NotCallable, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
+    EvalError(EvalError)
+  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlyRefThisInsideClass, CanOnlySetObj, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, NotCallable, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
   )
 
 import Lox.Evaluator.Internal.Program(
@@ -49,7 +50,7 @@ evaluated = (<&> (validation Failure helper))
   where
     helper (CF.Exception    ex) = Failure $ NE.singleton ex
     helper (CF.Normal    value) = Success value
-    helper (CF.Return    tp  _) = Failure $ NE.singleton $ TopLevelReturn tp
+    helper (CF.Return    tp  _) = Failure $ NE.singleton $ EvalError TopLevelReturn tp
 
 evalStatement :: Statement -> Evaluating
 evalStatement (Block               statements           ) = evalBlock statements
@@ -97,10 +98,10 @@ evalBinary left operator right =
     helper (NumberV l) Minus        (NumberV r) = num  l (- ) r
     helper (NumberV l) Plus         (NumberV r) = num  l (+ ) r
     helper (StringV l) Plus         (StringV r) = str  l (<>) r
-    helper _           Plus         _           = fail $ OperandsMustBeNumsOrStrs operator
+    helper _           Plus         _           = fail $ EvalError OperandsMustBeNumsOrStrs operator
     helper (NumberV l) Slash        (NumberV r) = num  l (/#) r
     helper (NumberV l) Star         (NumberV r) = num  l (* ) r
-    helper _           _            _           = fail $ OperandsMustBeNumbers operator
+    helper _           _            _           = fail $ EvalError OperandsMustBeNumbers operator
 
     bool = succ BooleanV
     num  = succ NumberV
@@ -126,8 +127,8 @@ evalCall callableExpr argExprs tp =
   where
     helper (callableV, args) =
       case (arity callableV, callableV) of
-        (Nothing  ,               _)                         -> lose $ NotCallable $ exprToToken callableExpr
-        (Just arty,               _) | doesntMatch arty args -> lose $ ArityMismatch (exprToToken callableExpr) arty $ numGotten args
+        (Nothing  ,               _)                         -> lose $ EvalError NotCallable $ exprToToken callableExpr
+        (Just arty,               _) | doesntMatch arty args -> lose $ EvalError (ArityMismatch arty $ numGotten args) $ exprToToken callableExpr
         (        _, FunctionV  _ fn)                         -> runFunction    evalStatement fn.idNum    args
         (        _, ClassV    clazz)                         -> initObject  tp evalStatement clazz.cName args
         x                                                    -> error $ "This isn't the callable we're looking for: " <> (showText x)
@@ -143,14 +144,14 @@ evalClass (Variable className _) superNameTokenM methods =
     superClassMV `failOrM` (defClass methods)
   where
     processSuperVar Nothing                                       = return $ Success Nothing
-    processSuperVar (Just (Variable name tp)) | name == className = lose $ SuperCannotBeSelf tp name
+    processSuperVar (Just (Variable name tp)) | name == className = lose $ EvalError (SuperCannotBeSelf name) tp
     processSuperVar (Just (Variable name tp))                     =
       do
         valM <- gets $ getVar name
-        maybe (lose $ UnknownVariable tp name) processSuperValue valM
+        maybe (lose $ EvalError (UnknownVariable name) tp) processSuperValue valM
       where
         processSuperValue (ClassV clazz) = return $ Success $ Just clazz
-        processSuperValue              _ = lose $ SuperMustBeAClass tp name
+        processSuperValue              _ = lose $ EvalError (SuperMustBeAClass name) tp
 
     defClass methods superClassM =
       do
@@ -170,7 +171,7 @@ evalGet objectExpr (Variable propName tp) =
   do
     valueV <- evalExpr objectExpr
     valueV `onSuccessEval` (
-        \v -> (asObject v $ CanOnlyGetObj tp) `failOrM` (\x -> indexObject tp x propName)
+        \v -> (asObject v $ EvalError CanOnlyGetObj tp) `failOrM` (\x -> indexObject tp x propName)
       )
 
 evalIfElse :: Expr -> Statement -> (Maybe Statement) -> Evaluating
@@ -217,11 +218,11 @@ evalSet objectExpr (Variable propName tp) valueExpr =
     objValV <- evalExpr objectExpr
     anyValV <- evalExpr valueExpr
     ((,) <$> objValV <*> anyValV) `onSuccessEval2` (
-        \(objVal, anyVal) -> (asObject objVal $ CanOnlySetObj tp) `failOrM` (\obj -> assignIntoObject obj propName anyVal)
+        \(objVal, anyVal) -> (asObject objVal $ EvalError CanOnlySetObj tp) `failOrM` (\obj -> assignIntoObject obj propName anyVal)
       )
 
 evalThis :: TokenPlus -> Evaluating
-evalThis keyword = get >>= ((getVar "this") &> maybe (lose $ CanOnlyRefThisInsideClass keyword) win)
+evalThis keyword = get >>= ((getVar "this") &> maybe (lose $ EvalError CanOnlyRefThisInsideClass keyword) win)
 
 evalUnary :: TokenPlus -> Expr -> Evaluating
 evalUnary operator rightExpr =
@@ -231,7 +232,7 @@ evalUnary operator rightExpr =
   where
     helper Bang            v = succeed $ BooleanV $ not $ asBool v
     helper Minus (NumberV d) = succeed $ NumberV $ -d
-    helper _               _ = fail $ OperandMustBeNumber operator
+    helper _               _ = fail $ EvalError OperandMustBeNumber operator
 
 evalWhile :: Expr -> Statement -> Evaluating
 evalWhile predExpr body =
@@ -277,7 +278,7 @@ lookupVar :: Variable -> Evaluating
 lookupVar (Variable varName vnTP) =
   do
     valM <- gets $ getVar varName
-    maybe (lose $ UnknownVariable vnTP varName) win valM
+    maybe (lose $ EvalError (UnknownVariable varName) vnTP) win valM
 
 setVariable :: Variable -> Value -> Evaluating
 setVariable var value =

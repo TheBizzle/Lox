@@ -1,5 +1,6 @@
 module Lox.Evaluator.Internal.EvalError(
-    EvalError(ArityMismatch, CanOnlyGetObj, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassNotFound, culprit, gotNum, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperCannotBeSelf, SuperMustBeAClass, ThisClassHasNoSupers, TopLevelReturn, UnknownVariable, varName, wantedNum)
+    EvalError(culprit, EvalError, typ)
+  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassNotFound, gotNum, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperCannotBeSelf, SuperMustBeAClass, ThisClassHasNoSupers, TopLevelReturn, UnknownVariable, varName, wantedNum)
   ) where
 
 import Lox.Scanner.Token(TokenPlus)
@@ -7,23 +8,27 @@ import Lox.Scanner.Token(TokenPlus)
 import Lox.Evaluator.Internal.Value(Value)
 
 
+data EvalErrorType
+  = ArityMismatch { wantedNum :: Word, gotNum :: Word }
+  | CanOnlyGetObj
+  | CanOnlyRefSuperInsideClass
+  | CanOnlyRefThisInsideClass
+  | CanOnlySetObj
+  | ClassNotFound { className :: Text }
+  | NotAClass { value :: Value }
+  | NotCallable
+  | NotImplemented
+  | ObjectLacksKey { keyName :: Text }
+  | OperandMustBeNumber
+  | OperandsMustBeNumbers
+  | OperandsMustBeNumsOrStrs
+  | SuperCannotBeSelf { className :: Text }
+  | SuperMustBeAClass { className :: Text }
+  | ThisClassHasNoSupers
+  | TopLevelReturn
+  | UnknownVariable { varName :: Text }
+  deriving Show
+
 data EvalError
-  = ArityMismatch { culprit :: TokenPlus, wantedNum :: Word, gotNum :: Word }
-  | CanOnlyGetObj { culprit :: TokenPlus }
-  | CanOnlyRefSuperInsideClass { culprit :: TokenPlus }
-  | CanOnlyRefThisInsideClass { culprit :: TokenPlus }
-  | CanOnlySetObj { culprit :: TokenPlus }
-  | ClassNotFound { culprit :: TokenPlus, className :: Text }
-  | NotAClass { culprit :: TokenPlus, value :: Value }
-  | NotCallable { culprit :: TokenPlus }
-  | NotImplemented { culprit :: TokenPlus }
-  | ObjectLacksKey { culprit :: TokenPlus, keyName :: Text }
-  | OperandMustBeNumber { culprit :: TokenPlus }
-  | OperandsMustBeNumbers { culprit :: TokenPlus }
-  | OperandsMustBeNumsOrStrs { culprit :: TokenPlus }
-  | SuperCannotBeSelf { culprit :: TokenPlus, className :: Text }
-  | SuperMustBeAClass { culprit :: TokenPlus, className :: Text }
-  | ThisClassHasNoSupers { culprit :: TokenPlus }
-  | TopLevelReturn { culprit :: TokenPlus }
-  | UnknownVariable { culprit :: TokenPlus, varName :: Text }
+  = EvalError { typ :: EvalErrorType, culprit :: TokenPlus }
   deriving Show
