@@ -1,5 +1,5 @@
 module Lox.Verify.Internal.VerifierError(
-    VerifierErrorType(CanOnlyRefSuperInsideClass, DuplicateVar, ThisClassHasNoSupers)
+    VerifierErrorType(CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers)
   , VerifierError(offender, VerifierError, typ)
   ) where
 
@@ -8,6 +8,7 @@ import Lox.Scanner.Token(TokenPlus)
 
 data VerifierErrorType
   = CanOnlyRefSuperInsideClass
+  | CanOnlyRefThisInsideClass
   | DuplicateVar
   | ThisClassHasNoSupers
   deriving (Eq, Show)

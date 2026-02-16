@@ -11,7 +11,7 @@ import System.IO(stderr)
 
 import Lox.Evaluator.EvalError(
     EvalError(EvalError)
-  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassNotFound, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
+  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlySetObj, ClassNotFound, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
   )
 
 import Lox.Evaluator.Program(definePrimitiveFunc, Program, ProgramState)
@@ -33,7 +33,7 @@ import Lox.Scanner.Token(SourceLoc(lineNumber), Token(EOF, LeftBrace, LeftParen)
 
 import Lox.Verify.VerifierError(
     VerifierError(offender, typ)
-  , VerifierErrorType(CanOnlyRefSuperInsideClass, DuplicateVar, ThisClassHasNoSupers)
+  , VerifierErrorType(CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers)
   )
 
 import qualified Control.Exception     as Exception
@@ -120,7 +120,6 @@ evalErrorAsText (EvalError typ tp) = suffix tp $ errorText typ
 
     errorText (ArityMismatch wd gt)      = "Expected " <> (showText wd) <> " arguments but got " <> (showText gt) <> "."
     errorText CanOnlyGetObj              = "Only instances have properties."
-    errorText CanOnlyRefThisInsideClass  = "Error at 'this': Can't use 'this' outside of a class."
     errorText CanOnlySetObj              = "Only instances have fields."
     errorText (ClassNotFound name)       = "Did not find any value matching class name \"" <> name <> "\""
     errorText (NotAClass value)          = "This value is not a class: " <> (showText value)
@@ -165,5 +164,6 @@ verifierErrorAsText error = line
     desc EOF = "end: "
     desc t   = "'" <> (showText t) <> "': "
     errorText CanOnlyRefSuperInsideClass = "Can't use 'super' outside of a class."
+    errorText CanOnlyRefThisInsideClass  = "Can't use 'this' outside of a class."
     errorText DuplicateVar               = "Already a variable with this name in this scope."
     errorText ThisClassHasNoSupers       = "Can't use 'super' in a class with no superclass."

@@ -18,7 +18,7 @@ import Lox.Parser.AST(
 
 import Lox.Verify.Internal.VerifierError(
     VerifierError(VerifierError)
-  , VerifierErrorType(CanOnlyRefSuperInsideClass, DuplicateVar, ThisClassHasNoSupers)
+  , VerifierErrorType(CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers)
   )
 
 import qualified Data.List          as List
@@ -125,9 +125,18 @@ findErrorInExpr (LiteralExpr _       _     ) = return Nothing
 findErrorInExpr (Logical     l       _    r) = findErrorInExpr l   <||> findErrorInExpr r
 findErrorInExpr (Set         obj     _  val) = findErrorInExpr obj <||> findErrorInExpr val
 findErrorInExpr (Super       kw      _     ) = findErrorInSuper kw
-findErrorInExpr (This        _             ) = return Nothing
+findErrorInExpr (This        kw            ) = findErrorInThis kw
 findErrorInExpr (Unary       _    expr     ) = findErrorInExpr expr
 findErrorInExpr (VarRef      _             ) = return Nothing
+
+findErrorInThis :: TokenPlus -> Verification
+findErrorInThis keyword =
+  do
+    isInClass <- gets isInClass
+    if isInClass then do
+      return Nothing
+    else
+      return $ Just $ VerifierError CanOnlyRefThisInsideClass keyword
 
 findErrorInSuper :: TokenPlus -> Verification
 findErrorInSuper keyword =

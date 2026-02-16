@@ -23,7 +23,7 @@ import Lox.Evaluator.Internal.Value(Value(BooleanV, ClassV, FunctionV, Nada, Nil
 
 import Lox.Evaluator.Internal.EvalError(
     EvalError(EvalError)
-  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlyRefThisInsideClass, CanOnlySetObj, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, NotCallable, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
+  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlySetObj, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, NotCallable, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
   )
 
 import Lox.Evaluator.Internal.Program(
@@ -222,7 +222,7 @@ evalSet objectExpr (Variable propName tp) valueExpr =
       )
 
 evalThis :: TokenPlus -> Evaluating
-evalThis keyword = get >>= ((getVar "this") &> maybe (lose $ EvalError CanOnlyRefThisInsideClass keyword) win)
+evalThis keyword = get >>= ((getVar "this") &> maybe (error "Can't reference `this` outside of class.  Verifier should have caught this!") win)
 
 evalUnary :: TokenPlus -> Expr -> Evaluating
 evalUnary operator rightExpr =
