@@ -25,7 +25,7 @@ import Lox.Evaluator.Internal.Data(
 import Lox.Evaluator.Internal.Effect(Effect(Print))
 import Lox.Evaluator.Internal.EvalError(
     EvalError(EvalError)
-  , EvalErrorType(CanOnlyRefSuperInsideClass, ClassNotFound, NotAClass, ObjectLacksKey)
+  , EvalErrorType(ClassNotFound, NotAClass, ObjectLacksKey)
   )
 
 import Lox.Evaluator.Internal.Value(
@@ -270,7 +270,7 @@ indexSuper :: TokenPlus -> Variable -> Evaluating
 indexSuper superTP (Variable propName _) =
   do
     superM <- get <&> (getVar superName)
-    maybe (return $ Failure $ NE.singleton $ EvalError CanOnlyRefSuperInsideClass superTP) helper superM
+    maybe (error "`super` used outside of class.  The verifier should have caught this!") helper superM
   where
     helper       Nada = error "`super` used in class without a superclass.  The verifier should have caught this!"
     helper (ClassV s) = (lookupInSupers $ toSuperChain s) <&> (<&> CF.Normal)

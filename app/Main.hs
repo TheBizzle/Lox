@@ -11,7 +11,7 @@ import System.IO(stderr)
 
 import Lox.Evaluator.EvalError(
     EvalError(EvalError)
-  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassNotFound, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
+  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassNotFound, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
   )
 
 import Lox.Evaluator.Program(definePrimitiveFunc, Program, ProgramState)
@@ -33,7 +33,7 @@ import Lox.Scanner.Token(SourceLoc(lineNumber), Token(EOF, LeftBrace, LeftParen)
 
 import Lox.Verify.VerifierError(
     VerifierError(offender, typ)
-  , VerifierErrorType(DuplicateVar, ThisClassHasNoSupers)
+  , VerifierErrorType(CanOnlyRefSuperInsideClass, DuplicateVar, ThisClassHasNoSupers)
   )
 
 import qualified Control.Exception     as Exception
@@ -120,7 +120,6 @@ evalErrorAsText (EvalError typ tp) = suffix tp $ errorText typ
 
     errorText (ArityMismatch wd gt)      = "Expected " <> (showText wd) <> " arguments but got " <> (showText gt) <> "."
     errorText CanOnlyGetObj              = "Only instances have properties."
-    errorText CanOnlyRefSuperInsideClass = "Error at 'super': Can't use 'super' outside of a class."
     errorText CanOnlyRefThisInsideClass  = "Error at 'this': Can't use 'this' outside of a class."
     errorText CanOnlySetObj              = "Only instances have fields."
     errorText (ClassNotFound name)       = "Did not find any value matching class name \"" <> name <> "\""
@@ -165,5 +164,6 @@ verifierErrorAsText error = line
     line = "[line " <> (showText error.offender.loc.lineNumber) <> "] Error at " <> (desc error.offender.token) <> (errorText error.typ)
     desc EOF = "end: "
     desc t   = "'" <> (showText t) <> "': "
-    errorText DuplicateVar         = "Already a variable with this name in this scope."
-    errorText ThisClassHasNoSupers = "Can't use 'super' in a class with no superclass."
+    errorText CanOnlyRefSuperInsideClass = "Can't use 'super' outside of a class."
+    errorText DuplicateVar               = "Already a variable with this name in this scope."
+    errorText ThisClassHasNoSupers       = "Can't use 'super' in a class with no superclass."

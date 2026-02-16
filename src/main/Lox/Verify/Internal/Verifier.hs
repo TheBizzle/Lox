@@ -18,7 +18,7 @@ import Lox.Parser.AST(
 
 import Lox.Verify.Internal.VerifierError(
     VerifierError(VerifierError)
-  , VerifierErrorType(DuplicateVar, ThisClassHasNoSupers)
+  , VerifierErrorType(CanOnlyRefSuperInsideClass, DuplicateVar, ThisClassHasNoSupers)
   )
 
 import qualified Data.List          as List
@@ -124,19 +124,23 @@ findErrorInExpr (Grouping    expr          ) = findErrorInExpr expr
 findErrorInExpr (LiteralExpr _       _     ) = return Nothing
 findErrorInExpr (Logical     l       _    r) = findErrorInExpr l   <||> findErrorInExpr r
 findErrorInExpr (Set         obj     _  val) = findErrorInExpr obj <||> findErrorInExpr val
-findErrorInExpr (Super       kw    var     ) = findErrorInSuper kw var
+findErrorInExpr (Super       kw      _     ) = findErrorInSuper kw
 findErrorInExpr (This        _             ) = return Nothing
 findErrorInExpr (Unary       _    expr     ) = findErrorInExpr expr
 findErrorInExpr (VarRef      _             ) = return Nothing
 
-findErrorInSuper :: TokenPlus -> Variable -> Verification
-findErrorInSuper keyword _ =
+findErrorInSuper :: TokenPlus -> Verification
+findErrorInSuper keyword =
   do
-    canSuper <- gets canSuper
-    if canSuper then
-      return Nothing
-    else
-      return $ Just $ VerifierError ThisClassHasNoSupers keyword
+    isInClass <- gets isInClass
+    canSuper  <- gets canSuper
+    return $
+      if not isInClass then
+        Just $ VerifierError CanOnlyRefSuperInsideClass keyword
+      else if not canSuper then
+        Just $ VerifierError ThisClassHasNoSupers keyword
+      else
+        Nothing
 
 stackFrame :: Verification -> Verification
 stackFrame fv = push *> fv <* pop
