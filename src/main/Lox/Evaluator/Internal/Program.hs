@@ -32,7 +32,7 @@ import Lox.Evaluator.Internal.Value(
     Class(baseEnv, Class, cName, initFnM, methodFns, superclassM)
   , Function(argNames, env, Function, idNum, name)
   , Object(instanceID, myClass, Object)
-  , Value(ClassV, function, FunctionV, Nada, NilV, ObjectV)
+  , Value(ClassV, function, FunctionV, Nada, ObjectV)
   )
 
 import qualified Data.List          as List
