@@ -1,6 +1,6 @@
 module Lox.Evaluator.Internal.EvalError(
     EvalError(culprit, EvalError, typ)
-  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassNotFound, gotNum, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperCannotBeSelf, SuperMustBeAClass, ThisClassHasNoSupers, TopLevelReturn, UnknownVariable, varName, wantedNum)
+  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassNotFound, gotNum, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, UnknownVariable, varName, wantedNum)
   ) where
 
 import Lox.Scanner.Token(TokenPlus)
@@ -24,7 +24,6 @@ data EvalErrorType
   | OperandsMustBeNumsOrStrs
   | SuperCannotBeSelf { className :: Text }
   | SuperMustBeAClass { className :: Text }
-  | ThisClassHasNoSupers
   | TopLevelReturn
   | UnknownVariable { varName :: Text }
   deriving Show

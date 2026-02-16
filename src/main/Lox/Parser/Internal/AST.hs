@@ -20,7 +20,7 @@ data Function
 
 data Statement
   = Block { contents :: [Statement] }
-  | Class { classVar :: Variable, superNameTokenM :: Maybe Variable, methods :: [Function] }
+  | Class { classVar :: Variable, superNameVarM :: Maybe Variable, methods :: [Function] }
   | DeclareVar { newVar :: Variable, initial :: Expr }
   | ExpressionStatement { expr :: Expr }
   | FunctionStatement { func :: Function }

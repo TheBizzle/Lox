@@ -11,7 +11,7 @@ import System.IO(stderr)
 
 import Lox.Evaluator.EvalError(
     EvalError(EvalError)
-  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassNotFound, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperCannotBeSelf, SuperMustBeAClass, ThisClassHasNoSupers, TopLevelReturn, UnknownVariable)
+  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, CanOnlySetObj, ClassNotFound, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
   )
 
 import Lox.Evaluator.Program(definePrimitiveFunc, Program, ProgramState)
@@ -31,7 +31,10 @@ import Lox.Scanner.ScannerError(
 
 import Lox.Scanner.Token(SourceLoc(lineNumber), Token(EOF, LeftBrace, LeftParen), TokenPlus(loc, token))
 
-import Lox.Verify.VerifierError(VerifierError(offender, typ), VerifierErrorType(DuplicateVar))
+import Lox.Verify.VerifierError(
+    VerifierError(offender, typ)
+  , VerifierErrorType(DuplicateVar, ThisClassHasNoSupers)
+  )
 
 import qualified Control.Exception     as Exception
 import qualified Data.Time.Clock.POSIX as Clock
@@ -132,7 +135,6 @@ evalErrorAsText (EvalError typ tp) = suffix tp $ errorText typ
     errorText (SuperCannotBeSelf name)   = "`" <> name <> "` can't inherit from itself"
     errorText (SuperMustBeAClass _)      = "Superclass must be a class."
     errorText TopLevelReturn             = "`return` is only allowed inside functions"
-    errorText ThisClassHasNoSupers       = "Can't use `super` in a class with no superclass"
 
 parserErrorAsText :: ParserError -> Text
 parserErrorAsText error = line
@@ -163,4 +165,5 @@ verifierErrorAsText error = line
     line = "[line " <> (showText error.offender.loc.lineNumber) <> "] Error at " <> (desc error.offender.token) <> (errorText error.typ)
     desc EOF = "end: "
     desc t   = "'" <> (showText t) <> "': "
-    errorText DuplicateVar = "Already a variable with this name in this scope."
+    errorText DuplicateVar         = "Already a variable with this name in this scope."
+    errorText ThisClassHasNoSupers = "Can't use 'super' in a class with no superclass."
