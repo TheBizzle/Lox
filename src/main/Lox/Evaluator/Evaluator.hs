@@ -66,7 +66,7 @@ evalStatement (FunctionStatement   func                 ) = evalFunction func
 evalExpr :: Expr -> Evaluating
 evalExpr (Assign      var value)           = evalAssign var value
 evalExpr (Binary      left operator right) = evalBinary left operator right
-evalExpr (Call        callee tp arguments) = evalCall callee arguments tp
+evalExpr (Call        callee tp arguments) = evalCall callee tp arguments
 evalExpr (Get         object var)          = evalGet object var
 evalExpr (Grouping    expression)          = evalExpr expression
 evalExpr (LiteralExpr literal _)           = win $ evalLiteral literal
@@ -118,8 +118,8 @@ evalBlock statements =
     modify popScope
     return result
 
-evalCall :: Expr -> [Expr] -> TokenPlus -> Evaluating
-evalCall callableExpr argExprs tp =
+evalCall :: Expr -> TokenPlus -> [Expr] -> Evaluating
+evalCall callableExpr tp argExprs =
   do
     callableV <- evalExpr callableExpr
     argVs     <- forM argExprs evalExpr
