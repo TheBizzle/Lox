@@ -1,6 +1,6 @@
 module Lox.Parser.Internal.AST(
     AST(AST, statements)
-  , Expr(..)
+  , Expr(arguments, Assign, Binary, Call, callee, expression, Get, Grouping, keyword, left, literal, LiteralExpr, literalToken, Logical, object, operator, paren, right, Set, Super, This, Unary, value, var, VarRef)
   , exprToToken
   , Function(fnBody, fnDecl, Function, params)
   , Literal(BooleanLit, DoubleLit, NilLit, StringLit)

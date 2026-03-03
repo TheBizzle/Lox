@@ -1,4 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-missing-import-lists #-}
 module Lox.Scanner.ScannerError(module Lox.Scanner.Internal.ScannerError) where
 
-import Lox.Scanner.Internal.ScannerError
+import Lox.Scanner.Internal.ScannerError(
+    ScannerError(lineNumber, ScannerError, typ)
+  , ScannerErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString)
+  )

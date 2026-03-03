@@ -39,11 +39,9 @@ Library
   Exposed-Modules:
     Lox.Interpreter,
     Lox.Evaluator.ControlFlow,
-    Lox.Evaluator.Effect,
     Lox.Evaluator.Evaluator,
     Lox.Evaluator.EvalError,
     Lox.Evaluator.Program,
-    Lox.Evaluator.Type,
     Lox.Evaluator.Value,
     Lox.Parser.AST,
     Lox.Parser.Parser,

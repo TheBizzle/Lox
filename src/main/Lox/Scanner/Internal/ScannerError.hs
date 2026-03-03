@@ -1,6 +1,6 @@
 module Lox.Scanner.Internal.ScannerError(
-    ScannerErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString)
-  , ScannerError(lineNumber, ScannerError, typ)
+    ScannerError(lineNumber, ScannerError, typ)
+  , ScannerErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString)
   ) where
 
 data ScannerErrorType

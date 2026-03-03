@@ -1,4 +1,9 @@
-module Lox.Evaluator.Internal.Value(Class(baseEnv, Class, cName, initFnM, methodFns, superclassM), Function(argNames, env, Function, idNum, name, owner), Object(instanceID, myClass, Object), Value(BooleanV, ClassV, clazz, function, FunctionV, isNative, Nada, NilV, NumberV, object, ObjectV, StringV)) where
+module Lox.Evaluator.Internal.Value(
+    Class(baseEnv, Class, cName, initFnM, methodFns, superclassM)
+  , Function(argNames, env, Function, idNum, name, owner)
+  , Object(instanceID, myClass, Object)
+  , Value(BooleanV, ClassV, clazz, function, FunctionV, isNative, Nada, NilV, NumberV, object, ObjectV, StringV)
+  ) where
 
 import Control.DeepSeq(NFData, rnf)
 
