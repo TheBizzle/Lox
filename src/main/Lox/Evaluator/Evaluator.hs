@@ -222,7 +222,7 @@ evalSet objectExpr (Variable propName tp) valueExpr =
       )
 
 evalThis :: TokenPlus -> Evaluating
-evalThis keyword = get >>= ((getVar "this") &> maybe (error "Can't reference `this` outside of class.  Verifier should have caught this!") win)
+evalThis _ = get >>= ((getVar "this") &> maybe (error "Can't reference `this` outside of class.  Verifier should have caught this!") win)
 
 evalUnary :: TokenPlus -> Expr -> Evaluating
 evalUnary operator rightExpr =
