@@ -157,7 +157,7 @@ stackFrame fv = push *> fv <* pop
         Nothing       -> error "Tried to pop the top-level verification stack"
 
 crawl :: (a -> Verification) -> [a] -> Verification
-crawl f = foldr (\a b -> f a <*| b) $ return succeed
+crawl f = map f &> (foldr (<*|) $ return succeed)
 
 errDupeVar :: Variable -> InternalOutput
 errDupeVar = varToken &> VerifierError DuplicateVar &> fail
