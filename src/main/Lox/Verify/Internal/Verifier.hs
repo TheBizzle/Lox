@@ -17,7 +17,7 @@ import Lox.Parser.AST(
 
 import Lox.Verify.Internal.VerifierError(
     VerifierError(VerifierError)
-  , VerifierErrorType(CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers)
+  , VerifierErrorType(CannotInheritFromSelf, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers)
   )
 
 import qualified Data.List          as List
@@ -60,7 +60,17 @@ findErrorInClass classVar superVarM methods =
     registerClass classVar
     return result
   where
-    helper = (crawl findErrorInFn)
+    helper fn = findSuperError |*> (crawl findErrorInFn fn)
+
+    findSuperError =
+      return $
+        case superVarM of
+          Nothing       -> succeed
+          Just superVar ->
+            if classVar.varName == superVar.varName then
+              fail $ VerifierError CannotInheritFromSelf classVar.varToken
+            else
+              succeed
 
     superFrame fv = push *> fv <* pop
       where

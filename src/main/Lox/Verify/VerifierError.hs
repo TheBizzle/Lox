@@ -3,5 +3,5 @@ module Lox.Verify.VerifierError(module Lox.Verify.Internal.VerifierError) where
 
 import Lox.Verify.Internal.VerifierError(
     VerifierError(offender, typ)
-  , VerifierErrorType(CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers)
+  , VerifierErrorType(CannotInheritFromSelf, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers)
   )

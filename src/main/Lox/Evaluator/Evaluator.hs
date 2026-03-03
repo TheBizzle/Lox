@@ -23,7 +23,7 @@ import Lox.Evaluator.Internal.Value(Value(BooleanV, ClassV, FunctionV, Nada, Nil
 
 import Lox.Evaluator.Internal.EvalError(
     EvalError(EvalError)
-  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlySetObj, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, NotCallable, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
+  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlySetObj, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, NotCallable, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
   )
 
 import Lox.Evaluator.Internal.Program(
@@ -144,7 +144,7 @@ evalClass (Variable className _) superNameTokenM methods =
     superClassMV `failOrM` (defClass methods)
   where
     processSuperVar Nothing                                       = return $ Success Nothing
-    processSuperVar (Just (Variable name tp)) | name == className = lose $ EvalError (SuperCannotBeSelf name) tp
+    processSuperVar (Just (Variable name  _)) | name == className = error "`super` cannot be self.  Verifier should have caught this."
     processSuperVar (Just (Variable name tp))                     =
       do
         valM <- gets $ getVar name

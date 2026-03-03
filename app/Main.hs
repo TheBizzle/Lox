@@ -11,7 +11,7 @@ import System.IO(stderr)
 
 import Lox.Evaluator.EvalError(
     EvalError(EvalError)
-  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlySetObj, ClassNotFound, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperCannotBeSelf, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
+  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlySetObj, ClassNotFound, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
   )
 
 import Lox.Evaluator.Program(definePrimitiveFunc, Program, ProgramState)
@@ -33,7 +33,7 @@ import Lox.Scanner.Token(SourceLoc(lineNumber), Token(EOF, LeftBrace, LeftParen)
 
 import Lox.Verify.VerifierError(
     VerifierError(offender, typ)
-  , VerifierErrorType(CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers)
+  , VerifierErrorType(CannotInheritFromSelf, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers)
   )
 
 import qualified Control.Exception     as Exception
@@ -130,7 +130,6 @@ evalErrorAsText (EvalError typ tp) = suffix tp $ errorText typ
     errorText OperandsMustBeNumbers      = "Operands must be numbers."
     errorText OperandsMustBeNumsOrStrs   = "Operands must be two numbers or two strings."
     errorText (UnknownVariable   name)   = "Undefined variable '" <> name <> "'."
-    errorText (SuperCannotBeSelf name)   = "`" <> name <> "` can't inherit from itself"
     errorText (SuperMustBeAClass _)      = "Superclass must be a class."
     errorText TopLevelReturn             = "`return` is only allowed inside functions"
 
@@ -163,6 +162,7 @@ verifierErrorAsText error = line
     line = "[line " <> (showText error.offender.loc.lineNumber) <> "] Error at " <> (desc error.offender.token) <> (errorText error.typ)
     desc EOF = "end: "
     desc t   = "'" <> (showText t) <> "': "
+    errorText CannotInheritFromSelf      = "A class can't inherit from itself."
     errorText CanOnlyRefSuperInsideClass = "Can't use 'super' outside of a class."
     errorText CanOnlyRefThisInsideClass  = "Can't use 'this' outside of a class."
     errorText DuplicateVar               = "Already a variable with this name in this scope."
