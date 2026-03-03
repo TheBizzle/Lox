@@ -1,4 +1,4 @@
-module Lox.Verify.Internal.VerifierError(
+module Lox.Verifier.Internal.VerifierError(
     VerifierErrorType(CannotInheritFromSelf, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers)
   , VerifierError(offender, VerifierError, typ)
   ) where

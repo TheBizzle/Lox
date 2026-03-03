@@ -31,7 +31,7 @@ import Lox.Scanner.ScannerError(
 
 import Lox.Scanner.Token(SourceLoc(lineNumber), Token(EOF, LeftBrace, LeftParen), TokenPlus(loc, token))
 
-import Lox.Verify.VerifierError(
+import Lox.Verifier.VerifierError(
     VerifierError(offender, typ)
   , VerifierErrorType(CannotInheritFromSelf, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers)
   )

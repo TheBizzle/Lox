@@ -6,8 +6,8 @@ import Lox.Scanner.ScannerError(ScannerError)
 import Lox.Parser.Parser(parse)
 import Lox.Parser.ParserError(ParserError)
 
-import Lox.Verify.Verifier(verify)
-import Lox.Verify.VerifierError(VerifierError)
+import Lox.Verifier.Verifier(verify)
+import Lox.Verifier.VerifierError(VerifierError)
 
 import Lox.Evaluator.Evaluator(eval)
 import Lox.Evaluator.EvalError(EvalError)

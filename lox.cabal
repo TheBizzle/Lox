@@ -51,8 +51,8 @@ Library
     Lox.Scanner.Scanner,
     Lox.Scanner.ScannerError,
     Lox.Scanner.Token,
-    Lox.Verify.Verifier,
-    Lox.Verify.VerifierError
+    Lox.Verifier.Verifier,
+    Lox.Verifier.VerifierError
   Other-Modules:
     Lox.Evaluator.Internal.ControlFlow,
     Lox.Evaluator.Internal.Data,
@@ -75,8 +75,8 @@ Library
     Lox.Scanner.Internal.ScannerState,
     Lox.Scanner.Internal.String,
     Lox.Scanner.Internal.Token,
-    Lox.Verify.Internal.Verifier,
-    Lox.Verify.Internal.VerifierError
+    Lox.Verifier.Internal.Verifier,
+    Lox.Verifier.Internal.VerifierError
   Build-Depends:
     containers >= 0.7   && < 0.8,
     mtl        >= 2.3.1 && < 2.4.0,

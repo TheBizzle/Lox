@@ -1,4 +1,4 @@
-module Lox.Verify.Internal.Verifier(verify) where
+module Lox.Verifier.Internal.Verifier(verify) where
 
 import Control.Monad.State(gets, modify)
 
@@ -15,7 +15,7 @@ import Lox.Parser.AST(
   , Variable(Variable, varName, varToken)
   )
 
-import Lox.Verify.Internal.VerifierError(
+import Lox.Verifier.Internal.VerifierError(
     VerifierError(VerifierError)
   , VerifierErrorType(CannotInheritFromSelf, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers)
   )
