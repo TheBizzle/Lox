@@ -1,6 +1,5 @@
 module Lox.Verify.Internal.Verifier(verify) where
 
-import Control.Applicative(asum)
 import Control.Monad.State(gets, modify)
 
 import Data.List.NonEmpty(NonEmpty((:|)))
@@ -26,16 +25,19 @@ import qualified Data.List.NonEmpty as NE
 import qualified Data.Set           as Set
 
 
-type Verification = State ASTState (Maybe VerifierError)
+type Validated t    = Validation (NonEmpty VerifierError) t
+type InternalOutput = Validated ()
+type Verification   = State ASTState InternalOutput
 
 data ASTState =
   ASTState { canSuper :: Bool, classNames :: Set Text, isInClass :: Bool, vars :: Set Text, stack :: [Set Text] }
   deriving (Eq, Show)
 
-verify :: AST -> Validation (NonEmpty VerifierError) AST
-verify ast = ast.statements |>
-               (\stmts -> evalState (findErrorInBlock stmts) (ASTState False Set.empty False Set.empty [])) &>
-               maybe (Success ast) (NE.singleton &> Failure)
+initialState :: ASTState
+initialState = ASTState False Set.empty False Set.empty []
+
+verify :: AST -> Validated AST
+verify ast = (evalState (findErrorInBlock ast.statements) initialState) *> (Success ast)
 
 findErrorInStmt :: Statement -> Verification
 findErrorInStmt (Block               stmts           ) = findErrorInBlock stmts
@@ -45,20 +47,11 @@ findErrorInStmt (ExpressionStatement expr            ) = findErrorInExpr expr
 findErrorInStmt (FunctionStatement   fn              ) = findErrorInFn fn
 findErrorInStmt (IfElse              ante   is    esm) = findErrorInIf ante is esm
 findErrorInStmt (PrintStatement      _      expr     ) = findErrorInExpr expr
-findErrorInStmt (ReturnStatement     _      exprM    ) = maybe (return Nothing) findErrorInExpr exprM
-findErrorInStmt (WhileStatement      expr   bod      ) = findErrorInExpr expr <||> findErrorInStmt bod
+findErrorInStmt (ReturnStatement     _      exprM    ) = maybe (return succeed) findErrorInExpr exprM
+findErrorInStmt (WhileStatement      expr   bod      ) = findErrorInExpr expr |*> findErrorInStmt bod
 
 findErrorInBlock :: [Statement] -> Verification
-findErrorInBlock = helper &> stackFrame
-  where
-    helper    [] = return Nothing
-    helper (h:t) =
-      do
-        result <- findErrorInStmt h
-        if (not . isJust) result then
-          helper t
-        else
-          return result
+findErrorInBlock = (crawl findErrorInStmt) &> stackFrame
 
 findErrorInClass :: Variable -> Maybe Variable -> [Function] -> Verification
 findErrorInClass classVar superVarM methods =
@@ -67,14 +60,7 @@ findErrorInClass classVar superVarM methods =
     registerClass classVar
     return result
   where
-    helper    [] = return Nothing
-    helper (h:t) =
-      do
-        result <- findErrorInFn h
-        if (not . isJust) result then
-          helper t
-        else
-          return result
+    helper = (crawl findErrorInFn)
 
     superFrame fv = push *> fv <* pop
       where
@@ -112,31 +98,31 @@ findErrorInIf antecedent is esm =
   do
     result1 <- findErrorInExpr antecedent
     result2 <- findErrorInStmt is
-    result3 <- maybe (return Nothing) findErrorInStmt esm
-    return $ result1 <|> result2 <|> result3
+    result3 <- maybe (return succeed) findErrorInStmt esm
+    return $ result1 *> result2 *> result3
 
 findErrorInExpr :: Expr -> Verification
 findErrorInExpr (Assign      _     val     ) = findErrorInExpr val
-findErrorInExpr (Binary      l       _    r) = findErrorInExpr l <||> findErrorInExpr r
-findErrorInExpr (Call        expr    _ args) = (traverse findErrorInExpr $ expr :| args) <&> asum
+findErrorInExpr (Binary      l       _    r) = findErrorInExpr l |*> findErrorInExpr r
+findErrorInExpr (Call        expr    _ args) = (traverse findErrorInExpr $ expr :| args) <&> (foldr1 (<*))
 findErrorInExpr (Get         expr    _     ) = findErrorInExpr expr
 findErrorInExpr (Grouping    expr          ) = findErrorInExpr expr
-findErrorInExpr (LiteralExpr _       _     ) = return Nothing
-findErrorInExpr (Logical     l       _    r) = findErrorInExpr l   <||> findErrorInExpr r
-findErrorInExpr (Set         obj     _  val) = findErrorInExpr obj <||> findErrorInExpr val
+findErrorInExpr (LiteralExpr _       _     ) = return succeed
+findErrorInExpr (Logical     l       _    r) = findErrorInExpr l   |*> findErrorInExpr r
+findErrorInExpr (Set         obj     _  val) = findErrorInExpr obj |*> findErrorInExpr val
 findErrorInExpr (Super       kw      _     ) = findErrorInSuper kw
 findErrorInExpr (This        kw            ) = findErrorInThis kw
 findErrorInExpr (Unary       _    expr     ) = findErrorInExpr expr
-findErrorInExpr (VarRef      _             ) = return Nothing
+findErrorInExpr (VarRef      _             ) = return succeed
 
 findErrorInThis :: TokenPlus -> Verification
 findErrorInThis keyword =
   do
     isInClass <- gets isInClass
     if isInClass then do
-      return Nothing
+      return succeed
     else
-      return $ Just $ VerifierError CanOnlyRefThisInsideClass keyword
+      return $ fail $ VerifierError CanOnlyRefThisInsideClass keyword
 
 findErrorInSuper :: TokenPlus -> Verification
 findErrorInSuper keyword =
@@ -145,11 +131,11 @@ findErrorInSuper keyword =
     canSuper  <- gets canSuper
     return $
       if not isInClass then
-        Just $ VerifierError CanOnlyRefSuperInsideClass keyword
+        fail $ VerifierError CanOnlyRefSuperInsideClass keyword
       else if not canSuper then
-        Just $ VerifierError ThisClassHasNoSupers keyword
+        fail $ VerifierError ThisClassHasNoSupers keyword
       else
-        Nothing
+        succeed
 
 stackFrame :: Verification -> Verification
 stackFrame fv = push *> fv <* pop
@@ -160,8 +146,24 @@ stackFrame fv = push *> fv <* pop
         (Just (h, t)) -> s { vars = h, stack = t }
         Nothing       -> error "Tried to pop the top-level verification stack"
 
-errDupeVar :: Variable -> Maybe VerifierError
-errDupeVar = varToken &> VerifierError DuplicateVar &> Just
+crawl :: (a -> Verification) -> [a] -> Verification
+crawl f = foldr (\a b -> f a <*| b) $ return succeed
 
-(<||>) :: (Monad m, Alternative a) => m (a x) -> m (a x) -> m (a x)
-(<||>) a b = (<|>) <$> a <*> b
+errDupeVar :: Variable -> InternalOutput
+errDupeVar = varToken &> VerifierError DuplicateVar &> fail
+
+fail :: VerifierError -> InternalOutput
+fail = NE.singleton &> Failure
+
+succeed :: InternalOutput
+succeed = Success ()
+
+(|*>) :: (Monad m, Applicative a) => m (a x) -> m (a x) -> m (a x)
+(|*>) a b =
+  do
+    va <- a
+    vb <- b
+    return $ va *> vb
+
+(<*|) :: (Monad m, Applicative a) => m (a x) -> m (a x) -> m (a x)
+(<*|) = flip (|*>)
