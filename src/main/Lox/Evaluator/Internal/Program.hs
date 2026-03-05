@@ -62,9 +62,9 @@ instance Show Func where
 
 
 arity :: Value -> Maybe Word
-arity (FunctionV _ fn) = fn |> argNames &> length &> fromIntegral &> Just
-arity (ClassV       c) = c  |> initFnM &> maybe 0 (AST.params &> length &> fromIntegral) |> Just
-arity _                = Nothing
+arity (FunctionV _ fn _) = fn |> argNames &> length &> fromIntegral &> Just
+arity (ClassV         c) = c  |> initFnM &> maybe 0 (AST.params &> length &> fromIntegral) |> Just
+arity _                  = Nothing
 
 data ProgramState
   = ProgramState { variables        :: Map VarAddress Value      -- The central registry of all variables' values
@@ -76,12 +76,14 @@ data ProgramState
                  , lastScopeAddr    :: ScopeAddress
                  , instanceScopes   :: Map Word ClassScopes      -- Maps ID nums to maps from class name to scope
                  , nextInstanceID   :: Word
+                 , nextClosureID    :: Word
                  }
   deriving Show
 
 instance NFData ProgramState where
-    rnf (ProgramState vs cs fns xfs nfn ss lsa cse ncsn) =
-      rnf vs `seq` rnf cs `seq` rnf fns `seq` rnf xfs `seq` rnf nfn `seq` rnf ss `seq` rnf lsa `seq` rnf cse `seq` rnf ncsn
+    rnf (ProgramState vs cs fns xfs nfn ss lsa cse ncsn ncid) =
+      rnf vs `seq` rnf cs `seq` rnf fns `seq` rnf xfs `seq` rnf nfn `seq` rnf ss `seq` rnf lsa `seq`
+        rnf cse `seq` rnf ncsn `seq` rnf ncid
 
 initName :: Text
 initName = "init"
@@ -104,6 +106,7 @@ empty =
     , lastScopeAddr    = defaultAddr
     , instanceScopes   = Map.empty
     , nextInstanceID   = 0
+    , nextClosureID    = 0
     }
   where
     defaultAddr = ScopeAddress 0
@@ -170,15 +173,15 @@ cleanupScope scope program = program { variables = cleanedVars, closures = clean
 
     checkIsFunction = checkVar isFunction noBueno
       where
-        isFunction (FunctionV _ _) = True
-        isFunction               _ = False
-        noBueno                    = "You can't possibly be cleaning up a variable that's already been cleaned up...."
+        isFunction (FunctionV _ _ _) = True
+        isFunction                 _ = False
+        noBueno                      = "You can't possibly be cleaning up a variable that's already been cleaned up...."
 
     checkWasTransferred = checkVar wasTransferred noBueno
       where
-        wasTransferred (FunctionV _ fn) = Map.member fn.idNum program.transferredFuncs
-        wasTransferred                _ = error "Not possible!  We already proved these are only functions!"
-        noBueno                         = "You can't possibly be checking a function that's already been cleaned up...."
+        wasTransferred (FunctionV _ fn _) = Map.member fn.idNum program.transferredFuncs
+        wasTransferred                  _ = error "Not possible!  We already proved these are only functions!"
+        noBueno                           = "You can't possibly be checking a function that's already been cleaned up...."
 
     toFnID = checkVar (function &> idNum) "You can't possibly be getting the FnID of a function that's already been cleaned up...."
 
@@ -201,7 +204,7 @@ defineFunction :: Text -> [Text] -> [Statement] -> Program Function
 defineFunction name argNames body =
   do
     fn <- buildFunction name argNames body
-    modify $ declareVar name $ FunctionV False fn
+    modify $ declareVar name $ FunctionV False fn Nothing
     return fn
 
 buildFunction :: Text -> [Text] -> [Statement] -> Program Function
@@ -232,7 +235,7 @@ definePrimitiveFunc :: Text -> [Text] -> Func -> Program ()
 definePrimitiveFunc name args func =
   do
     fn <- _defineFunction name args func
-    modify $ declareVar name $ FunctionV True fn
+    modify $ declareVar name $ FunctionV True fn Nothing
 
 _defineFunction :: Text -> [Text] -> Func -> Program Function
 _defineFunction name argNames func =
@@ -258,13 +261,24 @@ findInObject (Object clazz instID) propName =
     let addrMs  = map (Map.lookup propName) envChain
     return $ join $ find isJust addrMs
 
+-- I find it very objectionable that the 'operator/equals_method' test requires me to make
+-- functions not equal to themselves like this.  --Jason B. (3/4/26)
 indexObject :: TokenPlus -> Object -> Text -> Evaluating
 indexObject tp object propName =
   do
     addr <- findInObject object propName
     case addr of
       Nothing     -> return $ Failure $ NE.singleton $ EvalError (ObjectLacksKey propName) tp
-      (Just addr) -> get <&> (variables &> Map.lookup addr &> Maybe.fromJust &> CF.Normal &> Success)
+      (Just addr) -> do
+        var       <- get <&> (variables &> Map.lookup addr &> Maybe.fromJust)
+        properVar <-
+          case var of
+            (FunctionV isN f _) -> do
+              cid <- gets nextClosureID
+              modify $ \p -> p { nextClosureID = p.nextClosureID + 1}
+              return $ FunctionV isN f $ Just cid
+            x -> return x
+        return $ Success $ CF.Normal properVar
 
 indexSuper :: TokenPlus -> Variable -> Evaluating
 indexSuper superTP (Variable propName _) =
@@ -287,7 +301,7 @@ indexSuper superTP (Variable propName _) =
     returnSuperMethod (AST.Function name args statements) =
       do
         methodM <- get <&> (getVar trueName)
-        fnV     <- maybe (buildSuperMethod <&> (FunctionV False)) return methodM
+        fnV     <- maybe (buildSuperMethod <&> (\f -> FunctionV False f Nothing)) return methodM
         return $ Success fnV
       where
         trueName         = "__super_" <> name.varName
@@ -335,7 +349,7 @@ initObject tp evaluator className args =
         init2M   <- mapM buildFn $ maybeToList clazz.initFnM
 
         modify $ \p -> p { scopes = (((NE.head p.scopes) { environ = Map.empty }) :| (NE.tail p.scopes)) }
-        forM_ (method2s <> init2M) (\(name, fn) -> declareVarM name $ FunctionV False fn)
+        forM_ (method2s <> init2M) (\(name, fn) -> declareVarM name $ FunctionV False fn Nothing)
 
         modify $ popInstanceScope clazz.cName instID
 
@@ -359,8 +373,8 @@ initObject tp evaluator className args =
                                , variables      = Map.delete fa  p.variables
                                }
       where
-        getFID (FunctionV _ fn) = fn.idNum
-        getFID                _ = error "Function is not a function!"
+        getFID (FunctionV _ fn _) = fn.idNum
+        getFID                  _ = error "Function is not a function!"
 
 runFunction :: Evaluator -> FnID -> [Value] -> Evaluating
 runFunction evaluator idNum args =
@@ -375,8 +389,8 @@ runEffect :: Effect -> Evaluated
 runEffect (Print x) = (liftIO $ TIO.putStrLn x) $> (Success Nada)
 
 transferOwnership :: Value -> Program ()
-transferOwnership (FunctionV _ fn) = _transferOwnership fn.name fn.idNum
-transferOwnership                _ = return ()
+transferOwnership (FunctionV _ fn _) = _transferOwnership fn.name fn.idNum
+transferOwnership                  _ = return ()
 
 _transferOwnership :: Text -> FnID -> Program ()
 _transferOwnership fnName idNum = modify $ \program -> program { transferredFuncs = newXferred program }

@@ -2,7 +2,7 @@ module Lox.Evaluator.Internal.Value(
     Class(baseEnv, Class, cName, initFnM, methodFns, superclassM)
   , Function(argNames, env, Function, idNum, name, owner)
   , Object(instanceID, myClass, Object)
-  , Value(BooleanV, ClassV, clazz, function, FunctionV, isNative, Nada, NilV, NumberV, object, ObjectV, StringV)
+  , Value(BooleanV, ClassV, clazz, closureIDM, function, FunctionV, isNative, Nada, NilV, NumberV, object, ObjectV, StringV)
   ) where
 
 import Control.DeepSeq(NFData, rnf)
@@ -40,7 +40,7 @@ instance NFData Object where
 data Value
   = BooleanV  Bool
   | ClassV    { clazz :: Class }
-  | FunctionV { isNative :: Bool, function :: Function }
+  | FunctionV { isNative :: Bool, function :: Function, closureIDM :: Maybe Word }
   | NumberV   Double
   | ObjectV   { object :: Object }
   | StringV   Text
@@ -49,25 +49,25 @@ data Value
   deriving Eq
 
 instance NFData Value where
-  rnf (BooleanV  x  ) = rnf x
-  rnf (ClassV    x  ) = rnf x
-  rnf (FunctionV x y) = rnf x `seq` rnf y
-  rnf (NumberV   x  ) = rnf x
-  rnf (ObjectV   x  ) = rnf x
-  rnf (StringV   x  ) = rnf x
-  rnf  Nada         = ()
-  rnf  NilV         = ()
+  rnf (BooleanV  x    ) = rnf x
+  rnf (ClassV    x    ) = rnf x
+  rnf (FunctionV x y z) = rnf x `seq` rnf y `seq` rnf z
+  rnf (NumberV   x    ) = rnf x
+  rnf (ObjectV   x    ) = rnf x
+  rnf (StringV   x    ) = rnf x
+  rnf  Nada             = ()
+  rnf  NilV             = ()
 
 instance Show Value where
-  show (BooleanV x)                               = x |> showText &> Text.toLower &> asString
-  show (ClassV (Class cName _ _ _ _))             = asString cName
-  show (FunctionV True                        _)  = "<native fn>"
-  show (FunctionV False (Function name _ _ _ _))  = "<fn " <> (asString name) <> ">"
-  show Nada                                       = "you_cant_see_this"
-  show NilV                                       = "nil"
-  show (ObjectV (Object (Class cName _ _ _ _) _)) = (asString cName) <> " instance"
-  show (NumberV x)                                = showNum x
-  show (StringV x)                                = asString x
+  show (BooleanV x)                                = x |> showText &> Text.toLower &> asString
+  show (ClassV (Class cName _ _ _ _))              = asString cName
+  show (FunctionV True                        _ _) = "<native fn>"
+  show (FunctionV False (Function name _ _ _ _) _) = "<fn " <> (asString name) <> ">"
+  show Nada                                        = "you_cant_see_this"
+  show NilV                                        = "nil"
+  show (ObjectV (Object (Class cName _ _ _ _) _))  = (asString cName) <> " instance"
+  show (NumberV x)                                 = showNum x
+  show (StringV x)                                 = asString x
 
 showNum :: Double -> String
 showNum = asFP &> asText &> removeTrailingZeroes &> asString

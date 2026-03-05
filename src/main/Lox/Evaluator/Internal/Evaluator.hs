@@ -127,11 +127,11 @@ evalCall callableExpr tp argExprs =
   where
     helper (callableV, args) =
       case (arity callableV, callableV) of
-        (Nothing  ,               _)                         -> lose $ EvalError NotCallable $ exprToToken callableExpr
-        (Just arty,               _) | doesntMatch arty args -> lose $ EvalError (ArityMismatch arty $ numGotten args) $ exprToToken callableExpr
-        (        _, FunctionV  _ fn)                         -> runFunction    evalStatement fn.idNum    args
-        (        _, ClassV    clazz)                         -> initObject  tp evalStatement clazz.cName args
-        x                                                    -> error $ "This isn't the callable we're looking for: " <> (showText x)
+        (Nothing  ,                 _)                         -> lose $ EvalError NotCallable $ exprToToken callableExpr
+        (Just arty,                 _) | doesntMatch arty args -> lose $ EvalError (ArityMismatch arty $ numGotten args) $ exprToToken callableExpr
+        (        _, FunctionV  _ fn _)                         -> runFunction    evalStatement fn.idNum    args
+        (        _, ClassV      clazz)                         -> initObject  tp evalStatement clazz.cName args
+        x                                                      -> error $ "This isn't the callable we're looking for: " <> (showText x)
 
     doesntMatch arity args = arity /= (numGotten args)
 
