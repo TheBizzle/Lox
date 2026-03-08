@@ -67,16 +67,16 @@ arity (ClassV         c) = c  |> initFnM &> maybe 0 (AST.params &> length &> fro
 arity _                  = Nothing
 
 data ProgramState
-  = ProgramState { variables        :: Map VarAddress Value      -- The central registry of all variables' values
-                 , closures         :: Map VarAddress (Set FnID) -- Keep-alives for all closed-over variables
-                 , functions        :: Map FnID Func             -- Definitions of all living functions
-                 , transferredFuncs :: Map FnID VarAddress       -- A function returned as a callback, whose owning scope is now dead
-                 , nextFnNum        :: FnID
-                 , scopes           :: NonEmpty Scope            -- The call stack
-                 , lastScopeAddr    :: ScopeAddress
-                 , instanceScopes   :: Map Word ClassScopes      -- Maps ID nums to maps from class name to scope
-                 , nextInstanceID   :: Word
-                 , nextClosureID    :: Word
+  = ProgramState { variables      :: Map VarAddress Value      -- The central registry of all variables' values
+                 , closures       :: Map VarAddress (Set FnID) -- Keep-alives for all closed-over variables
+                 , functions      :: Map FnID Func             -- Definitions of all living functions
+                 , fnBorrowers    :: Map FnID (Set VarAddress) -- Borrowers of a function whose original owning scope is now dead
+                 , nextFnNum      :: FnID
+                 , scopes         :: NonEmpty Scope            -- The call stack
+                 , lastScopeAddr  :: ScopeAddress
+                 , instanceScopes :: Map Word ClassScopes      -- Maps ID nums to maps from class name to scope
+                 , nextInstanceID :: Word
+                 , nextClosureID  :: Word
                  }
   deriving Show
 
@@ -97,16 +97,16 @@ thisName = "this"
 empty :: ProgramState
 empty =
     ProgramState {
-      variables        = Map.empty
-    , closures         = Map.empty
-    , functions        = Map.empty
-    , transferredFuncs = Map.empty
-    , nextFnNum        = 0
-    , scopes           = (NE.singleton $ Scope Map.empty defaultAddr)
-    , lastScopeAddr    = defaultAddr
-    , instanceScopes   = Map.empty
-    , nextInstanceID   = 0
-    , nextClosureID    = 0
+      variables      = Map.empty
+    , closures       = Map.empty
+    , functions      = Map.empty
+    , fnBorrowers    = Map.empty
+    , nextFnNum      = 0
+    , scopes         = (NE.singleton $ Scope Map.empty defaultAddr)
+    , lastScopeAddr  = defaultAddr
+    , instanceScopes = Map.empty
+    , nextInstanceID = 0
+    , nextClosureID  = 0
     }
   where
     defaultAddr = ScopeAddress 0
@@ -116,6 +116,8 @@ assignIntoObject object propName value =
   do
     addr <- findInObject object propName
     handleAddrM addr
+    (mainScope, _, _) <- extractScopeInfo object.myClass.cName object.instanceID
+    borrowIfFn mainScope.address value
     return $ Success $ CF.Normal value
   where
     handleAddrM :: Maybe VarAddress -> Program ()
@@ -125,11 +127,12 @@ assignIntoObject object propName value =
     declareIt :: Object -> Text -> Value -> Program ()
     declareIt object propName value =
       do
-        (mainScope, classScopes, instScopes, cName) <- extractScopeInfo object.myClass.cName object.instanceID
-        let varAddr                                  = VarAddress propName mainScope.address
-        let newScope                                 = mainScope { environ = Map.insert propName varAddr mainScope.environ }
-        let newClassScopes                           = Map.insert cName newScope classScopes
-        let newInstScopes                            = Map.insert object.instanceID newClassScopes instScopes
+        let cName                             = object.myClass.cName
+        (mainScope, classScopes, instScopes) <- extractScopeInfo cName object.instanceID
+        let varAddr                           = VarAddress propName mainScope.address
+        let newScope                          = mainScope { environ = Map.insert propName varAddr mainScope.environ }
+        let newClassScopes                    = Map.insert cName newScope classScopes
+        let newInstScopes                     = Map.insert object.instanceID newClassScopes instScopes
         modify $ \p -> p { instanceScopes = newInstScopes
                          , variables      = Map.insert varAddr value p.variables
                          }
@@ -143,10 +146,25 @@ assignIntoObject object propName value =
         instScopes      <- gets instanceScopes
         let classScopes  = fromJust $ Map.lookup instID instScopes
         let mainScope    = fromJust $ Map.lookup cName  classScopes
-        return (mainScope, classScopes, instScopes, cName)
+        return (mainScope, classScopes, instScopes)
+
+borrowIfFn :: ScopeAddress -> Value -> Program ()
+borrowIfFn address (FunctionV _ fn _) = _borrowFn address fn
+borrowIfFn       _                  _ = return ()
+
+_borrowFn :: ScopeAddress -> Function -> Program ()
+_borrowFn address fn =
+  do
+    prog            <- get
+    let newXferreds  = Map.alter insertOrSingleton fn.idNum prog.fnBorrowers
+    modify $ \p -> p { fnBorrowers = newXferreds }
+  where
+    insertOrSingleton (Just set) = Just $ Set.insert    newAddr set
+    insertOrSingleton    Nothing = Just $ Set.singleton newAddr
+    newAddr                      = VarAddress fn.name address
 
 cleanupScope :: Scope -> ProgramState -> ProgramState
-cleanupScope scope program = program { variables = cleanedVars, closures = cleanedClosures, functions = cleanedFunctions, transferredFuncs = cleanedXFns }
+cleanupScope scope program = program { variables = cleanedVars, closures = cleanedClosures, functions = cleanedFunctions, fnBorrowers = cleanedXFns }
   where
     locals :: Environment
     locals          = Map.filter (scopeAddr &> (== scope.address)) scope.environ
@@ -160,7 +178,7 @@ cleanupScope scope program = program { variables = cleanedVars, closures = clean
 
     -- If it was transferred to me, remove it from the list of transferreds
     xedToMeFns  = Map.filter (scopeAddr &> (== scope.address)) tAs
-    cleanedXFns = foldr (toFnID &> Map.delete) program.transferredFuncs $ Map.elems xedToMeFns
+    cleanedXFns = foldr unborrow program.fnBorrowers $ Map.elems xedToMeFns
 
     -- If it was transferred to me and isn't still available at its defining address, delete it entirely
     -- Also, remove all of my local functions' closures from the list of transferreds
@@ -179,11 +197,16 @@ cleanupScope scope program = program { variables = cleanedVars, closures = clean
 
     checkWasTransferred = checkVar wasTransferred noBueno
       where
-        wasTransferred (FunctionV _ fn _) = Map.member fn.idNum program.transferredFuncs
+        wasTransferred (FunctionV _ fn _) = maybe False (not . Set.null) $ Map.lookup fn.idNum program.fnBorrowers
         wasTransferred                  _ = error "Not possible!  We already proved these are only functions!"
         noBueno                           = "You can't possibly be checking a function that's already been cleaned up...."
 
     toFnID = checkVar (function &> idNum) "You can't possibly be getting the FnID of a function that's already been cleaned up...."
+
+    unborrow varID borroweds = Map.alter f (toFnID varID) borroweds
+      where
+        f (Just set) = Just $ Set.delete varID set
+        f    Nothing = error "Shouldn't be possible to unborrow something that's not borrowed."
 
     checkVar :: (Value -> a) -> Text -> VarAddress -> a
     checkVar conversion errorMsg = (flip Map.lookup program.variables) &> maybe (error errorMsg) conversion
@@ -389,17 +412,16 @@ runEffect :: Effect -> Evaluated
 runEffect (Print x) = (liftIO $ TIO.putStrLn x) $> (Success Nada)
 
 transferOwnership :: Value -> Program ()
-transferOwnership (FunctionV _ fn _) = _transferOwnership fn.name fn.idNum
-transferOwnership                  _ = return ()
-
-_transferOwnership :: Text -> FnID -> Program ()
-_transferOwnership fnName idNum = modify $ \program -> program { transferredFuncs = newXferred program }
+transferOwnership value =
+  do
+    prog           <- get
+    let parentAddr  = (neSecond prog.scopes).address
+    borrowIfFn parentAddr value
   where
-    newXferred program = Map.insert idNum (VarAddress fnName $ parentAddr program) program.transferredFuncs
-    parentAddr program = (neSecond program.scopes).address
-    neSecond      ne = case NE.tail ne of
-                         (h:_) -> h
-                         []    -> error "Not possible!  You can't call `return` from the top scope!"
+    neSecond ne =
+      case NE.tail ne of
+        (h:_) -> h
+        []    -> error "Not possible!  You can't call `return` from the top scope!"
 
 currentEnvironment :: Program Environment
 currentEnvironment = get <&> (currentScope &> environ)
@@ -454,12 +476,13 @@ getVar varName program = program |> (lookupVarAddr varName) &> getValue
 predictVarAddr :: Text -> ProgramState -> VarAddress
 predictVarAddr varName program = VarAddress varName (currentScope program).address
 
-setVar :: Text -> Value -> ProgramState -> ProgramState
-setVar varName value program = program { variables = newVars }
+setVar :: Text -> Value -> Program ()
+setVar varName value =
+  do
+    varAddr <- gets $ (lookupVarAddr varName) &> maybe (error whinerMsg) id
+    borrowIfFn varAddr.scopeAddr value
+    modify $ \p -> p { variables = Map.insert varAddr value p.variables }
   where
-    varAddr = maybe (error whinerMsg) id $ lookupVarAddr varName program
-    newVars = Map.insert varAddr value program.variables
-
     whinerMsg = "Critical error!  It is impossible to set a variable that hasn't been declared: " <> varName
 
 pruneSet :: Ord a => Set a -> Set a -> Maybe (Set a)

@@ -286,7 +286,7 @@ setVariable var value =
     varV <- lookupVar var
     varV `onSuccessEval` (
       const $ do
-        modify $ setVar var.varName value
+        setVar var.varName value
         win value
       )
 
