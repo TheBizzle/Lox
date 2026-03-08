@@ -1,5 +1,5 @@
 module Lox.Verifier.Internal.VerifierError(
-    VerifierErrorType(CannotInheritFromSelf, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers)
+    VerifierErrorType(CannotInheritFromSelf, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers, VarCannotInitInTermsOfSelf)
   , VerifierError(offender, VerifierError, typ)
   ) where
 
@@ -12,6 +12,7 @@ data VerifierErrorType
   | CanOnlyRefThisInsideClass
   | DuplicateVar
   | ThisClassHasNoSupers
+  | VarCannotInitInTermsOfSelf
   deriving (Eq, Show)
 
 data VerifierError =

@@ -33,7 +33,7 @@ import Lox.Scanner.Token(SourceLoc(lineNumber), Token(EOF, LeftBrace, LeftParen)
 
 import Lox.Verifier.VerifierError(
     VerifierError(offender, typ)
-  , VerifierErrorType(CannotInheritFromSelf, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers)
+  , VerifierErrorType(CannotInheritFromSelf, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers, VarCannotInitInTermsOfSelf)
   )
 
 import qualified Control.Exception     as Exception
@@ -167,3 +167,4 @@ verifierErrorAsText error = line
     errorText CanOnlyRefThisInsideClass  = "Can't use 'this' outside of a class."
     errorText DuplicateVar               = "Already a variable with this name in this scope."
     errorText ThisClassHasNoSupers       = "Can't use 'super' in a class with no superclass."
+    errorText VarCannotInitInTermsOfSelf = "Can't read local variable in its own initializer."

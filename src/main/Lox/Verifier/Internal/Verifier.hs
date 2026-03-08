@@ -17,7 +17,7 @@ import Lox.Parser.AST(
 
 import Lox.Verifier.Internal.VerifierError(
     VerifierError(VerifierError)
-  , VerifierErrorType(CannotInheritFromSelf, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers)
+  , VerifierErrorType(CannotInheritFromSelf, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers, VarCannotInitInTermsOfSelf)
   )
 
 import qualified Data.List          as List
@@ -30,11 +30,17 @@ type InternalOutput = Validated ()
 type Verification   = State ASTState InternalOutput
 
 data ASTState =
-  ASTState { canSuper :: Bool, classNames :: Set Text, isInClass :: Bool, vars :: Set Text, stack :: [Set Text] }
+  ASTState { canSuper     :: Bool
+           , classNames   :: Set Text
+           , isInClass    :: Bool
+           , stack        :: [Set Text]
+           , varDoingInit :: Maybe Text
+           , vars         :: Set Text
+           }
   deriving (Eq, Show)
 
 initialState :: ASTState
-initialState = ASTState False Set.empty False Set.empty []
+initialState = ASTState False Set.empty False [] Nothing Set.empty
 
 verify :: AST -> Validated AST
 verify ast = (evalState (findErrorInBlock ast.statements) initialState) *> (Success ast)
@@ -92,8 +98,11 @@ findErrorInDecl decl initial =
     let vn  = decl.varName
     isDupe <- gets $ vars &> Set.member vn
     if not isDupe then do
-      modify $ \s -> s { vars = Set.insert vn s.vars }
-      findErrorInExpr initial
+      oldInitter <- gets varDoingInit
+      modify $ \s -> s { vars = Set.insert vn s.vars, varDoingInit = Just decl.varName }
+      res <- findErrorInExpr initial
+      modify $ \s -> s { varDoingInit = oldInitter }
+      return res
     else
       return $ errDupeVar decl
 
@@ -123,7 +132,15 @@ findErrorInExpr (Set         obj     _  val) = findErrorInExpr obj |*> findError
 findErrorInExpr (Super       kw      _     ) = findErrorInSuper kw
 findErrorInExpr (This        kw            ) = findErrorInThis kw
 findErrorInExpr (Unary       _    expr     ) = findErrorInExpr expr
-findErrorInExpr (VarRef      _             ) = return succeed
+findErrorInExpr (VarRef      var           ) = findErrorInVarRef var
+
+findErrorInVarRef :: Variable -> Verification
+findErrorInVarRef var =
+  do
+    current <- gets varDoingInit
+    case current of
+      (Just vn) | vn == var.varName -> return $ fail $ VerifierError VarCannotInitInTermsOfSelf var.varToken
+      _                             -> return succeed
 
 findErrorInThis :: TokenPlus -> Verification
 findErrorInThis keyword =
