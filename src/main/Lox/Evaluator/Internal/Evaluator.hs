@@ -72,7 +72,7 @@ evalExpr (Grouping    expression)          = evalExpr expression
 evalExpr (LiteralExpr literal _)           = win $ evalLiteral literal
 evalExpr (Logical     left operator right) = evalLogical left operator right
 evalExpr (Set         object var value)    = evalSet object var value
-evalExpr (Super       keyword var     )    = indexSuper keyword var
+evalExpr (Super       keyword var)         = indexSuper keyword var
 evalExpr (This        keyword)             = evalThis keyword
 evalExpr (Unary       operator right)      = evalUnary operator right
 evalExpr (VarRef      var)                 = lookupVar var
@@ -216,7 +216,7 @@ evalSet :: Expr -> Variable -> Expr -> Evaluating
 evalSet objectExpr (Variable propName tp) valueExpr =
   do
     objValV <- evalExpr objectExpr
-    anyValV <- evalExpr valueExpr
+    anyValV <- evalExpr  valueExpr
     ((,) <$> objValV <*> anyValV) `onSuccessEval2` (
         \(objVal, anyVal) -> (asObject objVal $ EvalError CanOnlySetObj tp) `failOrM` (\obj -> assignIntoObject obj propName anyVal)
       )
