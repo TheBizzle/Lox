@@ -226,8 +226,9 @@ defineClass className superClassM functions =
 defineFunction :: Text -> [Text] -> [Statement] -> Program Function
 defineFunction name argNames body =
   do
+    modify $ declareVar name Nada
     fn <- buildFunction name argNames body
-    modify $ declareVar name $ FunctionV False fn Nothing
+    setVar name $ FunctionV False fn Nothing
     return fn
 
 buildFunction :: Text -> [Text] -> [Statement] -> Program Function
