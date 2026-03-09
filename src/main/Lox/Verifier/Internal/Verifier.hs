@@ -17,7 +17,7 @@ import Lox.Parser.AST(
 
 import Lox.Verifier.Internal.VerifierError(
     VerifierError(VerifierError)
-  , VerifierErrorType(CannotInheritFromSelf, CannotReturnInConstructor, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers, VarCannotInitInTermsOfSelf)
+  , VerifierErrorType(CannotInheritFromSelf, CannotReturnAtTopLevel, CannotReturnInConstructor, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers, VarCannotInitInTermsOfSelf)
   )
 
 import qualified Data.List          as List
@@ -34,6 +34,7 @@ data ASTState =
            , classNames      :: Set Text
            , isInClass       :: Bool
            , isInConstructor :: Bool
+           , isInFunction    :: Bool
            , stack           :: [Set Text]
            , varDoingInit    :: Maybe Text
            , vars            :: Set Text
@@ -41,7 +42,7 @@ data ASTState =
   deriving (Eq, Show)
 
 initialState :: ASTState
-initialState = ASTState False Set.empty False False [] Nothing Set.empty
+initialState = ASTState False Set.empty False False False [] Nothing Set.empty
 
 verify :: AST -> Validated AST
 verify ast = (evalState (findErrorInBlock ast.statements) initialState) *> (Success ast)
@@ -111,9 +112,10 @@ findErrorInFn :: Function -> Verification
 findErrorInFn (Function decl ps stmts) =
     do
       isClass <- gets isInClass
-      modify $ \s -> s { isInConstructor = isClass && decl.varName == "init" }
+      isFn    <- gets isInFunction
+      modify $ \s -> s { isInConstructor = isClass && decl.varName == "init", isInFunction = True }
       res <- findErrorInBlock $ params <> stmts
-      modify $ \s -> s { isInConstructor = False }
+      modify $ \s -> s { isInConstructor = False, isInFunction = isFn }
       return res
   where
     params     = map asStmt ps
@@ -128,13 +130,21 @@ findErrorInIf antecedent is esm =
     return $ result1 *> result2 *> result3
 
 findErrorInReturn :: TokenPlus -> Maybe Expr -> Verification
-findErrorInReturn keyword exprM = findErrorInCtor |*> maybe (return succeed) findErrorInExpr exprM
+findErrorInReturn keyword exprM = findErrorInCtor |*> findErrorInRaw |*> maybe (return succeed) findErrorInExpr exprM
   where
     findErrorInCtor =
       do
         isInCtor <- gets isInConstructor
         if isInCtor then
           return $ fail $ VerifierError CannotReturnInConstructor keyword
+        else
+          return succeed
+
+    findErrorInRaw =
+      do
+        isInFn <- gets isInFunction
+        if not isInFn then
+          return $ fail $ VerifierError CannotReturnAtTopLevel keyword
         else
           return succeed
 

@@ -33,7 +33,7 @@ import Lox.Scanner.Token(SourceLoc(lineNumber), Token(EOF, LeftBrace, LeftParen)
 
 import Lox.Verifier.VerifierError(
     VerifierError(offender, typ)
-  , VerifierErrorType(CannotInheritFromSelf, CannotReturnInConstructor, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers, VarCannotInitInTermsOfSelf)
+  , VerifierErrorType(CannotInheritFromSelf, CannotReturnAtTopLevel, CannotReturnInConstructor, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers, VarCannotInitInTermsOfSelf)
   )
 
 import qualified Control.Exception     as Exception
@@ -163,6 +163,7 @@ verifierErrorAsText error = line
     desc EOF = "end: "
     desc t   = "'" <> (showText t) <> "': "
     errorText CannotInheritFromSelf      = "A class can't inherit from itself."
+    errorText CannotReturnAtTopLevel     = "Can't return from top-level code."
     errorText CannotReturnInConstructor  = "Can't return a value from an initializer."
     errorText CanOnlyRefSuperInsideClass = "Can't use 'super' outside of a class."
     errorText CanOnlyRefThisInsideClass  = "Can't use 'this' outside of a class."
