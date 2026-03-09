@@ -67,7 +67,7 @@ printStatement :: Parser Statement
 printStatement = PrintStatement <$> (locOf Print) <*> (expression <* (throwaway Semicolon))
 
 returnStatement :: Parser Statement
-returnStatement = ReturnStatement <$> (locOf Return) <*> ((optional expression) <* (throwaway Semicolon))
+returnStatement = ReturnStatement <$> (one Return) <*> ((optional expression) <* (throwaway Semicolon))
 
 forStatement :: Parser Statement
 forStatement = buildLoop <$>

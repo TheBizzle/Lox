@@ -13,9 +13,8 @@ import Lox.Parser.AST(
   )
 
 import Lox.Scanner.Token(
-    SourceLoc
-  , TokenPlus(token, TokenPlus)
-  , Token(And, Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Or, Plus, Return, Slash, Star)
+    TokenPlus(token, TokenPlus)
+  , Token(And, Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Or, Plus, Slash, Star)
   )
 
 import Lox.Evaluator.Internal.Effect(Effect(Print))
@@ -59,7 +58,7 @@ evalStatement (DeclareVar          var        expr      ) = evalDeclaration var 
 evalStatement (ExpressionStatement                  expr) = evalExpr expr
 evalStatement (IfElse              ant        con   alt ) = evalIfElse ant con alt
 evalStatement (PrintStatement      _                expr) = evalPrint expr
-evalStatement (ReturnStatement     loc        expM      ) = evalReturn loc expM
+evalStatement (ReturnStatement     token      expM      ) = evalReturn token expM
 evalStatement (WhileStatement      pred       stmt      ) = evalWhile pred stmt
 evalStatement (FunctionStatement   func                 ) = evalFunction func
 
@@ -203,13 +202,12 @@ evalLogical left operator right =
               tp                -> error $ "Impossible logical operator: " <> (showText tp)
       )
 
-evalReturn :: SourceLoc -> Maybe Expr -> Evaluating
-evalReturn loc exprM = maybe (return $ Success $ CF.Return tp Nada) (evalExpr >=> helper) exprM
+evalReturn :: TokenPlus -> Maybe Expr -> Evaluating
+evalReturn token exprM = maybe (return $ Success $ CF.Return token Nada) (evalExpr >=> helper) exprM
   where
-    tp     = TokenPlus Return loc
     helper = flip failOrM $ \case
       ex@(CF.Exception _) -> return $ Success ex
-      (   CF.Normal    v) -> (transferOwnership v) $> (Success $ CF.Return tp v)
+      (   CF.Normal    v) -> (transferOwnership v) $> (Success $ CF.Return token v)
       (   CF.Return  _ _) -> error "`return return x;` should not be possible!"
 
 evalSet :: Expr -> Variable -> Expr -> Evaluating

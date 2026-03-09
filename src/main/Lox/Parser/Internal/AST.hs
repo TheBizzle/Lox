@@ -4,7 +4,7 @@ module Lox.Parser.Internal.AST(
   , exprToToken
   , Function(fnBody, fnDecl, Function, params)
   , Literal(BooleanLit, DoubleLit, NilLit, StringLit)
-  , Statement(Block, body, Class, contents, DeclareVar, expr, ExpressionStatement, FunctionStatement, IfElse, loc, newVar, predicate, PrintStatement, ReturnStatement, WhileStatement)
+  , Statement(Block, body, Class, contents, DeclareVar, expr, ExpressionStatement, FunctionStatement, IfElse, loc, newVar, predicate, PrintStatement, ReturnStatement, token, WhileStatement)
   , Variable(Variable, varName, varToken)
   ) where
 
@@ -26,7 +26,7 @@ data Statement
   | FunctionStatement { func :: Function }
   | IfElse { antecedent :: Expr, consequent :: Statement, alternative :: Maybe Statement }
   | PrintStatement { loc :: SourceLoc, expr :: Expr }
-  | ReturnStatement { loc :: SourceLoc, exprM :: Maybe Expr }
+  | ReturnStatement { token :: TokenPlus, exprM :: Maybe Expr }
   | WhileStatement { predicate :: Expr, body :: Statement }
   deriving (Eq, Show)
 
