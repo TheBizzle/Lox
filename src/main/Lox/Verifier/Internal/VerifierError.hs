@@ -1,5 +1,5 @@
 module Lox.Verifier.Internal.VerifierError(
-    VerifierErrorType(CannotInheritFromSelf, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers, VarCannotInitInTermsOfSelf)
+    VerifierErrorType(CannotInheritFromSelf, CannotReturnInConstructor, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers, VarCannotInitInTermsOfSelf)
   , VerifierError(offender, VerifierError, typ)
   ) where
 
@@ -8,6 +8,7 @@ import Lox.Scanner.Token(TokenPlus)
 
 data VerifierErrorType
   = CannotInheritFromSelf
+  | CannotReturnInConstructor
   | CanOnlyRefSuperInsideClass
   | CanOnlyRefThisInsideClass
   | DuplicateVar

@@ -17,7 +17,7 @@ import Lox.Parser.AST(
 
 import Lox.Verifier.Internal.VerifierError(
     VerifierError(VerifierError)
-  , VerifierErrorType(CannotInheritFromSelf, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers, VarCannotInitInTermsOfSelf)
+  , VerifierErrorType(CannotInheritFromSelf, CannotReturnInConstructor, CanOnlyRefSuperInsideClass, CanOnlyRefThisInsideClass, DuplicateVar, ThisClassHasNoSupers, VarCannotInitInTermsOfSelf)
   )
 
 import qualified Data.List          as List
@@ -30,17 +30,18 @@ type InternalOutput = Validated ()
 type Verification   = State ASTState InternalOutput
 
 data ASTState =
-  ASTState { canSuper     :: Bool
-           , classNames   :: Set Text
-           , isInClass    :: Bool
-           , stack        :: [Set Text]
-           , varDoingInit :: Maybe Text
-           , vars         :: Set Text
+  ASTState { canSuper        :: Bool
+           , classNames      :: Set Text
+           , isInClass       :: Bool
+           , isInConstructor :: Bool
+           , stack           :: [Set Text]
+           , varDoingInit    :: Maybe Text
+           , vars            :: Set Text
            }
   deriving (Eq, Show)
 
 initialState :: ASTState
-initialState = ASTState False Set.empty False [] Nothing Set.empty
+initialState = ASTState False Set.empty False False [] Nothing Set.empty
 
 verify :: AST -> Validated AST
 verify ast = (evalState (findErrorInBlock ast.statements) initialState) *> (Success ast)
@@ -53,7 +54,7 @@ findErrorInStmt (ExpressionStatement expr            ) = findErrorInExpr expr
 findErrorInStmt (FunctionStatement   fn              ) = findErrorInFn fn
 findErrorInStmt (IfElse              ante   is    esm) = findErrorInIf ante is esm
 findErrorInStmt (PrintStatement      _      expr     ) = findErrorInExpr expr
-findErrorInStmt (ReturnStatement     _      exprM    ) = maybe (return succeed) findErrorInExpr exprM
+findErrorInStmt (ReturnStatement     kw     exprM    ) = findErrorInReturn kw exprM
 findErrorInStmt (WhileStatement      expr   bod      ) = findErrorInExpr expr |*> findErrorInStmt bod
 
 findErrorInBlock :: [Statement] -> Verification
@@ -107,7 +108,13 @@ findErrorInDecl decl initial =
       return $ errDupeVar decl
 
 findErrorInFn :: Function -> Verification
-findErrorInFn (Function _ ps stmts) = findErrorInBlock $ params <> stmts
+findErrorInFn (Function decl ps stmts) =
+    do
+      isClass <- gets isInClass
+      modify $ \s -> s { isInConstructor = isClass && decl.varName == "init" }
+      res <- findErrorInBlock $ params <> stmts
+      modify $ \s -> s { isInConstructor = False }
+      return res
   where
     params     = map asStmt ps
     asStmt var = DeclareVar var $ LiteralExpr NilLit var.varToken
@@ -119,6 +126,17 @@ findErrorInIf antecedent is esm =
     result2 <- findErrorInStmt is
     result3 <- maybe (return succeed) findErrorInStmt esm
     return $ result1 *> result2 *> result3
+
+findErrorInReturn :: TokenPlus -> Maybe Expr -> Verification
+findErrorInReturn keyword exprM = findErrorInCtor |*> maybe (return succeed) findErrorInExpr exprM
+  where
+    findErrorInCtor =
+      do
+        isInCtor <- gets isInConstructor
+        if isInCtor then
+          return $ fail $ VerifierError CannotReturnInConstructor keyword
+        else
+          return succeed
 
 findErrorInExpr :: Expr -> Verification
 findErrorInExpr (Assign      _     val     ) = findErrorInExpr val
