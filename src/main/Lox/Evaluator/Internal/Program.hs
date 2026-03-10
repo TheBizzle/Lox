@@ -34,7 +34,7 @@ import Lox.Evaluator.Internal.EvalError(
 
 import Lox.Evaluator.Internal.Value(
     Class(baseEnv, Class, cName, initFnM, methodFns, superclassM)
-  , Function(argNames, env, Function, idNum, name)
+  , Function(argNames, Function, idNum, name)
   , Object(instanceID, myClass, Object)
   , Value(ClassV, function, FunctionV, Nada, ObjectV)
   )
@@ -181,8 +181,8 @@ cleanupScope scope program = program { variables = cleanedVars, closures = clean
     (tAs, dyingFAs) = Map.partition checkWasTransferred fAs
 
     -- Clean up all of my local vars that haven't been closed over
-    closedOverAs = (Map.elems tAs) >>= (\tA -> Map.lookup tA program.variables |> maybe (error "Can't be dead") (function &> env) &> Map.elems)
-    dyingVAs     = (Set.fromList $ Map.elems xAs) `Set.difference` (Set.fromList closedOverAs)
+    closedOverAs = Map.keysSet $ Map.filter (not . Set.null) program.closures
+    dyingVAs     = (Set.fromList $ Map.elems xAs) `Set.difference` closedOverAs
     cleanedVars  = Set.foldr Map.delete program.variables dyingVAs
 
     -- If it was transferred to me, remove it from the list of transferreds
