@@ -97,9 +97,10 @@ findErrorInClass classVar superVarM methods =
 findErrorInDecl :: Variable -> Expr -> Verification
 findErrorInDecl decl initial =
   do
-    let vn  = decl.varName
-    isDupe <- gets $ vars &> Set.member vn
-    if not isDupe then do
+    let vn    = decl.varName
+    isDupe   <- gets $ vars  &> Set.member vn
+    isGlobal <- gets $ stack &> List.length &> (== 1)
+    if (not isDupe) || isGlobal then do
       oldInitter <- gets varDoingInit
       modify $ \s -> s { vars = Set.insert vn s.vars, varDoingInit = Just decl.varName }
       res <- findErrorInExpr initial
@@ -165,10 +166,12 @@ findErrorInExpr (VarRef      var           ) = findErrorInVarRef var
 findErrorInVarRef :: Variable -> Verification
 findErrorInVarRef var =
   do
-    current <- gets varDoingInit
+    current  <- gets varDoingInit
+    isGlobal <- gets $ stack &> List.length &> (== 1)
+    let notG  = not isGlobal
     case current of
-      (Just vn) | vn == var.varName -> return $ fail $ VerifierError VarCannotInitInTermsOfSelf var.varToken
-      _                             -> return succeed
+      (Just vn) | vn == var.varName && notG -> return $ fail $ VerifierError VarCannotInitInTermsOfSelf var.varToken
+      _                                     -> return succeed
 
 findErrorInThis :: TokenPlus -> Verification
 findErrorInThis keyword =
