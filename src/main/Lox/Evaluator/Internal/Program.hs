@@ -11,9 +11,13 @@ import Data.List.NonEmpty((<|), NonEmpty((:|)))
 import Data.Map(alter, lookup)
 import Data.Maybe(fromJust)
 
-import Lox.Scanner.Token(TokenPlus)
+import Lox.Scanner.Token(Token(Return, This, Var), TokenPlus(TokenPlus))
 
-import Lox.Parser.AST(Statement, Variable(Variable, varName))
+import Lox.Parser.AST(
+    Expr(Call, VarRef)
+  , Statement(ExpressionStatement, FunctionStatement, ReturnStatement)
+  , Variable(Variable, varName)
+  )
 
 import Lox.Evaluator.Internal.Data(
     Environment
@@ -358,8 +362,6 @@ initObject tp evaluator className args =
         initializerM     <- gets $ \p -> initializerAddrM >>= (flip Map.lookup p.variables)
         forM_ initializerM $ \initializer -> runFunction evaluator initializer.function.idNum args
 
-        void $ removeInits (map cName classes) instID
-
         return $ Success $ CF.Normal objV
 
     fillInClass :: VarAddress -> Word -> Class -> Program ()
@@ -369,36 +371,29 @@ initObject tp evaluator className args =
 
         declareVarM superName $ maybe Nada ClassV clazz.superclassM
 
-        method2s <- mapM buildFn               clazz.methodFns
-        init2M   <- mapM buildFn $ maybeToList clazz.initFnM
+        method2s <- mapM                 buildFn                clazz.methodFns
+        init2M   <- mapM (convertInit &> buildFn) $ maybeToList clazz.initFnM
 
         modify $ \p -> p { scopes = (((NE.head p.scopes) { environ = Map.empty }) :| (NE.tail p.scopes)) }
         forM_ (method2s <> init2M) (\(name, fn) -> declareVarM name $ FunctionV False fn Nothing)
 
         modify $ popInstanceScope clazz.cName instID
+      where
+        -- Yikes.  So I guess he wants us to be able to call the constructor on an instance as a method, and
+        -- to get back the same object that it was called on.  Dislike. --Jason B. (3/9/26)
+        convertInit (AST.Function decl args body) =
+          (AST.Function decl args $
+            [ (FunctionStatement (AST.Function (Variable "__init" (TokenPlus Var (err 0))) [] body))
+            , (ExpressionStatement (Call (VarRef (Variable "__init" (TokenPlus Var (err 1)))) (TokenPlus Var (err 2)) []))
+            , (ReturnStatement (TokenPlus Return (err 3)) (Just (AST.This (TokenPlus This (err 4)))))
+            ]
+          )
+
+        err :: Int -> a
+        err n = error $ "I did a bad thing" <> (showText n)
 
     buildFn :: AST.Function -> Program (Text, Function)
     buildFn (AST.Function decl args body) = (buildFunction decl.varName (map varName args) body) <&> (decl.varName, )
-
-    removeInits classNames instID =
-      do
-        classScopes <- gets $ instanceScopes &> Map.lookup instID &> fromJust
-        forM classNames $ \className -> do
-          let (Scope env saddr) = fromJust $ Map.lookup className classScopes
-          case Map.lookup initName env of
-            Nothing   -> return ()
-            (Just fa) -> do
-              let newEnv      = Map.delete initName env
-              let newScope    = Scope newEnv saddr
-              let newCScopes  = Map.insert className newScope classScopes
-              fid            <- gets $ variables &> Map.lookup fa &> Maybe.fromJust &> getFID
-              modify $ \p -> p { instanceScopes = Map.insert instID newCScopes p.instanceScopes
-                               , functions      = Map.delete fid p.functions
-                               , variables      = Map.delete fa  p.variables
-                               }
-      where
-        getFID (FunctionV _ fn _) = fn.idNum
-        getFID                  _ = error "Function is not a function!"
 
 runFunction :: Evaluator -> FnID -> [Value] -> Evaluating
 runFunction evaluator idNum args =
