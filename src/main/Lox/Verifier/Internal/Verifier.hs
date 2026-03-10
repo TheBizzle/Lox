@@ -112,12 +112,17 @@ findErrorInDecl decl initial =
 findErrorInFn :: Function -> Verification
 findErrorInFn (Function decl ps stmts) =
     do
-      isClass <- gets isInClass
-      isFn    <- gets isInFunction
+
+      isClass   <- gets isInClass
+      wasFn     <- gets isInFunction
+      wasInCtor <- gets isInConstructor
+
       modify $ \s -> s { isInConstructor = isClass && decl.varName == "init", isInFunction = True }
       res <- findErrorInBlock $ params <> stmts
-      modify $ \s -> s { isInConstructor = False, isInFunction = isFn }
+      modify $ \s -> s { isInConstructor = wasInCtor, isInFunction = wasFn }
+
       return res
+
   where
     params     = map asStmt ps
     asStmt var = DeclareVar var $ LiteralExpr NilLit var.varToken
