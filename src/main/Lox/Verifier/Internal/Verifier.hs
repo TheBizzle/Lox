@@ -136,7 +136,7 @@ findErrorInReturn keyword exprM = findErrorInCtor |*> findErrorInRaw |*> maybe (
     findErrorInCtor =
       do
         isInCtor <- gets isInConstructor
-        if isInCtor then
+        if isInCtor && isJust exprM then
           return $ fail $ VerifierError CannotReturnInConstructor keyword
         else
           return succeed
