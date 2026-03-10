@@ -117,7 +117,7 @@ findErrorInFn (Function decl ps stmts) =
       wasFn     <- gets isInFunction
       wasInCtor <- gets isInConstructor
 
-      modify $ \s -> s { isInConstructor = isClass && decl.varName == "init", isInFunction = True }
+      modify $ \s -> s { isInConstructor = isClass && decl.varName == "init" && not wasInCtor, isInFunction = True }
       res <- findErrorInBlock $ params <> stmts
       modify $ \s -> s { isInConstructor = wasInCtor, isInFunction = wasFn }
 
