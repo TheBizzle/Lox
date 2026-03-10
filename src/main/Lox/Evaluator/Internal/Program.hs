@@ -67,8 +67,13 @@ instance Show Func where
 
 arity :: Value -> Maybe Word
 arity (FunctionV _ fn _) = fn |> argNames &> length &> fromIntegral &> Just
-arity (ClassV         c) = c  |> initFnM &> maybe 0 (AST.params &> length &> fromIntegral) |> Just
+arity (ClassV         c) = c  |> classArity &> Just
 arity _                  = Nothing
+
+classArity :: Class -> Word
+classArity (Class _            _ (Just fn) _ _) = fn |> AST.params &> length &> fromIntegral
+classArity (Class _ (Just super)         _ _ _) = classArity super
+classArity (Class _            _         _ _ _) = 0
 
 data ProgramState
   = ProgramState { variables      :: Map VarAddress Value      -- The central registry of all variables' values
