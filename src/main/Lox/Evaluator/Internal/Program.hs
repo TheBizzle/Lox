@@ -493,7 +493,7 @@ pruneSet baddies current =
   else
     Nothing
   where
-    res = Set.filter (`Set.member` baddies) current
+    res = current `Set.difference` baddies
 
 toEnvChain :: Class -> Word -> Program [Environment]
 toEnvChain clazz instID =
