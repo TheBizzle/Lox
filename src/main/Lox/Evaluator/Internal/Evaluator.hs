@@ -6,7 +6,7 @@ import Lox.Parser.AST(
     AST(statements)
   , Expr(Assign, Binary, Call, Get, Grouping, LiteralExpr, Logical, Set, Super, This, Unary, VarRef)
   , exprToToken
-  , Function(Function)
+  , Function(fnDecl, Function)
   , Literal(BooleanLit, DoubleLit, NilLit, StringLit)
   , Statement(Block, Class, DeclareVar, ExpressionStatement, FunctionStatement, IfElse, PrintStatement, ReturnStatement, WhileStatement)
   , Variable(Variable, varName)
@@ -42,7 +42,7 @@ type Evaluated  = Prog Value
 type Evaluating = Prog CF.ControlFlow
 
 eval :: AST -> Evaluated
-eval = statements &> runStatements &> evaluated
+eval = statements &> runTopLevelStatements &> evaluated
 
 evaluated :: Evaluating -> Evaluated
 evaluated = (<&> (validation Failure helper))
@@ -266,6 +266,15 @@ evalPrint expr =
         void $ runEffect $ Print text
         nothing
       )
+
+runTopLevelStatements :: [Statement] -> Evaluating
+runTopLevelStatements statements =
+  do
+    mapM_ hoistIfFn statements
+    runStatements statements
+  where
+    hoistIfFn (FunctionStatement fn) = modify $ declareVar fn.fnDecl.varName Nada
+    hoistIfFn                      _ = return ()
 
 runStatements :: [Statement] -> Evaluating
 runStatements = foldM helper $ succeed Nada
