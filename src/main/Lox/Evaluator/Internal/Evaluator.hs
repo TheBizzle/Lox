@@ -56,11 +56,11 @@ evalStatement (Block               statements           ) = evalBlock statements
 evalStatement (Class               var        stmts ms  ) = evalClass var stmts ms
 evalStatement (DeclareVar          var        expr      ) = evalDeclaration var expr
 evalStatement (ExpressionStatement                  expr) = evalExpr expr
+evalStatement (FunctionStatement   func                 ) = evalFunction func
 evalStatement (IfElse              ant        con   alt ) = evalIfElse ant con alt
 evalStatement (PrintStatement      _                expr) = evalPrint expr
 evalStatement (ReturnStatement     token      expM      ) = evalReturn token expM
 evalStatement (WhileStatement      pred       stmt      ) = evalWhile pred stmt
-evalStatement (FunctionStatement   func                 ) = evalFunction func
 
 evalExpr :: Expr -> Evaluating
 evalExpr (Assign      var value)           = evalAssign var value
@@ -111,7 +111,7 @@ evalBinary left operator right =
 evalBlock :: [Statement] -> Evaluating
 evalBlock statements =
   do
-    env    <- currentEnvironment
+    env <- currentEnvironment
     modify $ pushScope env
     result <- runStatements statements
     modify popScope
