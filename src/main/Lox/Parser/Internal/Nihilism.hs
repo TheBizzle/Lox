@@ -1,20 +1,22 @@
 module Lox.Parser.Internal.Nihilism(errorParser) where
 
+import Control.Monad(replicateM)
+
 import Lox.Scanner.Token(
-    Token(And, Bang, BangEqual, Else, EOF, Equal, EqualEqual, For, Greater, GreaterEqual, If, LeftBrace, LeftParen, Less, LessEqual, Minus, Or, Plus, Print, Return, RightBrace, RightParen, Semicolon, Slash, Star, Var, While)
+    Token(And, Bang, BangEqual, Class, Comma, Dot, Else, EOF, Equal, EqualEqual, For, Fun, Greater, GreaterEqual, If, LeftBrace, LeftParen, Less, LessEqual, Minus, Or, Plus, Print, Return, RightBrace, RightParen, Semicolon, Slash, Star, Var, While)
   , TokenPlus(loc, token, TokenPlus)
   )
 
 import Lox.Parser.Internal.AST(exprToToken)
 
-import Lox.Parser.Internal.ExpressionParser(expression, unary)
-import Lox.Parser.Internal.Optimism(declaration)
-import Lox.Parser.Internal.Parse(errorWith, keywords, oneOf, Parser, parserFrom, throwaway, variable)
+import Lox.Parser.Internal.ExpressionParser(expression, primary, unary)
+import Lox.Parser.Internal.Optimism(declaration, function)
+import Lox.Parser.Internal.Parse(errorWith, keywords, notFollowedBy, one, oneOf, Parser, parserFrom, throwaway, variable)
 
 import Lox.Parser.Internal.ParserError(
     ErrorPriority(Unimportant, VeryHigh)
   , ParserError(ParserError)
-  , ParserErrorType(Backtrack, ExpectedIdentifier, InvalidExpression, Missing)
+  , ParserErrorType(Backtrack, ExpectedIdentifier, InvalidExpression, Missing, TooMuchArguing, TooMuchParaming)
   )
 
 
@@ -22,9 +24,22 @@ errorParser :: Parser a
 errorParser = (many declaration) *> badDeclaration
 
 badDeclaration :: Parser a
-badDeclaration = badVarDecl1 <|> badVarDecl2 <|> badVarDecl3 <|> badVarDecl4 <|> badVarDecl5 <|>
+badDeclaration = badClass1 <|> badFunction1 <|>
+                 badVarDecl1 <|> badVarDecl2 <|> badVarDecl3 <|> badVarDecl4 <|> badVarDecl5 <|>
                  badStatement
   where
+    badClass1 =
+      (throwaway Class) *>
+        variable *>
+        (optional $ (throwaway Less) *> variable) *>
+        (throwaway LeftBrace) *>
+        (many function) *>
+        badMethod1
+
+    badMethod1 = variable *> (throwaway LeftParen) *> badFnParams1
+
+    badFunction1 = (throwaway Fun) *> variable *> (throwaway LeftParen) *> badFnParams1
+
     -- bvd1 catches `var x = !3 == (3) var` | bvd2 catches `var x = !3 ==` --Jason B. (12/12/25)
     badVarDecl1 = (throwaway Var) *> variable *> (throwaway Equal) *> expression *> detectCompound
     badVarDecl2 = (throwaway Var) *> variable *> (throwaway Equal) *> badExpression
@@ -65,11 +80,21 @@ badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
     badBlock3 = declaration *> (whineIf RightBrace $ Missing LeftBrace)
     badBlock4 = whineIf RightBrace $ Missing LeftBrace
 
-    badExprStatement1 = expression *> (whine $ Missing Semicolon)
-    badExprStatement2 = badExpression
+    badExprStatement1 = badExpression
+    badExprStatement2 = expression *> (whine $ Missing Semicolon)
 
 badExpression :: Parser a
-badExpression = badAssignment
+badExpression = badFunApp <|> badAssignment
+
+badFunApp :: Parser a
+badFunApp =
+  primary *>
+    (many $ (throwaway Dot) *> variable) <* (notFollowedBy $ one Equal) *>
+    (throwaway LeftParen) *>
+    variable *>
+    (replicateM 254 $ (throwaway Comma) *> variable) *>
+    (throwaway Comma) *>
+    whine TooMuchArguing
 
 badAssignment :: Parser a
 badAssignment = (many goodAss) *> (badAss <|> badBinary)
@@ -95,6 +120,13 @@ badPrimary = badGrouping1 <|> badGrouping2 <|> badGrouping3 <|> badGrouping4 <|>
     badGrouping3 = (throwaway LeftParen) *> badExpression
     badGrouping4 = expression *> (whineIf RightParen $ Missing LeftParen)
     badGrouping5 = whineIf RightParen $ Missing LeftParen
+
+badFnParams1 :: Parser a
+badFnParams1 =
+  variable *>
+    (replicateM 254 $ (throwaway Comma) *> variable) *>
+    (throwaway Comma) *>
+    whine TooMuchParaming
 
 whine :: ParserErrorType -> Parser a
 whine = whineWithPrio VeryHigh

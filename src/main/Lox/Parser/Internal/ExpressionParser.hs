@@ -1,4 +1,4 @@
-module Lox.Parser.Internal.ExpressionParser(expression, unary) where
+module Lox.Parser.Internal.ExpressionParser(expression, primary, unary) where
 
 import Lox.Scanner.Token(
     Token(And, Bang, BangEqual, Comma, Dot, Equal, EqualEqual, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Nil, Number, Or, Plus, RightParen, This, TokenFalse, TokenTrue, Slash, Super, Star, String)

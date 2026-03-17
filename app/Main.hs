@@ -21,7 +21,7 @@ import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFai
 
 import Lox.Parser.ParserError(
     ParserError(offender, typ),
-    ParserErrorType(Backtrack, ExpectedIdentifier, InvalidExpression, Missing, ReservedName, TooMuchArguing)
+    ParserErrorType(Backtrack, ExpectedIdentifier, InvalidExpression, Missing, ReservedName, TooMuchArguing, TooMuchParaming)
   )
 
 import Lox.Scanner.ScannerError(
@@ -141,7 +141,8 @@ parserErrorAsText error = line
     desc t   = "'" <> (showText t) <> "': "
     errorText Backtrack           = "Expected something here (this shouldn't be able to happen)"
     errorText ReservedName        = "Expect variable name."
-    errorText TooMuchArguing      = "Functions are limited to 254 arguments."
+    errorText TooMuchArguing      = "Can't have more than 255 arguments."
+    errorText TooMuchParaming     = "Can't have more than 255 parameters."
     errorText ExpectedIdentifier  = "Expected an identifier"
     errorText InvalidExpression   = "Expect expression."
     errorText (Missing LeftParen) = "No matching '('"

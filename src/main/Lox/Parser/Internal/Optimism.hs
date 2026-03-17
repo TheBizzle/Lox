@@ -1,4 +1,4 @@
-module Lox.Parser.Internal.Optimism(ast, declaration, statement) where
+module Lox.Parser.Internal.Optimism(ast, declaration, function, statement) where
 
 import Lox.Scanner.Token(Token(Class, Comma, Else, EOF, Equal, For, Fun, If, LeftBrace, LeftParen, Less, Print, Return, RightBrace, RightParen, Semicolon, Var, While))
 
@@ -12,8 +12,7 @@ import Lox.Parser.Internal.AST(
   )
 
 import Lox.Parser.Internal.ExpressionParser(expression)
-import Lox.Parser.Internal.Parse(locOf, one, Parser, throwaway, variable, whineAbout)
-import Lox.Parser.Internal.ParserError(ParserErrorType(TooMuchArguing))
+import Lox.Parser.Internal.Parse(locOf, one, Parser, throwaway, variable)
 
 import qualified Lox.Parser.Internal.AST as AST
 
@@ -42,11 +41,11 @@ function = Function <$> fnName <*> ((throwaway LeftParen) *> fnParams <* (throwa
     fnBlock = contents <$> block
 
 fnParams :: Parser [Variable]
-fnParams = (limited existent) <|> nullary
+fnParams = ((:) <$> variable <*> (atMost 254 $ (throwaway Comma) *> variable)) <|> pure []
   where
-    existent  = (:) <$> variable <*> (many $ (throwaway Comma) *> variable)
-    nullary   = pure []
-    limited p = p >>= (\args -> if (length args) < 255 then return args else whineAbout TooMuchArguing)
+    atMost :: Alternative f => Int -> f a -> f [a]
+    atMost 0 _ = pure []
+    atMost n p = ((:) <$> p <*> atMost (n - 1) p) <|> pure []
 
 varDeclaration :: Parser Statement
 varDeclaration = declare <$> ((throwaway Var) *> variable) <*>
