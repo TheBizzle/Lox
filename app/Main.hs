@@ -136,7 +136,7 @@ evalErrorAsText (EvalError typ tp) = suffix tp $ errorText typ
 parserErrorAsText :: ParserError -> Text
 parserErrorAsText error = line
   where
-    line = "[" <> (showText error.offender.loc.lineNumber) <> "] Error at " <> (desc error.offender.token) <> (errorText error.typ)
+    line = "[line " <> (showText error.offender.loc.lineNumber) <> "] Error at " <> (desc error.offender.token) <> (errorText error.typ)
     desc EOF = "end: "
     desc t   = "'" <> (showText t) <> "': "
     errorText Backtrack           = "Expected something here (this shouldn't be able to happen)"
