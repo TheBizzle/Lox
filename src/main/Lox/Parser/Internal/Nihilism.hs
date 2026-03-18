@@ -16,7 +16,7 @@ import Lox.Parser.Internal.Parse(errorWith, keywords, notFollowedBy, one, oneOf,
 import Lox.Parser.Internal.ParserError(
     ErrorPriority(Unimportant, VeryHigh)
   , ParserError(ParserError)
-  , ParserErrorType(Backtrack, ExpectedIdentifier, ExpectedSuperMethodName, ExpectedSuperName, InvalidExpression, Missing, TooMuchArguing, TooMuchParaming)
+  , ParserErrorType(Backtrack, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedSuperMethodName, ExpectedSuperName, InvalidExpression, Missing, TooMuchArguing, TooMuchParaming)
   )
 
 
@@ -96,13 +96,18 @@ badBlock = badBlock1 <|> badBlock2
     badBlock2 = (throwaway LeftBrace) *> (many declaration) *> (whineIfNot RightBrace)
 
 badExpression :: Parser a
-badExpression = badSuperApp <|> badFunApp <|> badAssignment
+badExpression = badSuperApp1 <|> badSuperApp2 <|> badFunApp <|> badAssignment
   where
-    badSuperApp =
+    badSuperApp1 =
       (throwaway Super) *>
         (throwaway Dot) *>
         (notFollowedBy variable) *>
         (whine ExpectedSuperMethodName)
+
+    badSuperApp2 =
+      (throwaway Super) *>
+        (notFollowedBy $ one Dot) *>
+        (whine ExpectedDotAfterSuper)
 
 badFunApp :: Parser a
 badFunApp =

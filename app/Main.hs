@@ -21,7 +21,7 @@ import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFai
 
 import Lox.Parser.ParserError(
     ParserError(offender, typ),
-    ParserErrorType(Backtrack, ExpectedIdentifier, ExpectedSuperMethodName, ExpectedSuperName, InvalidExpression, Missing, ReservedName, TooMuchArguing, TooMuchParaming)
+    ParserErrorType(Backtrack, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedSuperMethodName, ExpectedSuperName, InvalidExpression, Missing, ReservedName, TooMuchArguing, TooMuchParaming)
   )
 
 import Lox.Scanner.ScannerError(
@@ -143,6 +143,7 @@ parserErrorAsText error = line
     errorText ReservedName            = "Expect variable name."
     errorText TooMuchArguing          = "Can't have more than 255 arguments."
     errorText TooMuchParaming         = "Can't have more than 255 parameters."
+    errorText ExpectedDotAfterSuper   = "Expect '.' after 'super'."
     errorText ExpectedIdentifier      = "Expect variable name."
     errorText ExpectedSuperMethodName = "Expect superclass method name."
     errorText ExpectedSuperName       = "Expect superclass name."
