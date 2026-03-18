@@ -24,9 +24,10 @@ errorParser :: Parser a
 errorParser = (many declaration) *> badDeclaration
 
 badDeclaration :: Parser a
-badDeclaration = badClass1 <|> badClass2 <|> badFunction1 <|>
-                 badVarDecl1 <|> badVarDecl2 <|> badVarDecl3 <|> badVarDecl4 <|> badVarDecl5 <|>
-                 badStatement
+badDeclaration = badClass1 <|> badClass2 <|>
+                   badFunction1 <|>
+                   badVarDecl1 <|> badVarDecl2 <|> badVarDecl3 <|> badVarDecl4 <|> badVarDecl5 <|>
+                   badStatement
   where
     badClass1 =
       (throwaway Class) *>
@@ -43,10 +44,10 @@ badDeclaration = badClass1 <|> badClass2 <|> badFunction1 <|>
         (many function) *>
         (badMethod1 <|> badMethod2)
 
-    badMethod1 = variable *> (throwaway LeftParen) *> badFnParams1
+    badMethod1 = variable *> oversizedParamList *> whine TooMuchParaming
     badMethod2 = variable *> (throwaway LeftParen) *> fnParams *> (throwaway RightParen) *> badBlock
 
-    badFunction1 = (throwaway Fun) *> variable *> (throwaway LeftParen) *> badFnParams1
+    badFunction1 = (throwaway Fun) *> variable *> oversizedParamList *> whine TooMuchParaming
 
     -- bvd1 catches `var x = !3 == (3) var` | bvd2 catches `var x = !3 ==` --Jason B. (12/12/25)
     badVarDecl1 = (throwaway Var) *> variable *> (throwaway Equal) *> expression *> detectCompound
@@ -96,7 +97,7 @@ badBlock = badBlock1 <|> badBlock2
     badBlock2 = (throwaway LeftBrace) *> (many declaration) *> (whineIfNot RightBrace)
 
 badExpression :: Parser a
-badExpression = badSuperApp1 <|> badSuperApp2 <|> badFunApp <|> badAssignment
+badExpression = badSuperApp1 <|> badSuperApp2 <|> badAssignment
   where
     badSuperApp1 =
       (throwaway Super) *>
@@ -108,16 +109,6 @@ badExpression = badSuperApp1 <|> badSuperApp2 <|> badFunApp <|> badAssignment
       (throwaway Super) *>
         (notFollowedBy $ one Dot) *>
         (whine ExpectedDotAfterSuper)
-
-badFunApp :: Parser a
-badFunApp =
-  primary *>
-    (many $ (throwaway Dot) *> variable) <* (notFollowedBy $ one Equal) *>
-    (throwaway LeftParen) *>
-    variable *>
-    (replicateM 254 $ (throwaway Comma) *> variable) *>
-    (throwaway Comma) *>
-    whine TooMuchArguing
 
 badAssignment :: Parser a
 badAssignment = (many goodAss) *> (badAss <|> badBinary)
@@ -132,7 +123,17 @@ badBinary = (optional $ unary *> (many goodBinary) *> (oneOf binaryOperators)) *
     binaryOperators = [And, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Or, Plus, Slash, Star]
 
 badUnary :: Parser a
-badUnary = (many $ oneOf [Bang, Minus]) *> badPrimary
+badUnary = (many $ oneOf [Bang, Minus]) *> badFnCall
+
+badFnCall :: Parser a
+badFnCall = badFunApp <|> badPrimary
+  where
+    badFunApp :: Parser a
+    badFunApp =
+      primary *>
+        (many $ (throwaway Dot) *> variable) <* (notFollowedBy $ one Equal) *>
+        oversizedParamList *>
+        whine TooMuchArguing
 
 badPrimary :: Parser a
 badPrimary = badGrouping1 <|> badGrouping2 <|> badGrouping3 <|> badGrouping4 <|> badGrouping5 <|> badFnCall <|> (whine InvalidExpression)
@@ -144,12 +145,12 @@ badPrimary = badGrouping1 <|> badGrouping2 <|> badGrouping3 <|> badGrouping4 <|>
     badGrouping4 = expression *> (whineIf RightParen $ Missing LeftParen)
     badGrouping5 = whineIf RightParen $ Missing LeftParen
 
-badFnParams1 :: Parser a
-badFnParams1 =
-  variable *>
+oversizedParamList :: Parser ()
+oversizedParamList =
+  (throwaway LeftParen) *>
+    variable *>
     (replicateM 254 $ (throwaway Comma) *> variable) *>
-    (throwaway Comma) *>
-    whine TooMuchParaming
+    (throwaway Comma)
 
 whine :: ParserErrorType -> Parser a
 whine = whineWithPrio VeryHigh
