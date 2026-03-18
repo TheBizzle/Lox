@@ -1,4 +1,4 @@
-module Lox.Parser.Internal.Optimism(ast, declaration, function, statement) where
+module Lox.Parser.Internal.Optimism(ast, declaration, fnParams, function, statement) where
 
 import Lox.Scanner.Token(Token(Class, Comma, Else, EOF, Equal, For, Fun, If, LeftBrace, LeftParen, Less, Print, Return, RightBrace, RightParen, Semicolon, Var, While))
 

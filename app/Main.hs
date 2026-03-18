@@ -21,7 +21,7 @@ import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFai
 
 import Lox.Parser.ParserError(
     ParserError(offender, typ),
-    ParserErrorType(Backtrack, ExpectedIdentifier, ExpectedSuperName, InvalidExpression, Missing, ReservedName, TooMuchArguing, TooMuchParaming)
+    ParserErrorType(Backtrack, ExpectedIdentifier, ExpectedSuperMethodName, ExpectedSuperName, InvalidExpression, Missing, ReservedName, TooMuchArguing, TooMuchParaming)
   )
 
 import Lox.Scanner.ScannerError(
@@ -139,16 +139,17 @@ parserErrorAsText error = line
     line = "[line " <> (showText error.offender.loc.lineNumber) <> "] Error at " <> (desc error.offender.token) <> (errorText error.typ)
     desc EOF = "end: "
     desc t   = "'" <> (showText t) <> "': "
-    errorText Backtrack           = "Expected something here (this shouldn't be able to happen)"
-    errorText ReservedName        = "Expect variable name."
-    errorText TooMuchArguing      = "Can't have more than 255 arguments."
-    errorText TooMuchParaming     = "Can't have more than 255 parameters."
-    errorText ExpectedIdentifier  = "Expect variable name."
-    errorText ExpectedSuperName   = "Expect superclass name."
-    errorText InvalidExpression   = "Expect expression."
-    errorText (Missing LeftParen) = "No matching '('"
-    errorText (Missing LeftBrace) = "No matching '{'"
-    errorText (Missing t)         = "Expected '" <> (showText t) <> "'"
+    errorText Backtrack               = "Expected something here (this shouldn't be able to happen)"
+    errorText ReservedName            = "Expect variable name."
+    errorText TooMuchArguing          = "Can't have more than 255 arguments."
+    errorText TooMuchParaming         = "Can't have more than 255 parameters."
+    errorText ExpectedIdentifier      = "Expect variable name."
+    errorText ExpectedSuperMethodName = "Expect superclass method name."
+    errorText ExpectedSuperName       = "Expect superclass name."
+    errorText InvalidExpression       = "Expect expression."
+    errorText (Missing LeftParen)     = "No matching '('"
+    errorText (Missing LeftBrace)     = "No matching '{'"
+    errorText (Missing t)             = "Expected '" <> (showText t) <> "'"
 
 scannerErrorAsText :: ScannerError -> Text
 scannerErrorAsText error = line

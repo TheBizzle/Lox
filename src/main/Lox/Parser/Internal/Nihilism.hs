@@ -3,20 +3,20 @@ module Lox.Parser.Internal.Nihilism(errorParser) where
 import Control.Monad(replicateM)
 
 import Lox.Scanner.Token(
-    Token(And, Bang, BangEqual, Class, Comma, Dot, Else, EOF, Equal, EqualEqual, For, Fun, Greater, GreaterEqual, If, LeftBrace, LeftParen, Less, LessEqual, Minus, Or, Plus, Print, Return, RightBrace, RightParen, Semicolon, Slash, Star, Var, While)
+    Token(And, Bang, BangEqual, Class, Comma, Dot, Else, EOF, Equal, EqualEqual, For, Fun, Greater, GreaterEqual, If, LeftBrace, LeftParen, Less, LessEqual, Minus, Or, Plus, Print, Return, RightBrace, RightParen, Semicolon, Slash, Star, Super, Var, While)
   , TokenPlus(loc, token, TokenPlus)
   )
 
 import Lox.Parser.Internal.AST(exprToToken)
 
 import Lox.Parser.Internal.ExpressionParser(expression, primary, unary)
-import Lox.Parser.Internal.Optimism(declaration, function)
+import Lox.Parser.Internal.Optimism(declaration, fnParams, function)
 import Lox.Parser.Internal.Parse(errorWith, keywords, notFollowedBy, one, oneOf, Parser, parserFrom, throwaway, variable)
 
 import Lox.Parser.Internal.ParserError(
     ErrorPriority(Unimportant, VeryHigh)
   , ParserError(ParserError)
-  , ParserErrorType(Backtrack, ExpectedIdentifier, ExpectedSuperName, InvalidExpression, Missing, TooMuchArguing, TooMuchParaming)
+  , ParserErrorType(Backtrack, ExpectedIdentifier, ExpectedSuperMethodName, ExpectedSuperName, InvalidExpression, Missing, TooMuchArguing, TooMuchParaming)
   )
 
 
@@ -41,9 +41,10 @@ badDeclaration = badClass1 <|> badClass2 <|> badFunction1 <|>
         (optional $ (throwaway Less) *> variable) *>
         (throwaway LeftBrace) *>
         (many function) *>
-        badMethod1
+        (badMethod1 <|> badMethod2)
 
     badMethod1 = variable *> (throwaway LeftParen) *> badFnParams1
+    badMethod2 = variable *> (throwaway LeftParen) *> fnParams *> (throwaway RightParen) *> badBlock
 
     badFunction1 = (throwaway Fun) *> variable *> (throwaway LeftParen) *> badFnParams1
 
@@ -66,10 +67,10 @@ badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
                  badIfElse <|> badIf <|>
                  badWhile <|>
                  badReturn <|>
-                 badBlock1 <|> badBlock2 <|> badBlock3 <|> badBlock4 <|>
-                 badExprStatement1 <|> badExprStatement2
+                 badBlock <|>
+                 badExprStatement1 <|> badExprStatement2 <|>
+                 dangler1 <|> dangler2
   where
-
     badPrintStatement1 = (throwaway Print) *> expression *> (whine $ Missing Semicolon)
     badPrintStatement2 = (throwaway Print) *> badExpression
 
@@ -82,16 +83,26 @@ badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
 
     badReturn = (throwaway Return) *> (whineIf EOF $ Missing EOF) -- TODO
 
-    badBlock1 = (throwaway LeftBrace) *> (many declaration) *> badDeclaration
-    badBlock2 = (throwaway LeftBrace) *> (many declaration) *> (whineIfNot RightBrace)
-    badBlock3 = declaration *> (whineIf RightBrace $ Missing LeftBrace)
-    badBlock4 = whineIf RightBrace $ Missing LeftBrace
-
     badExprStatement1 = badExpression
     badExprStatement2 = expression *> (whine $ Missing Semicolon)
 
+    dangler1 = declaration *> (whineIf RightBrace $ Missing LeftBrace)
+    dangler2 = whineIf RightBrace $ Missing LeftBrace
+
+badBlock :: Parser a
+badBlock = badBlock1 <|> badBlock2
+  where
+    badBlock1 = (throwaway LeftBrace) *> (many declaration) *> badDeclaration
+    badBlock2 = (throwaway LeftBrace) *> (many declaration) *> (whineIfNot RightBrace)
+
 badExpression :: Parser a
-badExpression = badFunApp <|> badAssignment
+badExpression = badSuperApp <|> badFunApp <|> badAssignment
+  where
+    badSuperApp =
+      (throwaway Super) *>
+        (throwaway Dot) *>
+        (notFollowedBy variable) *>
+        (whine ExpectedSuperMethodName)
 
 badFunApp :: Parser a
 badFunApp =
