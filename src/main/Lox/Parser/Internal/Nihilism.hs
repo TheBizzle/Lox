@@ -105,10 +105,11 @@ badExpression = badSuperApp1 <|> badSuperApp2 <|> badAssignment
         (notFollowedBy variable) *>
         (whine ExpectedSuperMethodName)
 
-    badSuperApp2 =
-      (throwaway Super) *>
-        (notFollowedBy $ one Dot) *>
-        (whine ExpectedDotAfterSuper)
+badSuperApp2 :: Parser a
+badSuperApp2 =
+  (throwaway Super) *>
+    (notFollowedBy $ one Dot) *>
+    (whine ExpectedDotAfterSuper)
 
 badAssignment :: Parser a
 badAssignment = (many goodAss) *> (badAss <|> badBinary)
@@ -136,14 +137,15 @@ badFnCall = badFunApp <|> badPrimary
         whine TooMuchArguing
 
 badPrimary :: Parser a
-badPrimary = badGrouping1 <|> badGrouping2 <|> badGrouping3 <|> badGrouping4 <|> badGrouping5 <|> badFnCall <|> (whine InvalidExpression)
+badPrimary = badGrouping1 <|> badGrouping2 <|> badGrouping3 <|> badGrouping4 <|> badGrouping5 <|> badGrouping6 <|>
+               (whine InvalidExpression)
   where
-    badFnCall    = (throwaway For) *> (whineIf EOF $ Missing EOF) -- TODO
     badGrouping1 = (throwaway LeftParen) *> (whineIf RightParen InvalidExpression)
-    badGrouping2 = (throwaway LeftParen) *> expression *> (whineIfNot RightParen)
-    badGrouping3 = (throwaway LeftParen) *> badExpression
-    badGrouping4 = expression *> (whineIf RightParen $ Missing LeftParen)
-    badGrouping5 = whineIf RightParen $ Missing LeftParen
+    badGrouping2 = (throwaway LeftParen) *> badSuperApp2
+    badGrouping3 = (throwaway LeftParen) *> expression *> (whineIfNot RightParen)
+    badGrouping4 = (throwaway LeftParen) *> badExpression
+    badGrouping5 = expression *> (whineIf RightParen $ Missing LeftParen)
+    badGrouping6 = whineIf RightParen $ Missing LeftParen
 
 oversizedParamList :: Parser ()
 oversizedParamList =

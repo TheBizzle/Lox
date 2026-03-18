@@ -13,7 +13,7 @@ import Lox.Scanner.Token(
 import Lox.Parser.Internal.AST(Variable(Variable))
 
 import Lox.Parser.Internal.ParserError(
-    ErrorPriority(Unimportant, VeryHigh)
+    ErrorPriority(Unimportant, High)
   , ParserError(ParserError, prio)
   , ParserErrorType(Backtrack, ReservedName)
   )
@@ -33,7 +33,7 @@ variable = parserFrom helper
       if not $ isReserved t then
         backtrack [tp]
       else
-        errorWith $ ParserError ReservedName VeryHigh tp
+        errorWith $ ParserError ReservedName High tp
 
 throwaway :: Token -> Parser ()
 throwaway token = convert $ token =#> (const ())
