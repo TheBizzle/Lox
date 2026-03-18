@@ -16,7 +16,7 @@ import Lox.Parser.Internal.Parse(errorWith, keywords, notFollowedBy, one, oneOf,
 import Lox.Parser.Internal.ParserError(
     ErrorPriority(Unimportant, VeryHigh)
   , ParserError(ParserError)
-  , ParserErrorType(Backtrack, ExpectedIdentifier, InvalidExpression, Missing, TooMuchArguing, TooMuchParaming)
+  , ParserErrorType(Backtrack, ExpectedIdentifier, ExpectedSuperName, InvalidExpression, Missing, TooMuchArguing, TooMuchParaming)
   )
 
 
@@ -24,11 +24,18 @@ errorParser :: Parser a
 errorParser = (many declaration) *> badDeclaration
 
 badDeclaration :: Parser a
-badDeclaration = badClass1 <|> badFunction1 <|>
+badDeclaration = badClass1 <|> badClass2 <|> badFunction1 <|>
                  badVarDecl1 <|> badVarDecl2 <|> badVarDecl3 <|> badVarDecl4 <|> badVarDecl5 <|>
                  badStatement
   where
     badClass1 =
+      (throwaway Class) *>
+        variable *>
+        (throwaway Less) *>
+        (notFollowedBy variable) *>
+        (whine ExpectedSuperName)
+
+    badClass2 =
       (throwaway Class) *>
         variable *>
         (optional $ (throwaway Less) *> variable) *>

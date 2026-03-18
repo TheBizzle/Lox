@@ -1,7 +1,7 @@
 module Lox.Parser.Internal.ParserError(
     ErrorPriority(Extreme, High, Low, Medium, Unimportant, VeryHigh)
   , ParserError(offender, ParserError, prio, typ)
-  , ParserErrorType(Backtrack, ExpectedIdentifier, InvalidExpression, Missing, ReservedName, token, TooMuchArguing, TooMuchParaming)
+  , ParserErrorType(Backtrack, ExpectedIdentifier, ExpectedSuperName, InvalidExpression, Missing, ReservedName, token, TooMuchArguing, TooMuchParaming)
   ) where
 
 import Lox.Scanner.Token(Token, TokenPlus)
@@ -20,6 +20,7 @@ data ParserErrorType
   = Backtrack
   | ReservedName
   | ExpectedIdentifier
+  | ExpectedSuperName
   | InvalidExpression
   | Missing { token :: Token }
   | TooMuchArguing
