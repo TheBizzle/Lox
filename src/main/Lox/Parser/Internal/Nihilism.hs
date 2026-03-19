@@ -79,7 +79,7 @@ badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
     badPrintStatement1 = (throwaway Print) *> expression *> (whine $ Missing Semicolon)
     badPrintStatement2 = (throwaway Print) *> badExpression
 
-    badReturn = (throwaway Return) *> (whineIf EOF $ Missing EOF) -- TODO
+    badReturn = (throwaway Return) *> (notFollowedBy expression) *> (notFollowedBy $ one Semicolon) *> (whine InvalidExpression)
 
     badExprStatement1 = badExpression
     badExprStatement2 = expression *> (whine $ Missing Semicolon)
