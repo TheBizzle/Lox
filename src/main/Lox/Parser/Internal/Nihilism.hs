@@ -16,7 +16,7 @@ import Lox.Parser.Internal.Parse(errorWith, keywords, notFollowedBy, one, oneOf,
 import Lox.Parser.Internal.ParserError(
     ErrorPriority(Unimportant, VeryHigh)
   , ParserError(ParserError)
-  , ParserErrorType(Backtrack, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, InvalidExpression, Missing, TooMuchArguing, TooMuchParaming)
+  , ParserErrorType(Backtrack, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, InvalidExpression, Missing, TooMuchArguing, TooMuchParaming)
   )
 
 
@@ -25,7 +25,7 @@ errorParser = (many declaration) *> badDeclaration
 
 badDeclaration :: Parser a
 badDeclaration = badClass1 <|> badClass2 <|>
-                   badFunction1 <|>
+                   badFunction1 <|> badFunction2 <|>
                    badVarDecl1 <|> badVarDecl2 <|> badVarDecl3 <|> badVarDecl4 <|> badVarDecl5 <|>
                    badStatement
   where
@@ -42,12 +42,14 @@ badDeclaration = badClass1 <|> badClass2 <|>
         (optional $ (throwaway Less) *> variable) *>
         (throwaway LeftBrace) *>
         (many function) *>
-        (badMethod1 <|> badMethod2)
+        (badMethod1 <|> badMethod2 <|> badMethod3)
 
     badMethod1 = variable *> oversizedParamList *> whine TooMuchParaming
-    badMethod2 = variable *> (throwaway LeftParen) *> fnParams *> (throwaway RightParen) *> badBlock
+    badMethod2 = variable *> malformedParamList
+    badMethod3 = variable *> (throwaway LeftParen) *> fnParams *> (throwaway RightParen) *> badBlock
 
     badFunction1 = (throwaway Fun) *> variable *> oversizedParamList *> whine TooMuchParaming
+    badFunction2 = (throwaway Fun) *> variable *> malformedParamList
 
     -- bvd1 catches `var x = !3 == (3) var` | bvd2 catches `var x = !3 ==` --Jason B. (12/12/25)
     badVarDecl1 = (throwaway Var) *> variable *> (throwaway Equal) *> expression *> detectCompound
@@ -152,7 +154,7 @@ badUnary :: Parser a
 badUnary = (many $ oneOf [Bang, Minus]) *> badFnCall
 
 badFnCall :: Parser a
-badFnCall = badFunApp1 <|> badFunApp2 <|> badPrimary
+badFnCall = badFunApp1 <|> badFunApp2 <|> badFunApp3 <|> badPrimary
   where
     badFunApp1 :: Parser a
     badFunApp1 =
@@ -169,6 +171,12 @@ badFnCall = badFunApp1 <|> badFunApp2 <|> badPrimary
         oversizedParamList *>
         whine TooMuchArguing
 
+    badFunApp3 :: Parser a
+    badFunApp3 =
+      primary *>
+        (many $ (throwaway Dot) *> variable) <* (notFollowedBy $ one Equal) *>
+        malformedParamList
+
 badPrimary :: Parser a
 badPrimary = badGrouping1 <|> badGrouping2 <|> badGrouping3 <|> badGrouping4 <|> badGrouping5 <|> badGrouping6 <|>
                (whine InvalidExpression)
@@ -179,6 +187,14 @@ badPrimary = badGrouping1 <|> badGrouping2 <|> badGrouping3 <|> badGrouping4 <|>
     badGrouping4 = (throwaway LeftParen) *> badExpression
     badGrouping5 = expression *> (whineIf RightParen $ Missing LeftParen)
     badGrouping6 = whineIf RightParen $ Missing LeftParen
+
+malformedParamList :: Parser a
+malformedParamList =
+  (throwaway LeftParen) *>
+    variable *>
+    (many $ (throwaway Comma) *> variable) *>
+    (notFollowedBy $ one RightParen) *>
+    (whine $ ExpectedParenAfterParams)
 
 oversizedParamList :: Parser ()
 oversizedParamList =
