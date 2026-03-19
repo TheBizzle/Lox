@@ -16,7 +16,7 @@ import Lox.Parser.Internal.Parse(errorWith, keywords, notFollowedBy, one, oneOf,
 import Lox.Parser.Internal.ParserError(
     ErrorPriority(Unimportant, VeryHigh)
   , ParserError(ParserError)
-  , ParserErrorType(Backtrack, ExpectedBraceBeforeBody, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, InvalidExpression, Missing, TooMuchArguing, TooMuchParaming)
+  , ParserErrorType(Backtrack, ExpectedBraceBeforeBody, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, InvalidAssign, InvalidExpression, Missing, TooMuchArguing, TooMuchParaming)
   )
 
 
@@ -74,7 +74,7 @@ badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
                  badReturn <|>
                  badBlock <|>
                  badExprStatement1 <|> badExprStatement2 <|>
-                 dangler1 <|> dangler2
+                 dangler1 <|> dangler2 <|> dangler3
   where
     badPrintStatement1 = (throwaway Print) *> expression *> (whine $ Missing Semicolon)
     badPrintStatement2 = (throwaway Print) *> badExpression
@@ -86,6 +86,7 @@ badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
 
     dangler1 = declaration *> (whineIf RightBrace $ Missing LeftBrace)
     dangler2 = whineIf RightBrace $ Missing LeftBrace
+    dangler3 = whineIf RightParen $ Missing LeftParen
 
 badFor :: Parser a
 badFor = badFor1 <|> badFor2 <|> badFor3 <|> badFor4 <|> badFor5 <|> badFor6
@@ -155,7 +156,7 @@ badAssignment :: Parser a
 badAssignment = (many goodAss) *> (badAss <|> badBinary)
   where
     goodAss = variable *> (throwaway Equal)
-    badAss  = whineParsed (expression <* (throwaway Equal)) exprToToken ExpectedIdentifier
+    badAss  = expression *> (whineIf Equal InvalidAssign)
 
 badBinary :: Parser a
 badBinary = (optional $ unary *> (many goodBinary) *> (oneOf binaryOperators)) *> badUnary
@@ -191,7 +192,7 @@ badFnCall = badFunApp1 <|> badFunApp2 <|> badFunApp3 <|> badPrimary
         malformedParamList
 
 badPrimary :: Parser a
-badPrimary = badGrouping1 <|> badGrouping2 <|> badGrouping3 <|> badGrouping4 <|> badGrouping5 <|> badGrouping6 <|>
+badPrimary = badGrouping1 <|> badGrouping2 <|> badGrouping3 <|> badGrouping4 <|> badGrouping5 <|>
                (whine InvalidExpression)
   where
     badGrouping1 = (throwaway LeftParen) *> (whineIf RightParen InvalidExpression)
@@ -199,7 +200,6 @@ badPrimary = badGrouping1 <|> badGrouping2 <|> badGrouping3 <|> badGrouping4 <|>
     badGrouping3 = (throwaway LeftParen) *> expression *> (whineIfNot RightParen)
     badGrouping4 = (throwaway LeftParen) *> badExpression
     badGrouping5 = expression *> (whineIf RightParen $ Missing LeftParen)
-    badGrouping6 = whineIf RightParen $ Missing LeftParen
 
 malformedParamList :: Parser a
 malformedParamList =

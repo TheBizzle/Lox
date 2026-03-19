@@ -21,7 +21,7 @@ import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFai
 
 import Lox.Parser.ParserError(
     ParserError(offender, typ),
-    ParserErrorType(Backtrack, ExpectedBraceBeforeBody, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, InvalidExpression, Missing, ReservedName, TooMuchArguing, TooMuchParaming)
+    ParserErrorType(Backtrack, ExpectedBraceBeforeBody, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, InvalidAssign, InvalidExpression, Missing, ReservedName, TooMuchArguing, TooMuchParaming)
   )
 
 import Lox.Scanner.ScannerError(
@@ -150,6 +150,7 @@ parserErrorAsText error = line
     errorText ExpectedPropertyName     = "Expect property name after '.'."
     errorText ExpectedSuperMethodName  = "Expect superclass method name."
     errorText ExpectedSuperName        = "Expect superclass name."
+    errorText InvalidAssign            = "Invalid assignment target."
     errorText InvalidExpression        = "Expect expression."
     errorText (Missing LeftParen)      = "No matching '('"
     errorText (Missing LeftBrace)      = "No matching '{'"
