@@ -16,7 +16,7 @@ import Lox.Parser.Internal.Parse(errorWith, keywords, notFollowedBy, one, oneOf,
 import Lox.Parser.Internal.ParserError(
     ErrorPriority(Unimportant, VeryHigh)
   , ParserError(ParserError)
-  , ParserErrorType(Backtrack, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, InvalidExpression, Missing, TooMuchArguing, TooMuchParaming)
+  , ParserErrorType(Backtrack, ExpectedBraceBeforeBody, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, InvalidExpression, Missing, TooMuchArguing, TooMuchParaming)
   )
 
 
@@ -25,7 +25,7 @@ errorParser = (many declaration) *> badDeclaration
 
 badDeclaration :: Parser a
 badDeclaration = badClass1 <|> badClass2 <|>
-                   badFunction1 <|> badFunction2 <|>
+                   badFunction1 <|> badFunction2 <|> badFunction3 <|>
                    badVarDecl1 <|> badVarDecl2 <|> badVarDecl3 <|> badVarDecl4 <|> badVarDecl5 <|>
                    badStatement
   where
@@ -46,10 +46,11 @@ badDeclaration = badClass1 <|> badClass2 <|>
 
     badMethod1 = variable *> oversizedParamList *> whine TooMuchParaming
     badMethod2 = variable *> malformedParamList
-    badMethod3 = variable *> (throwaway LeftParen) *> fnParams *> (throwaway RightParen) *> badBlock
+    badMethod3 = variable *> (throwaway LeftParen) *> fnParams *> (throwaway RightParen) *> badFnBlock
 
     badFunction1 = (throwaway Fun) *> variable *> oversizedParamList *> whine TooMuchParaming
     badFunction2 = (throwaway Fun) *> variable *> malformedParamList
+    badFunction3 = (throwaway Fun) *> variable *> (throwaway LeftParen) *> fnParams *> (throwaway RightParen) *> badFnBlock
 
     -- bvd1 catches `var x = !3 == (3) var` | bvd2 catches `var x = !3 ==` --Jason B. (12/12/25)
     badVarDecl1 = (throwaway Var) *> variable *> (throwaway Equal) *> expression *> detectCompound
@@ -116,6 +117,11 @@ badIf =
     (throwaway RightParen) *>
     (notFollowedBy statement) *>
     (whine InvalidExpression)
+
+badFnBlock :: Parser a
+badFnBlock = badBlock <|> noBlockAtAll
+  where
+    noBlockAtAll = (notFollowedBy $ one LeftBrace) *> (whine ExpectedBraceBeforeBody)
 
 badBlock :: Parser a
 badBlock = badBlock1 <|> badBlock2
