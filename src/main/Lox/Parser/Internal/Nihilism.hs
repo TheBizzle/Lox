@@ -10,7 +10,7 @@ import Lox.Scanner.Token(
 import Lox.Parser.Internal.AST(exprToToken)
 
 import Lox.Parser.Internal.ExpressionParser(expression, primary, unary)
-import Lox.Parser.Internal.Optimism(declaration, fnParams, function, statement)
+import Lox.Parser.Internal.Optimism(declaration, fnParams, forInitializer, function, statement)
 import Lox.Parser.Internal.Parse(errorWith, keywords, notFollowedBy, one, oneOf, Parser, parserFrom, throwaway, variable)
 
 import Lox.Parser.Internal.ParserError(
@@ -76,8 +76,6 @@ badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
     badPrintStatement1 = (throwaway Print) *> expression *> (whine $ Missing Semicolon)
     badPrintStatement2 = (throwaway Print) *> badExpression
 
-    badFor = (throwaway For) *> (whineIf EOF $ Missing EOF) -- TODO
-
     badWhile = (throwaway While) *> (whineIf EOF $ Missing EOF) -- TODO
 
     badReturn = (throwaway Return) *> (whineIf EOF $ Missing EOF) -- TODO
@@ -87,6 +85,15 @@ badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
 
     dangler1 = declaration *> (whineIf RightBrace $ Missing LeftBrace)
     dangler2 = whineIf RightBrace $ Missing LeftBrace
+
+badFor :: Parser a
+badFor = badFor1 <|> badFor2 <|> badFor3 <|> badFor4 <|> badFor5
+  where
+    badFor1 = (throwaway For) *> (notFollowedBy $ one LeftParen) *> (whine $ Missing LeftParen)
+    badFor2 = (throwaway For) *> (throwaway LeftParen) *> (notFollowedBy forInitializer) *> (whine InvalidExpression)
+    badFor3 = (throwaway For) *> (throwaway LeftParen) *> forInitializer *> (notFollowedBy $ one Semicolon) *> (notFollowedBy expression) *> (whine InvalidExpression)
+    badFor4 = (throwaway For) *> (throwaway LeftParen) *> forInitializer *> ((optional expression) *> (throwaway Semicolon)) *> (notFollowedBy $ one RightParen) *> (notFollowedBy expression) *> (whine InvalidExpression)
+    badFor5 = (throwaway For) *> (throwaway LeftParen) *> forInitializer *> ((optional expression) *> (throwaway Semicolon)) *> ((optional expression) <* (throwaway RightParen)) *> (notFollowedBy statement) *> (whine InvalidExpression)
 
 badIfElse :: Parser a
 badIfElse =

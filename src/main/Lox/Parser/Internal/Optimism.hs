@@ -1,4 +1,4 @@
-module Lox.Parser.Internal.Optimism(ast, declaration, fnParams, function, statement) where
+module Lox.Parser.Internal.Optimism(ast, declaration, fnParams, forInitializer, function, statement) where
 
 import Lox.Scanner.Token(Token(Class, Comma, Else, EOF, Equal, For, Fun, If, LeftBrace, LeftParen, Less, Print, Return, RightBrace, RightParen, Semicolon, Var, While))
 
@@ -71,19 +71,20 @@ returnStatement = ReturnStatement <$> (one Return) <*> ((optional expression) <*
 forStatement :: Parser Statement
 forStatement = buildLoop <$>
                  (one For) <*>
-                 ((throwaway LeftParen) *> initializer) <*>
+                 ((throwaway LeftParen) *> forInitializer) <*>
                  ((optional expression) <* (throwaway  Semicolon)) <*>
                  ((optional expression) <* (throwaway RightParen)) <*>
                  statement
   where
-    initializer = varDeclaration <|> exprStatement <|> ((const $ Block []) <$> (one Semicolon))
-
     buildLoop forT init condM incM body = Block [init, loop]
       where
         cond     = maybe (LiteralExpr (BooleanLit True) forT) id condM
         inc      = maybeToList $ map ExpressionStatement incM
         fullBody = Block $ [body] <> inc
         loop     = WhileStatement cond fullBody
+
+forInitializer :: Parser Statement
+forInitializer = varDeclaration <|> exprStatement <|> ((const $ Block []) <$> (one Semicolon))
 
 ifStatement :: Parser Statement
 ifStatement = ifElse <|> plainIf
