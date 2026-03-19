@@ -10,7 +10,7 @@ import Lox.Scanner.Token(
 import Lox.Parser.Internal.AST(exprToToken)
 
 import Lox.Parser.Internal.ExpressionParser(expression, primary, unary)
-import Lox.Parser.Internal.Optimism(declaration, fnParams, function)
+import Lox.Parser.Internal.Optimism(declaration, fnParams, function, statement)
 import Lox.Parser.Internal.Parse(errorWith, keywords, notFollowedBy, one, oneOf, Parser, parserFrom, throwaway, variable)
 
 import Lox.Parser.Internal.ParserError(
@@ -77,7 +77,6 @@ badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
 
     badFor = (throwaway For) *> (whineIf EOF $ Missing EOF) -- TODO
 
-    badIfElse = (throwaway Else) *> (whineIf EOF $ Missing EOF) -- TODO
     badIf     = (throwaway If  ) *> (whineIf EOF $ Missing EOF) -- TODO
 
     badWhile = (throwaway While) *> (whineIf EOF $ Missing EOF) -- TODO
@@ -89,6 +88,17 @@ badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
 
     dangler1 = declaration *> (whineIf RightBrace $ Missing LeftBrace)
     dangler2 = whineIf RightBrace $ Missing LeftBrace
+
+badIfElse :: Parser a
+badIfElse =
+  (throwaway If) *>
+    (throwaway LeftParen) *>
+    expression *>
+    (throwaway RightParen) *>
+    statement *>
+    (throwaway Else) *>
+    (notFollowedBy statement) *>
+    (whine InvalidExpression)
 
 badBlock :: Parser a
 badBlock = badBlock1 <|> badBlock2

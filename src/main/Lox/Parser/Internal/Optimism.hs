@@ -12,7 +12,7 @@ import Lox.Parser.Internal.AST(
   )
 
 import Lox.Parser.Internal.ExpressionParser(expression)
-import Lox.Parser.Internal.Parse(locOf, one, Parser, throwaway, variable)
+import Lox.Parser.Internal.Parse(locOf, notFollowedBy, one, Parser, throwaway, variable)
 
 import qualified Lox.Parser.Internal.AST as AST
 
@@ -95,7 +95,7 @@ ifStatement = ifElse <|> plainIf
 
     plainIf = (\ant con -> IfElse ant con Nothing) <$>
                 ((throwaway If) *> (throwaway LeftParen) *> expression <* (throwaway RightParen)) <*>
-                statement
+                (statement <* (notFollowedBy $ one Else))
 
 whileStatement :: Parser Statement
 whileStatement = WhileStatement <$>
