@@ -68,7 +68,7 @@ instance Show Token where
   show Equal          = "="
   show EqualEqual     = "=="
   show For            = "for"
-  show Fun            = "function"
+  show Fun            = "fun"
   show Greater        = ">"
   show GreaterEqual   = ">="
   show (Identifier x) = asString x
