@@ -90,13 +90,14 @@ badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
     dangler2 = whineIf RightBrace $ Missing LeftBrace
 
 badFor :: Parser a
-badFor = badFor1 <|> badFor2 <|> badFor3 <|> badFor4 <|> badFor5
+badFor = badFor1 <|> badFor2 <|> badFor3 <|> badFor4 <|> badFor5 <|> badFor6
   where
     badFor1 = (throwaway For) *> (notFollowedBy $ one LeftParen) *> (whine $ Missing LeftParen)
     badFor2 = (throwaway For) *> (throwaway LeftParen) *> (notFollowedBy forInitializer) *> (whine InvalidExpression)
     badFor3 = (throwaway For) *> (throwaway LeftParen) *> forInitializer *> (notFollowedBy $ one Semicolon) *> (notFollowedBy expression) *> (whine InvalidExpression)
-    badFor4 = (throwaway For) *> (throwaway LeftParen) *> forInitializer *> ((optional expression) *> (throwaway Semicolon)) *> (notFollowedBy $ one RightParen) *> (notFollowedBy expression) *> (whine InvalidExpression)
-    badFor5 = (throwaway For) *> (throwaway LeftParen) *> forInitializer *> ((optional expression) *> (throwaway Semicolon)) *> ((optional expression) <* (throwaway RightParen)) *> (notFollowedBy statement) *> (whine InvalidExpression)
+    badFor4 = (throwaway For) *> (throwaway LeftParen) *> forInitializer *> ((optional expression) *> (throwaway Semicolon)) *> (notFollowedBy expression) *> (notFollowedBy $ one RightParen) *> (whine InvalidExpression)
+    badFor5 = (throwaway For) *> (throwaway LeftParen) *> forInitializer *> ((optional expression) *> (throwaway Semicolon)) *> expression *> (notFollowedBy $ one RightParen) *> (whine $ Missing RightParen)
+    badFor6 = (throwaway For) *> (throwaway LeftParen) *> forInitializer *> ((optional expression) *> (throwaway Semicolon)) *> ((optional expression) <* (throwaway RightParen)) *> (notFollowedBy statement) *> (whine InvalidExpression)
 
 badIfElse :: Parser a
 badIfElse =
