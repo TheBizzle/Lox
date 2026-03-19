@@ -79,8 +79,6 @@ badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
     badPrintStatement1 = (throwaway Print) *> expression *> (whine $ Missing Semicolon)
     badPrintStatement2 = (throwaway Print) *> badExpression
 
-    badWhile = (throwaway While) *> (whineIf EOF $ Missing EOF) -- TODO
-
     badReturn = (throwaway Return) *> (whineIf EOF $ Missing EOF) -- TODO
 
     badExprStatement1 = badExpression
@@ -98,6 +96,14 @@ badFor = badFor1 <|> badFor2 <|> badFor3 <|> badFor4 <|> badFor5 <|> badFor6
     badFor4 = (throwaway For) *> (throwaway LeftParen) *> forInitializer *> ((optional expression) *> (throwaway Semicolon)) *> (notFollowedBy expression) *> (notFollowedBy $ one RightParen) *> (whine InvalidExpression)
     badFor5 = (throwaway For) *> (throwaway LeftParen) *> forInitializer *> ((optional expression) *> (throwaway Semicolon)) *> expression *> (notFollowedBy $ one RightParen) *> (whine $ Missing RightParen)
     badFor6 = (throwaway For) *> (throwaway LeftParen) *> forInitializer *> ((optional expression) *> (throwaway Semicolon)) *> ((optional expression) <* (throwaway RightParen)) *> (notFollowedBy statement) *> (whine InvalidExpression)
+
+badWhile :: Parser a
+badWhile = badWhile1 <|> badWhile2 <|> badWhile3 <|> badWhile4
+  where
+    badWhile1 = (throwaway While) *> (notFollowedBy $ one LeftParen) *> (whine $ Missing LeftParen)
+    badWhile2 = (throwaway While) *> (throwaway LeftParen) *> (notFollowedBy expression) *> (whine InvalidExpression)
+    badWhile3 = (throwaway While) *> (throwaway LeftParen) *> expression *> (notFollowedBy $ one RightParen) *> (whine $ Missing RightParen)
+    badWhile4 = (throwaway While) *> (throwaway LeftParen) *> expression *> (throwaway RightParen) *> (notFollowedBy statement) *> (whine InvalidExpression)
 
 badIfElse :: Parser a
 badIfElse =
