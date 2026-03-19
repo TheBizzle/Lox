@@ -16,7 +16,7 @@ import Lox.Parser.Internal.Parse(errorWith, keywords, notFollowedBy, one, oneOf,
 import Lox.Parser.Internal.ParserError(
     ErrorPriority(Unimportant, VeryHigh)
   , ParserError(ParserError)
-  , ParserErrorType(Backtrack, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedSuperMethodName, ExpectedSuperName, InvalidExpression, Missing, TooMuchArguing, TooMuchParaming)
+  , ParserErrorType(Backtrack, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, InvalidExpression, Missing, TooMuchArguing, TooMuchParaming)
   )
 
 
@@ -145,10 +145,18 @@ badUnary :: Parser a
 badUnary = (many $ oneOf [Bang, Minus]) *> badFnCall
 
 badFnCall :: Parser a
-badFnCall = badFunApp <|> badPrimary
+badFnCall = badFunApp1 <|> badFunApp2 <|> badPrimary
   where
-    badFunApp :: Parser a
-    badFunApp =
+    badFunApp1 :: Parser a
+    badFunApp1 =
+      primary *>
+        (many $ (throwaway Dot) *> variable) *>
+        (throwaway Dot) *>
+        (notFollowedBy variable) *>
+        whine ExpectedPropertyName
+
+    badFunApp2 :: Parser a
+    badFunApp2 =
       primary *>
         (many $ (throwaway Dot) *> variable) <* (notFollowedBy $ one Equal) *>
         oversizedParamList *>
