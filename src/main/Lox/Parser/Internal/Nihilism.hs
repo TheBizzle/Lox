@@ -65,7 +65,8 @@ badDeclaration = badClass1 <|> badClass2 <|>
 badStatement :: Parser a
 badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
                  badFor <|>
-                 badIfElse <|> badIf <|>
+                 badIfElse <|>
+                 badIf <|>
                  badWhile <|>
                  badReturn <|>
                  badBlock <|>
@@ -76,8 +77,6 @@ badStatement = badPrintStatement1 <|> badPrintStatement2 <|>
     badPrintStatement2 = (throwaway Print) *> badExpression
 
     badFor = (throwaway For) *> (whineIf EOF $ Missing EOF) -- TODO
-
-    badIf     = (throwaway If  ) *> (whineIf EOF $ Missing EOF) -- TODO
 
     badWhile = (throwaway While) *> (whineIf EOF $ Missing EOF) -- TODO
 
@@ -97,6 +96,15 @@ badIfElse =
     (throwaway RightParen) *>
     statement *>
     (throwaway Else) *>
+    (notFollowedBy statement) *>
+    (whine InvalidExpression)
+
+badIf :: Parser a
+badIf =
+  (throwaway If) *>
+    (throwaway LeftParen) *>
+    expression *>
+    (throwaway RightParen) *>
     (notFollowedBy statement) *>
     (whine InvalidExpression)
 
