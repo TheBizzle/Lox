@@ -88,8 +88,8 @@ isReserved = flip elem keywords
 keywords :: [Token]
 keywords = [And, Class, Else, For, Fun, If, Print, Return, Super, This, Var, While]
 
-debug :: Parser ()
-debug = Parser $ \tps -> win $ ((), traceShowId tps)
+debug :: Text -> Parser ()
+debug label = Parser $ \tps -> win ((), traceShow (label <> ": " <> (showText tps)) tps)
 
 instance Applicative Parser where
   pure x = Parser $ \ts -> win (x, ts)

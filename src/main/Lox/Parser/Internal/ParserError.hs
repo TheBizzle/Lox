@@ -14,7 +14,7 @@ data ErrorPriority
   | High
   | VeryHigh
   | Extreme
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Show)
 
 data ParserErrorType
   = Backtrack
@@ -31,7 +31,9 @@ data ParserErrorType
   | Missing { token :: Token }
   | TooMuchArguing
   | TooMuchParaming
-  deriving Eq
+  | UnfinishedStmt
+  deriving (Eq, Show)
 
 data ParserError =
   ParserError { typ :: ParserErrorType, prio :: ErrorPriority, offender :: TokenPlus }
+  deriving Show
