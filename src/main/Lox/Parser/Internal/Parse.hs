@@ -18,8 +18,10 @@ import Lox.Parser.Internal.ParserError(
   , ParserErrorType(Backtrack, ReservedName)
   )
 
+import qualified Data.List.NonEmpty as NE
 
-type Parsed = Either ParserError
+
+type Parsed = Either (NonEmpty ParserError)
 
 newtype Parser a =
   Parser { run :: [TokenPlus] -> Parsed (a, [TokenPlus]) }
@@ -72,7 +74,7 @@ win :: a -> Parsed a
 win = Right
 
 errorWith :: ParserError -> Parsed a
-errorWith = Left
+errorWith = NE.singleton &> Left
 
 backtrack :: [TokenPlus] -> Parsed a
 backtrack = listToMaybe &> (maybe dfault id) &> mkError &> errorWith
@@ -104,7 +106,7 @@ instance Alternative Parser where
     where
       helper (Right r)         _ = win r
       helper         _ (Right r) = win r
-      helper (Left e1) (Left e2) = errorWith $ if e1.prio >= e2.prio then e1 else e2
+      helper (Left e1) (Left e2) = Left $ if (NE.head e1).prio >= (NE.head e2).prio then e1 else e2
 
 instance Monad Parser where
   return          = pure
