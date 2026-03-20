@@ -1,8 +1,10 @@
 module Lox.Parser.Internal.Parse(
-    (=#>), backtrack, convert, debug, errorWith, keywords, locOf, notFollowedBy, one, oneOf, Parsed, Parser(Parser, run), parserFrom, throwaway, variable, whineAbout, win
+    (=#>), backtrack, convert, critique, debug, errorWith, keywords, locOf, multiError, notFollowedBy, one, oneOf, Parsed, Parser(Parser, run), parserFrom, slurpUntil, throwaway, variable, whineAbout, win
   ) where
 
 import Control.Applicative(Alternative(empty))
+
+import Data.List(dropWhile)
 
 import Lox.Scanner.Token(
     SourceLoc(SourceLoc)
@@ -13,9 +15,9 @@ import Lox.Scanner.Token(
 import Lox.Parser.Internal.AST(Variable(Variable))
 
 import Lox.Parser.Internal.ParserError(
-    ErrorPriority(Unimportant, High)
+    ErrorPriority(Unimportant, High, VeryHigh)
   , ParserError(ParserError, prio)
-  , ParserErrorType(Backtrack, ReservedName)
+  , ParserErrorType(Backtrack, Missing, ReservedName)
   )
 
 import qualified Data.List.NonEmpty as NE
@@ -52,8 +54,21 @@ parserFrom f = Parser $ parseOneToken f
     parseOneToken _ []    = backtrack []
     parseOneToken f (h:t) = map (, t) $ f h
 
+slurpUntil :: Token -> Parser ()
+slurpUntil token =
+  Parser $ \tokens ->
+    case (dropWhile (\tp -> tp.token /= token) tokens) of
+      [] -> errorWith $ ParserError (Missing token) VeryHigh $ TokenPlus EOF $ SourceLoc 0
+      ts -> win ((), ts)
+
 whineAbout :: ParserErrorType -> Parser a
 whineAbout typ = parserFrom $ \t -> errorWith $ ParserError typ Unimportant t
+
+critique :: ParserErrorType -> Parser ParserError
+critique typ = parserFrom $ \t -> win $ ParserError typ VeryHigh t
+
+multiError :: [ParserError] -> Parser a
+multiError es = Parser $ const $ Left (NE.fromList es)
 
 oneOf :: [Token] -> Parser TokenPlus
 oneOf = (map one) &> foldr (<|>) aempty

@@ -3,5 +3,5 @@ module Lox.Parser.ParserError(module Lox.Parser.Internal.ParserError) where
 
 import Lox.Parser.Internal.ParserError(
     ParserError(offender, ParserError, prio, typ)
-  , ParserErrorType(Backtrack, ExpectedBraceBeforeBody, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, InvalidAssign, InvalidExpression, Missing, ReservedName, token, TooMuchArguing, TooMuchParaming)
+  , ParserErrorType(Backtrack, ExpectedBraceBeforeBody, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, InvalidAssign, InvalidExpression, Missing, ReservedName, token, TooMuchArguing, TooMuchParaming, UnfinishedStmt)
   )

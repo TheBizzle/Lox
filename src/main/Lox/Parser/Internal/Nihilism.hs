@@ -11,12 +11,12 @@ import Lox.Parser.Internal.AST(exprToToken)
 
 import Lox.Parser.Internal.ExpressionParser(expression, primary, unary)
 import Lox.Parser.Internal.Optimism(declaration, fnParams, forInitializer, function, statement)
-import Lox.Parser.Internal.Parse(errorWith, keywords, notFollowedBy, one, oneOf, Parser, parserFrom, throwaway, variable)
+import Lox.Parser.Internal.Parse(critique, errorWith, keywords, multiError, notFollowedBy, one, oneOf, Parser, parserFrom, slurpUntil, throwaway, variable)
 
 import Lox.Parser.Internal.ParserError(
     ErrorPriority(Unimportant, VeryHigh)
   , ParserError(ParserError)
-  , ParserErrorType(Backtrack, ExpectedBraceBeforeBody, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, InvalidAssign, InvalidExpression, Missing, TooMuchArguing, TooMuchParaming)
+  , ParserErrorType(Backtrack, ExpectedBraceBeforeBody, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, InvalidAssign, InvalidExpression, Missing, TooMuchArguing, TooMuchParaming, UnfinishedStmt)
   )
 
 
@@ -92,11 +92,26 @@ badFor :: Parser a
 badFor = badFor1 <|> badFor2 <|> badFor3 <|> badFor4 <|> badFor5 <|> badFor6
   where
     badFor1 = (throwaway For) *> (notFollowedBy $ one LeftParen) *> (whine $ Missing LeftParen)
-    badFor2 = (throwaway For) *> (throwaway LeftParen) *> (notFollowedBy forInitializer) *> (whine InvalidExpression)
-    badFor3 = (throwaway For) *> (throwaway LeftParen) *> forInitializer *> (notFollowedBy $ one Semicolon) *> (notFollowedBy expression) *> (whine InvalidExpression)
+    badFor2 = (throwaway For) *> (throwaway LeftParen) *> multiBadContents1
+    badFor3 = (throwaway For) *> (throwaway LeftParen) *> forInitializer *> multiBadContents2
     badFor4 = (throwaway For) *> (throwaway LeftParen) *> forInitializer *> ((optional expression) *> (throwaway Semicolon)) *> (notFollowedBy expression) *> (notFollowedBy $ one RightParen) *> (whine InvalidExpression)
     badFor5 = (throwaway For) *> (throwaway LeftParen) *> forInitializer *> ((optional expression) *> (throwaway Semicolon)) *> expression *> (notFollowedBy $ one RightParen) *> (whine $ Missing RightParen)
     badFor6 = (throwaway For) *> (throwaway LeftParen) *> forInitializer *> ((optional expression) *> (throwaway Semicolon)) *> ((optional expression) <* (throwaway RightParen)) *> (notFollowedBy statement) *> (whine InvalidExpression)
+
+    multiBadContents1 =
+      do
+        pe1 <- (notFollowedBy forInitializer) *> (critique InvalidExpression)
+        (slurpUntil Semicolon) *> (throwaway Semicolon)
+        (optional expression) *> (throwaway Semicolon)
+        pe2 <- (optional expression) *> (critique UnfinishedStmt)
+        multiError [pe1, pe2]
+
+    multiBadContents2 =
+      do
+        pe1 <- (notFollowedBy $ one Semicolon) *> (notFollowedBy expression) *> (critique InvalidExpression)
+        (slurpUntil Semicolon) *> (throwaway Semicolon)
+        pe2 <- (optional expression) *> (critique UnfinishedStmt)
+        multiError [pe1, pe2]
 
 badWhile :: Parser a
 badWhile = badWhile1 <|> badWhile2 <|> badWhile3 <|> badWhile4
