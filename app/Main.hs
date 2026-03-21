@@ -17,11 +17,11 @@ import Lox.Evaluator.EvalError(
 import Lox.Evaluator.Program(definePrimitiveFunc, Program, ProgramState)
 import Lox.Evaluator.Value(Value(Nada, NumberV))
 
-import Lox.Interpreter(interpret, Result(OtherFailure, ParserFailure, ScannerFailure, Succeeded, VerifierFailure))
+import Lox.Interpreter(interpret, LoxFailure(ParserFailure, ScannerFailure, VerifierFailure))
 
 import Lox.Parser.ParserError(
     ParserError(offender, typ),
-    ParserErrorType(Backtrack, ExpectedBraceBeforeBody, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, InvalidAssign, InvalidExpression, Missing, ReservedName, TooMuchArguing, TooMuchParaming, UnfinishedStmt)
+    ParserErrorType(Backtrack, ExpectedBraceBeforeBody, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterArgs, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, InvalidAssign, InvalidExpression, Missing, ReservedName, TooMuchArguing, TooMuchParaming, UnfinishedStmt)
   )
 
 import Lox.Scanner.ScannerError(
@@ -82,19 +82,21 @@ runFile code =
       exitWith $ ExitFailure errorCode
 
 run :: Bool -> ProgramState -> Text -> IO (ProgramState, Int)
-run isREPL state code =
-  case (interpret code) of
-    ScannerFailure  errors  -> (handleError  scannerErrorAsText errors) $> (state, 65)
-    ParserFailure   errors  -> (handleError   parserErrorAsText errors) $> (state, 65)
-    VerifierFailure errors  -> (handleError verifierErrorAsText errors) $> (state, 65)
-    OtherFailure    errors  -> (handleError           anyAsText errors) $> (state, 65)
-    Succeeded       program -> runProgram isREPL program state
+run isREPL state = interpret &> (either runErrors $ runProgram isREPL state)
+  where
+    runErrors errors =
+      do
+        forM_ errors $ \case
+          (ScannerFailure  errs) -> handleError  scannerErrorAsText errs
+          (ParserFailure   errs) -> handleError   parserErrorAsText errs
+          (VerifierFailure errs) -> handleError verifierErrorAsText errs
+        return (state, 65)
 
 handleError :: Traversable t => (a -> Text) -> t a -> IO ()
 handleError errorToText errors = for_ errors $ errorToText &> TIO.hPutStrLn stderr
 
-runProgram :: Bool -> Program (Validation (NonEmpty EvalError) Value) -> ProgramState -> IO (ProgramState, Int)
-runProgram isREPL program state =
+runProgram :: Bool -> ProgramState -> Program (Validation (NonEmpty EvalError) Value) -> IO (ProgramState, Int)
+runProgram isREPL state program =
   do
     (resultV, newState) <- runStateT program state
     output              <- validation handleBad handleGood resultV
@@ -109,9 +111,6 @@ runProgram isREPL program state =
         result |> showText &> TIO.putStrLn &> ($> 0)
       else
         return 0
-
-anyAsText :: a -> Text
-anyAsText _ = error "Unimplemented error handler"
 
 evalErrorAsText :: EvalError -> Text
 evalErrorAsText (EvalError typ tp) = suffix tp $ errorText typ
@@ -146,6 +145,7 @@ parserErrorAsText error = line
     errorText ExpectedBraceBeforeBody  = "Expect '{' before function body."
     errorText ExpectedDotAfterSuper    = "Expect '.' after 'super'."
     errorText ExpectedIdentifier       = "Expect variable name."
+    errorText ExpectedParenAfterArgs   = "Expect ')' after arguments."
     errorText ExpectedParenAfterParams = "Expect ')' after parameters."
     errorText ExpectedPropertyName     = "Expect property name after '.'."
     errorText ExpectedSuperMethodName  = "Expect superclass method name."

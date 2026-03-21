@@ -1,4 +1,4 @@
-module Lox.Scanner.Internal.ScannerState(addError, addToken, checkForEnd, peek, peek2, ScannerState(current, errors, lineNumber, ScannerState, source, start, tokens), skipToEOL, slurpMatch, slurpNextChar) where
+module Lox.Scanner.Internal.ScannerState(addError, addToken, checkForEnd, peek, peek2, ScannerState(current, errors, lineNumber, minorErrors, ScannerState, source, start, tokens), skipToEOL, slurpMatch, slurpNextChar, takeNoteOfError) where
 
 import Control.Monad.State(get, modify, put)
 
@@ -9,12 +9,13 @@ import qualified Data.Text.Word as TextW
 
 
 data ScannerState
-  = ScannerState { source     :: Text
-                 , tokens     :: [TokenPlus]
-                 , errors     :: [ScannerError]
-                 , current    :: Word
-                 , start      :: Word
-                 , lineNumber :: Word
+  = ScannerState { source      :: Text
+                 , tokens      :: [TokenPlus]
+                 , errors      :: [ScannerError]
+                 , minorErrors :: [ScannerError]
+                 , current     :: Word
+                 , start       :: Word
+                 , lineNumber  :: Word
                  }
 
 (<*@>) :: Applicative f => f a -> f b -> f (a, b)
@@ -30,6 +31,10 @@ addToken token =
 addError :: ScannerErrorType -> State ScannerState ()
 addError errorType =
   modify $ \s -> s { errors = (ScannerError errorType s.lineNumber) : s.errors }
+
+takeNoteOfError :: ScannerErrorType -> State ScannerState ()
+takeNoteOfError errorType =
+  modify $ \s -> s { minorErrors = (ScannerError errorType s.lineNumber) : s.minorErrors }
 
 checkForEnd :: State ScannerState Bool
 checkForEnd = get <&> \state -> state.current >= (TextW.length state.source)

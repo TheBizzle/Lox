@@ -12,7 +12,7 @@ import Lox.Scanner.Internal.Classify(isAlphabetic, isDigit)
 import Lox.Scanner.Internal.Identifier(slurpIdentifier)
 import Lox.Scanner.Internal.Number(slurpNumber)
 import Lox.Scanner.Internal.ScannerError(ScannerError, ScannerErrorType(UnknownToken))
-import Lox.Scanner.Internal.ScannerState(addToken, addError, checkForEnd, ScannerState(current, errors, ScannerState, lineNumber, start, tokens), skipToEOL, slurpMatch, slurpNextChar)
+import Lox.Scanner.Internal.ScannerState(addToken, checkForEnd, ScannerState(current, errors, minorErrors, lineNumber, ScannerState, start, tokens), skipToEOL, slurpMatch, slurpNextChar, takeNoteOfError)
 import Lox.Scanner.Internal.String(slurpString)
 
 import qualified Data.List as List
@@ -20,8 +20,10 @@ import qualified Data.List as List
 
 type ScannerResult a = Validation (NonEmpty ScannerError) a
 
-scan :: Text -> ScannerResult [TokenPlus]
-scan code = (ScannerState code [] [] 0 0 1) |> (runState scan_) &> fst
+scan :: Text -> Validation (NonEmpty ScannerError) ([ScannerError], [TokenPlus])
+scan code = map (state.minorErrors, ) result
+  where
+    (result, state) = runState scan_ $ ScannerState code [] [] [] 0 0 1
 
 scan_ :: State ScannerState (ScannerResult [TokenPlus])
 scan_ =
@@ -72,4 +74,4 @@ scanToken =
       else if isAlphabetic x then
         slurpIdentifier x
       else
-        addError $ UnknownToken $ asText [x]
+        takeNoteOfError $ UnknownToken $ asText [x]
