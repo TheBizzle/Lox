@@ -5,6 +5,8 @@ Lox
 
 https://craftinginterpreters.com/
 
+This is a Haskell-based implementation of `jlox` (from the first half of the book, where you build an interpreter in Java), and is fully compliant with the `jlox` suite of tests.
+
 ## Testing
 
 ### Dart
@@ -22,10 +24,9 @@ Make sure to add that last line to your `.zshrc` (or equivalent), for permanent 
 ### Building the tester
 
 ```sh
-git clone https://github.com/munificent/craftinginterpreters.git mothership
+git submodule update --init
 cd mothership
 make get
-make
 cd ..
 ```
 

@@ -1,0 +1,52 @@
+name: Lox CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Haskell (Stack)
+        uses: haskell-actions/setup@v2
+        with:
+          enable-stack: true
+
+      - name: Cache Stack dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.stack
+            .stack-work
+          key: ${{ runner.os }}-stack-${{ hashFiles('stack.yaml.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-stack-
+
+      - name: Install Dart 2.x
+        run: |
+          wget https://storage.googleapis.com/dart-archive/channels/stable/release/2.19.6/sdk/dartsdk-linux-x64-release.zip
+          unzip dartsdk-linux-x64-release.zip -d $HOME/dart
+          echo "$HOME/dart/dart-sdk/bin" >> $GITHUB_PATH
+
+      - name: Verify Dart installation
+        run: dart --version
+
+      - name: Build Stack project
+        run: stack build
+
+      - name: Build tester (mothership)
+        run: |
+          cd mothership
+          make get
+
+      - name: Run tests
+        run: |
+          chmod +x test.sh
+          ./test.sh
