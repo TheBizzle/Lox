@@ -7,6 +7,8 @@ https://craftinginterpreters.com/
 
 This is a Haskell-based implementation of `jlox` (from the first half of the book, where you build an interpreter in Java), and is fully compliant with the `jlox` suite of tests.
 
+[![Lox CI](https://github.com/TheBizzle/Lox/actions/workflows/lox.yaml/badge.svg)](https://github.com/TheBizzle/Lox/actions/workflows/lox.yaml)
+
 ## Testing
 
 ### Dart
