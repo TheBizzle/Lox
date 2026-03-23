@@ -14,6 +14,11 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install system dependencies (PCRE)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpcre3 libpcre3-dev
+
       - name: Set up Haskell (Stack)
         uses: haskell-actions/setup@v2
         with:
@@ -29,11 +34,21 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-stack-
 
-      - name: Install Dart 2.x
+      - name: Cache Dart SDK
+        id: cache-dart
+        uses: actions/cache@v4
+        with:
+          path: ~/dart
+          key: ${{ runner.os }}-dart-2.19.6
+
+      - name: Install Dart 2.x (if not cached)
+        if: steps.cache-dart.outputs.cache-hit != 'true'
         run: |
           wget https://storage.googleapis.com/dart-archive/channels/stable/release/2.19.6/sdk/dartsdk-linux-x64-release.zip
           unzip dartsdk-linux-x64-release.zip -d $HOME/dart
-          echo "$HOME/dart/dart-sdk/bin" >> $GITHUB_PATH
+
+      - name: Add Dart to PATH
+        run: echo "$HOME/dart/dart-sdk/bin" >> $GITHUB_PATH
 
       - name: Verify Dart installation
         run: dart --version
@@ -41,7 +56,7 @@ jobs:
       - name: Build Stack project
         run: stack build
 
-      - name: Build tester (mothership)
+      - name: Build tester
         run: |
           cd mothership
           make get
