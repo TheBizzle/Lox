@@ -40,4 +40,4 @@ cd ..
 
 ## License
 
-Public domain.
+[Public domain / CC0-1.0](https://github.com/TheBizzle/Lox/blob/main/LICENSE.txt)
