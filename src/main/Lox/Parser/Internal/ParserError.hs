@@ -1,25 +1,13 @@
 module Lox.Parser.Internal.ParserError(
-    ErrorPriority(Extreme, High, Low, Medium, Unimportant, VeryHigh)
-  , ParserError(offender, ParserError, prio, typ)
-  , ParserErrorType(Backtrack, ExpectedBraceBeforeBody, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterArgs, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, InvalidAssign, InvalidExpression, Missing, ReservedName, token, TooMuchArguing, TooMuchParaming, UnfinishedStmt)
+    ParserError(offender, ParserError, typ)
+  , ParserErrorType(ExpectedBraceBeforeBody, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterArgs, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, Incomprehensible, InvalidAssign, InvalidExpression, Missing, ReservedName, token, TooMuchArguing, TooMuchParaming, UnfinishedStmt)
   ) where
 
 import Lox.Scanner.Token(Token, TokenPlus)
 
 
-data ErrorPriority
-  = Unimportant
-  | Low
-  | Medium
-  | High
-  | VeryHigh
-  | Extreme
-  deriving (Eq, Ord, Show)
-
 data ParserErrorType
-  = Backtrack
-  | ReservedName
-  | ExpectedBraceBeforeBody
+  = ExpectedBraceBeforeBody
   | ExpectedDotAfterSuper
   | ExpectedIdentifier
   | ExpectedParenAfterArgs
@@ -27,14 +15,16 @@ data ParserErrorType
   | ExpectedPropertyName
   | ExpectedSuperMethodName
   | ExpectedSuperName
+  | Incomprehensible
   | InvalidAssign
   | InvalidExpression
   | Missing { token :: Token }
+  | ReservedName
   | TooMuchArguing
   | TooMuchParaming
   | UnfinishedStmt
   deriving (Eq, Show)
 
 data ParserError =
-  ParserError { typ :: ParserErrorType, prio :: ErrorPriority, offender :: TokenPlus }
+  ParserError { typ :: ParserErrorType, offender :: TokenPlus }
   deriving Show

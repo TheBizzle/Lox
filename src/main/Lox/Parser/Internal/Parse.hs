@@ -1,132 +1,143 @@
 module Lox.Parser.Internal.Parse(
-    (=#>), backtrack, convert, critique, debug, errorWith, keywords, locOf, multiError, notFollowedBy, one, oneOf, Parsed, Parser(Parser, run), parserFrom, slurpUntil, throwaway, variable, whineAbout, win
+    (=#>), atMost, bail, convert, cryAbout, debug, dummyTP, errorWith, multiError, notFollowedBy, one, oneOf
+  , Parsed(Backtrack, Errors, Parsed)
+  , Parser(Parser, run)
+  , parserFrom, require, throwaway, variable, win
   ) where
 
 import Control.Applicative(Alternative(empty))
 
-import Data.List(dropWhile)
-
-import Lox.Scanner.Token(
-    SourceLoc(SourceLoc)
-  , Token(And, Class, Else, EOF, For, Fun, Identifier, If, Print, Return, Super, This, Var, While)
-  , TokenPlus(loc, token, TokenPlus)
-  )
+import Lox.Scanner.Token(SourceLoc(SourceLoc), Token(EOF, Identifier), TokenPlus(token, TokenPlus))
 
 import Lox.Parser.Internal.AST(Variable(Variable))
 
 import Lox.Parser.Internal.ParserError(
-    ErrorPriority(Unimportant, High, VeryHigh)
-  , ParserError(ParserError, prio)
-  , ParserErrorType(Backtrack, Missing, ReservedName)
+    ParserError(ParserError)
+  , ParserErrorType(Missing)
   )
 
 import qualified Data.List.NonEmpty as NE
 
 
-type Parsed = Either (NonEmpty ParserError)
+data Parsed a
+  = Parsed a
+  | Backtrack
+  | Errors (NonEmpty ParserError)
+  deriving Functor
 
 newtype Parser a =
   Parser { run :: [TokenPlus] -> Parsed (a, [TokenPlus]) }
   deriving Functor
 
 variable :: Parser Variable
-variable = parserFrom helper
-  where
-    helper tp@(TokenPlus (Identifier s) _) = win $ Variable s tp
-    helper tp@(TokenPlus t              _) =
-      if not $ isReserved t then
-        backtrack [tp]
-      else
-        errorWith $ ParserError ReservedName High tp
-
-throwaway :: Token -> Parser ()
-throwaway token = convert $ token =#> (const ())
+variable =
+  parserFrom $
+    \tp -> case tp.token of
+      Identifier s -> win $ Variable s tp
+      _            -> bail
 
 (=#>) :: Token -> a -> (Token, a)
 (=#>) = (,)
 
-convert :: (Token, TokenPlus -> a) -> Parser a
-convert (t, mkResult) = parserFrom $ \tp -> if (tp.token == t) then win (mkResult tp) else backtrack [tp]
+dummyTP :: TokenPlus
+dummyTP = TokenPlus EOF $ SourceLoc 0
 
 parserFrom :: (TokenPlus -> Parsed a) -> Parser a
-parserFrom f = Parser $ parseOneToken f
-  where
-    parseOneToken _ []    = backtrack []
-    parseOneToken f (h:t) = map (, t) $ f h
+parserFrom f =
+  Parser $ \case
+    (h:t) -> map (, t) $ f h
+    []    -> bail
 
-slurpUntil :: Token -> Parser ()
-slurpUntil token =
+cryAbout :: ParserErrorType -> Parser a
+cryAbout typ =
   Parser $ \tokens ->
-    case (dropWhile (\tp -> tp.token /= token) tokens) of
-      [] -> errorWith $ ParserError (Missing token) VeryHigh $ TokenPlus EOF $ SourceLoc 0
-      ts -> win ((), ts)
+    errorWith $ ParserError typ $
+      case tokens of
+        (h:_) -> h
+        []    -> dummyTP
 
-whineAbout :: ParserErrorType -> Parser a
-whineAbout typ = parserFrom $ \t -> errorWith $ ParserError typ Unimportant t
-
-critique :: ParserErrorType -> Parser ParserError
-critique typ = parserFrom $ \t -> win $ ParserError typ VeryHigh t
-
-multiError :: [ParserError] -> Parser a
-multiError es = Parser $ const $ Left (NE.fromList es)
+multiError :: (NonEmpty ParserError) -> Parser a
+multiError es = Parser $ const $ Errors es
 
 oneOf :: [Token] -> Parser TokenPlus
-oneOf = (map one) &> foldr (<|>) aempty
+oneOf tokens =
+  parserFrom $
+    \tp ->
+      if tp.token `elem` tokens then
+        win tp
+      else
+        bail
 
 one :: Token -> Parser TokenPlus
-one token = parserFrom $ \tp -> if (tp.token == token) then win tp else backtrack [tp]
+one token = oneOf [token]
 
-locOf :: Token -> Parser SourceLoc
-locOf token = map loc $ one token
+throwaway :: Token -> Parser ()
+throwaway t = (const ()) <$> one t
+
+convert :: (Token, TokenPlus -> a) -> Parser a
+convert (t, mkResult) = mkResult <$> one t
 
 notFollowedBy :: Parser a -> Parser ()
-notFollowedBy (Parser p) = Parser $ \tps -> runner tps $ p tps
-  where
-    runner tps (Left       _) = Right ((), tps)
-    runner tps (Right (_, _)) = backtrack tps
+notFollowedBy (Parser p) =
+  Parser $ \tps ->
+    case p tps of
+      Parsed  _ -> bail
+      _         -> win ((), tps)
+
+require :: Token -> Parser ()
+require x = throwaway x <|> cryAbout (Missing x)
+
+atMost :: ParserErrorType -> Int -> (a -> TokenPlus) -> Parser a -> Parser [a]
+atMost pet 0 f p =
+  (do
+    baddie <- p
+    Parser $ const $ errorWith $ ParserError pet $ f baddie
+  ) <|> pure []
+atMost pet n f p = ((:) <$> p <*> atMost pet (n - 1) f p) <|> pure []
 
 win :: a -> Parsed a
-win = Right
+win = Parsed
+
+bail :: Parsed a
+bail = Backtrack
 
 errorWith :: ParserError -> Parsed a
-errorWith = NE.singleton &> Left
-
-backtrack :: [TokenPlus] -> Parsed a
-backtrack = listToMaybe &> (maybe dfault id) &> mkError &> errorWith
-  where
-    dfault  = TokenPlus EOF $ SourceLoc 0
-    mkError = ParserError Backtrack Unimportant
-
-isReserved :: Token -> Bool
-isReserved = flip elem keywords
-
-keywords :: [Token]
-keywords = [And, Class, Else, For, Fun, If, Print, Return, Super, This, Var, While]
+errorWith = NE.singleton &> Errors
 
 debug :: Text -> Parser ()
-debug label = Parser $ \tps -> win ((), traceShow (label <> ": " <> (showText tps)) tps)
+debug label =
+  Parser $ \tps ->
+    let msg = label <> ": " <> (showText tps) in
+    win ((), traceShow msg tps)
 
 instance Applicative Parser where
-  pure x = Parser $ \ts -> win (x, ts)
+  pure x = Parser $ \ts -> Parsed (x, ts)
 
   Parser pf <*> Parser px =
-    Parser $ \tokens0 -> do
-      (f, tokens1) <- pf tokens0
-      (x, tokens2) <- px tokens1
-      return $ (f x, tokens2)
+    Parser $ \tokens0 ->
+      case pf tokens0 of
+        Errors es           -> Errors es
+        Backtrack           -> Backtrack
+        Parsed (f, tokens1) ->
+          case px tokens1 of
+            Errors es           -> Errors es
+            Backtrack           -> Backtrack
+            Parsed (x, tokens2) -> Parsed (f x, tokens2)
 
 instance Alternative Parser where
-  empty                 = Parser backtrack
-  Parser p <|> Parser q = Parser $ \ts -> helper (p ts) (q ts)
-    where
-      helper (Right r)         _ = win r
-      helper         _ (Right r) = win r
-      helper (Left e1) (Left e2) = Left $ if (NE.head e1).prio >= (NE.head e2).prio then e1 else e2
+  empty                 = Parser $ const Backtrack
+  Parser p <|> Parser q = Parser $
+    \tokens ->
+      case p tokens of
+        Errors es  -> Errors es
+        Parsed res -> Parsed res
+        Backtrack  -> q tokens
 
 instance Monad Parser where
   return          = pure
   Parser pa >>= f =
-    Parser $ \tokens0 -> do
-      (a, tokens1) <- pa tokens0
-      (b, tokens2) <- (f a).run tokens1
-      return (b, tokens2)
+    Parser $ \tokens0 ->
+      case pa tokens0 of
+        Errors e            -> Errors e
+        Backtrack           -> Backtrack
+        Parsed (a, tokens1) -> (f a).run tokens1

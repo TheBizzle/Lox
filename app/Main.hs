@@ -21,7 +21,7 @@ import Lox.Interpreter(interpret, LoxFailure(ParserFailure, ScannerFailure, Veri
 
 import Lox.Parser.ParserError(
     ParserError(offender, typ),
-    ParserErrorType(Backtrack, ExpectedBraceBeforeBody, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterArgs, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, InvalidAssign, InvalidExpression, Missing, ReservedName, TooMuchArguing, TooMuchParaming, UnfinishedStmt)
+    ParserErrorType(ExpectedBraceBeforeBody, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterArgs, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, Incomprehensible, InvalidAssign, InvalidExpression, Missing, ReservedName, TooMuchArguing, TooMuchParaming, UnfinishedStmt)
   )
 
 import Lox.Scanner.ScannerError(
@@ -138,7 +138,6 @@ parserErrorAsText error = line
     line = "[line " <> (showText error.offender.loc.lineNumber) <> "] Error at " <> (desc error.offender.token) <> (errorText error.typ)
     desc EOF = "end: "
     desc t   = "'" <> (showText t) <> "': "
-    errorText Backtrack                = "Expected something here (this shouldn't be able to happen)"
     errorText ReservedName             = "Expect variable name."
     errorText TooMuchArguing           = "Can't have more than 255 arguments."
     errorText TooMuchParaming          = "Can't have more than 255 parameters."
@@ -150,6 +149,7 @@ parserErrorAsText error = line
     errorText ExpectedPropertyName     = "Expect property name after '.'."
     errorText ExpectedSuperMethodName  = "Expect superclass method name."
     errorText ExpectedSuperName        = "Expect superclass name."
+    errorText Incomprehensible         = "Expected something here (this shouldn't be able to happen)"
     errorText InvalidAssign            = "Invalid assignment target."
     errorText InvalidExpression        = "Expect expression."
     errorText UnfinishedStmt           = "Expect ';' after expression."
