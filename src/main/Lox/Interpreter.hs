@@ -6,7 +6,7 @@ import Lox.Scanner.Scanner(scan)
 import Lox.Scanner.ScannerError(ScannerError)
 import Lox.Scanner.Token(TokenPlus)
 
-import Lox.Parser.Parser(parse)
+import Lox.Parser.LoxParser(parse)
 import Lox.Parser.ParserError(ParserError)
 
 import Lox.Verifier.Verifier(verify)

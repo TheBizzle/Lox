@@ -12,7 +12,7 @@ import Lox.Parser.Internal.AST(
   , Variable
   )
 
-import Lox.Parser.Internal.Parse(
+import Lox.Parser.Internal.Parser(
     (=#>), anyOf, atMost, bail, convert, cryAbout, errorWith, notFollowedBy, one
   , Parser(Parser)
   , parserFrom

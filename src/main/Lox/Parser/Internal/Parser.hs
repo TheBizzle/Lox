@@ -1,242 +1,143 @@
-module Lox.Parser.Internal.Parser(parse) where
-
-import Lox.Scanner.Token(
-    Token(Class, Comma, Else, EOF, Equal, For, Fun, If, LeftBrace, LeftParen, Less, Print, Return, RightBrace, RightParen, Semicolon, Var, While)
-  , TokenPlus(loc)
-  )
-
-import Lox.Parser.Internal.AST(
-    AST(AST)
-  , Expr(LiteralExpr)
-  , Function(Function)
-  , Literal(BooleanLit, NilLit)
-  , Statement(Block, DeclareVar, ExpressionStatement, FunctionStatement, IfElse, PrintStatement, ReturnStatement, WhileStatement)
-  , Variable(varToken)
-  )
-
-import Lox.Parser.Internal.ExpressionParser(expression)
-
-import Lox.Parser.Internal.Parse(
-    atMost, cryAbout, dummyTP, multiError, one
+module Lox.Parser.Internal.Parser(
+    (=#>), anyOf, atMost, bail, convert, cryAbout, debug, dummyTP, errorWith, multiError, notFollowedBy, one
   , Parsed(Backtrack, Errors, Parsed)
-  , Parser, require, run, throwaway, variable
-  )
+  , Parser(Parser, run)
+  , parserFrom, require, throwaway, variable, win
+  ) where
+
+import Control.Applicative(Alternative(empty))
+
+import Lox.Scanner.Token(SourceLoc(SourceLoc), Token(EOF, Identifier), TokenPlus(token, TokenPlus))
+
+import Lox.Parser.Internal.AST(Variable(Variable))
 
 import Lox.Parser.Internal.ParserError(
     ParserError(ParserError)
-  , ParserErrorType(ExpectedBraceBeforeBody, ExpectedIdentifier, ExpectedParenAfterParams, ExpectedSuperName, Incomprehensible, InvalidExpression, TooMuchParaming, UnfinishedStmt)
+  , ParserErrorType(Missing)
   )
 
-import qualified Data.List.NonEmpty      as NE
-import qualified Lox.Parser.Internal.AST as AST
+import qualified Data.List.NonEmpty as NE
 
 
-parse :: [TokenPlus] -> Validation (NonEmpty ParserError) AST
-parse = parser.run &> (
-    \case
-      Backtrack       -> Failure $ NE.singleton $ ParserError Incomprehensible dummyTP
-      Errors es       -> Failure es
-      Parsed (ast, _) -> Success ast
-  )
+data Parsed a
+  = Parsed a
+  | Backtrack
+  | Errors (NonEmpty ParserError)
+  deriving Functor
 
-parser :: Parser AST
-parser =
-  do
-    decls <- many declaration
-    eofM  <- optional $ throwaway EOF
-    case eofM of
-      Nothing -> cryAbout InvalidExpression -- If there's unconsumed input...
-      Just _  -> pure $ AST decls
+newtype Parser a =
+  Parser { run :: [TokenPlus] -> Parsed (a, [TokenPlus]) }
+  deriving Functor
 
-declaration :: Parser Statement
-declaration = classDeclaration <|> fnDeclaration <|> varDeclaration <|> statement
+variable :: Parser Variable
+variable =
+  parserFrom $
+    \tp -> case tp.token of
+      Identifier s -> win $ Variable s tp
+      _            -> bail
 
-classDeclaration :: Parser Statement
-classDeclaration =
-  do
-    throwaway Class
-    name       <- variable
-    lessM      <- optional $ throwaway Less
-    superNameM <-
-      case lessM of
-        Nothing -> pure Nothing
-        Just _  -> Just <$> (variable <|> cryAbout ExpectedSuperName)
-    require LeftBrace
-    methods <- many function
-    require RightBrace
-    pure $ AST.Class name superNameM methods
+(=#>) :: Token -> a -> (Token, a)
+(=#>) = (,)
 
-fnDeclaration :: Parser Statement
-fnDeclaration =
-  do
-    throwaway Fun
-    func <- function
-    pure $ FunctionStatement func
+dummyTP :: TokenPlus
+dummyTP = TokenPlus EOF $ SourceLoc 0
 
-function :: Parser Function
-function =
-  do
-    name   <- variable
-    throwaway LeftParen
-    params <- fnParams   <|> pure []
-    throwaway RightParen <|> cryAbout ExpectedParenAfterParams
-    throwaway LeftBrace  <|> cryAbout ExpectedBraceBeforeBody
-    fnBody <- many declaration
-    require RightBrace
-    pure $ Function name params fnBody
-  where
-    fnParams =
-      do
-        param1 <- variable
-        params <- atMost TooMuchParaming 254 varToken $ (throwaway Comma) *> variable
-        pure $ param1:params
+parserFrom :: (TokenPlus -> Parsed a) -> Parser a
+parserFrom f =
+  Parser $ \case
+    (h:t) -> map (, t) $ f h
+    []    -> bail
 
-varDeclaration :: Parser Statement
-varDeclaration =
-  do
-    throwaway Var
-    name     <- variable <|> cryAbout ExpectedIdentifier
-    initialM <- optional $ do
-      throwaway Equal
-      expressionOrCry
-    let initial = maybe (LiteralExpr NilLit name.varToken) id initialM
-    require Semicolon
-    pure $ DeclareVar name initial
+cryAbout :: ParserErrorType -> Parser a
+cryAbout typ =
+  Parser $ \tokens ->
+    errorWith $ ParserError typ $
+      case tokens of
+        (h:_) -> h
+        []    -> dummyTP
 
-statement :: Parser Statement
-statement = forStatement <|> ifStatement <|> printStatement <|> returnStatement <|> whileStatement <|> exprStatement <|> block
+multiError :: (NonEmpty ParserError) -> Parser a
+multiError es = Parser $ const $ Errors es
 
-block :: Parser Statement
-block =
-  do
-    throwaway LeftBrace
-    decls <- many declaration
-    require RightBrace
-    pure $ Block decls
+anyOf :: [Token] -> Parser TokenPlus
+anyOf tokens =
+  parserFrom $
+    \tp ->
+      if tp.token `elem` tokens then
+        win tp
+      else
+        bail
 
-exprStatement :: Parser Statement
-exprStatement =
-  do
-    expr <- expression
-    require Semicolon
-    pure $ ExpressionStatement expr
+one :: Token -> Parser TokenPlus
+one token = anyOf [token]
 
-printStatement :: Parser Statement
-printStatement =
-  do
-    printTP <- one Print
-    expr    <- expressionOrCry
-    require Semicolon
-    pure $ PrintStatement printTP.loc expr
+throwaway :: Token -> Parser ()
+throwaway t = (const ()) <$> one t
 
-returnStatement :: Parser Statement
-returnStatement =
-  do
-    returnTP <- one Return
-    exprM    <- optional expression
-    require Semicolon
-    pure $ ReturnStatement returnTP exprM
+convert :: (Token, TokenPlus -> a) -> Parser a
+convert (t, mkResult) = mkResult <$> one t
 
-forStatement :: Parser Statement
-forStatement =
-  do
-    forTP <- one For
-    require LeftParen
-    initV <- initializerOrBlockV
-    condV <- conditionOrBlockV
-    require Semicolon
-    incV  <- incrementOrBlockV
-    rpTP  <- one RightParen
-    body  <- statementOrCry
-    let pairV    = (,) <$> initV <*> condV
-    let defaultF = NE.singleton $ ParserError UnfinishedStmt rpTP
-    validation ((<> defaultF) &> multiError) (
-      \(init, condM) ->
-        validation (NE.singleton &> multiError) (
-          \incM ->
-            pure $ buildLoop forTP init condM incM body
-        ) incV
-      ) pairV
-  where
-    buildLoop forT init condM incM body =
-        Block [init, loop]
-      where
-        cond     = maybe (LiteralExpr (BooleanLit True) forT) id condM
-        inc      = maybeToList $ map ExpressionStatement incM
-        fullBody = Block $ [body] <> inc
-        loop     = WhileStatement cond fullBody
+notFollowedBy :: Parser a -> Parser ()
+notFollowedBy (Parser p) =
+  Parser $ \tps ->
+    case p tps of
+      Parsed  _ -> bail
+      _         -> win ((), tps)
 
-    initializerOrBlockV :: Parser (Validation (NonEmpty ParserError) Statement)
-    initializerOrBlockV = good <|> junk
-      where
-        good =
-          do
-            stmt <- varDeclaration <|> exprStatement <|> emptyInit
-            pure $ Success stmt
-        emptyInit =
-          do
-            throwaway Semicolon
-            pure $ Block []
-        junk =
-          do
-            lbTP <- one LeftBrace
-            throwaway RightBrace
-            throwaway Semicolon
-            pure $ Failure $ NE.singleton $ ParserError InvalidExpression lbTP
+require :: Token -> Parser ()
+require x = throwaway x <|> cryAbout (Missing x)
 
-    conditionOrBlockV :: Parser (Validation (NonEmpty ParserError) (Maybe Expr))
-    conditionOrBlockV = expr <|> junk <|> empty
-      where
-        empty = pure $ Success Nothing
-        expr =
-          do
-            good <- expression
-            pure $ Success $ Just good
-        junk =
-          do
-            lbTP <- one LeftBrace
-            throwaway RightBrace
-            pure $ Failure $ NE.singleton $ ParserError InvalidExpression lbTP
+atMost :: ParserErrorType -> Int -> (a -> TokenPlus) -> Parser a -> Parser [a]
+atMost pet 0 f p =
+  (do
+    baddie <- p
+    Parser $ const $ errorWith $ ParserError pet $ f baddie
+  ) <|> pure []
+atMost pet n f p = ((:) <$> p <*> atMost pet (n - 1) f p) <|> pure []
 
-    incrementOrBlockV :: Parser (Validation ParserError (Maybe Expr))
-    incrementOrBlockV = expr <|> junk <|> empty
-      where
-        empty = pure $ Success Nothing
-        expr =
-          do
-            good <- expression
-            pure $ Success $ Just good
-        junk =
-          do
-            lbTP <- one LeftBrace
-            throwaway RightBrace
-            pure $ Failure $ ParserError InvalidExpression lbTP
+win :: a -> Parsed a
+win = Parsed
 
-ifStatement :: Parser Statement
-ifStatement =
-  do
-    throwaway If
-    require LeftParen
-    antecedent   <- expressionOrCry
-    require RightParen
-    consequent   <- statementOrCry
-    alternativeM <- optional $ do
-      throwaway Else
-      statementOrCry
-    pure $ IfElse antecedent consequent alternativeM
+bail :: Parsed a
+bail = Backtrack
 
-whileStatement :: Parser Statement
-whileStatement =
-  do
-    throwaway While
-    require LeftParen
-    cond <- expressionOrCry
-    require RightParen
-    body <- statementOrCry
-    pure $ WhileStatement cond body
+errorWith :: ParserError -> Parsed a
+errorWith = NE.singleton &> Errors
 
-expressionOrCry :: Parser Expr
-expressionOrCry = expression <|> cryAbout InvalidExpression
+debug :: Text -> Parser ()
+debug label =
+  Parser $ \tps ->
+    let msg = label <> ": " <> (showText tps) in
+    win ((), traceShow msg tps)
 
-statementOrCry :: Parser Statement
-statementOrCry  = statement <|> cryAbout InvalidExpression
+instance Applicative Parser where
+  pure x = Parser $ \ts -> Parsed (x, ts)
+
+  Parser pf <*> Parser px =
+    Parser $ \tokens0 ->
+      case pf tokens0 of
+        Errors es           -> Errors es
+        Backtrack           -> Backtrack
+        Parsed (f, tokens1) ->
+          case px tokens1 of
+            Errors es           -> Errors es
+            Backtrack           -> Backtrack
+            Parsed (x, tokens2) -> Parsed (f x, tokens2)
+
+instance Alternative Parser where
+  empty                 = Parser $ const Backtrack
+  Parser p <|> Parser q = Parser $
+    \tokens ->
+      case p tokens of
+        Errors es  -> Errors es
+        Parsed res -> Parsed res
+        Backtrack  -> q tokens
+
+instance Monad Parser where
+  return          = pure
+  Parser pa >>= f =
+    Parser $ \tokens0 ->
+      case pa tokens0 of
+        Errors e            -> Errors e
+        Backtrack           -> Backtrack
+        Parsed (a, tokens1) -> (f a).run tokens1
