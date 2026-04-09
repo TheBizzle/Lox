@@ -4,7 +4,7 @@ import Control.Monad.State(gets, modify)
 
 import Data.List.NonEmpty(NonEmpty((:|)))
 
-import Lox.Scanner.Token(TokenPlus)
+import Lox.Scanner.Token(Token)
 
 import Lox.Parser.AST(
     AST(statements)
@@ -135,7 +135,7 @@ findErrorInIf antecedent is esm =
     result3 <- maybe (return succeed) findErrorInStmt esm
     return $ result1 *> result2 *> result3
 
-findErrorInReturn :: TokenPlus -> Maybe Expr -> Verification
+findErrorInReturn :: Token -> Maybe Expr -> Verification
 findErrorInReturn keyword exprM = findErrorInCtor |*> findErrorInRaw |*> maybe (return succeed) findErrorInExpr exprM
   where
     findErrorInCtor =
@@ -178,7 +178,7 @@ findErrorInVarRef var =
       (Just vn) | vn == var.varName && notG -> return $ fail $ VerifierError VarCannotInitInTermsOfSelf var.varToken
       _                                     -> return succeed
 
-findErrorInThis :: TokenPlus -> Verification
+findErrorInThis :: Token -> Verification
 findErrorInThis keyword =
   do
     isInClass <- gets isInClass
@@ -187,7 +187,7 @@ findErrorInThis keyword =
     else
       return $ fail $ VerifierError CanOnlyRefThisInsideClass keyword
 
-findErrorInSuper :: TokenPlus -> Verification
+findErrorInSuper :: Token -> Verification
 findErrorInSuper keyword =
   do
     isInClass <- gets isInClass

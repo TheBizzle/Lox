@@ -4,7 +4,7 @@ import Data.List.NonEmpty((<|))
 
 import Lox.Scanner.Scanner(scan)
 import Lox.Scanner.ScannerError(ScannerError)
-import Lox.Scanner.Token(TokenPlus)
+import Lox.Scanner.Token(Token)
 
 import Lox.Parser.LoxParser(parse)
 import Lox.Parser.ParserError(ParserError)
@@ -34,7 +34,7 @@ interpret = runNE
     verifyNE = verify &> validation (VerifierFailure &> NE.singleton &> Left) evalNE
     evalNE   = eval   &> Right
 
-    parseNE :: ([ScannerError], [TokenPlus]) -> LoxResult
+    parseNE :: ([ScannerError], [Token]) -> LoxResult
     parseNE (ses, tokens) =
       case NE.nonEmpty ses of
         Just errors -> first ((ScannerFailure errors) <|) parsed

@@ -4,7 +4,7 @@ import Control.Monad.State(modify)
 
 import Lox.Scanner.Internal.ScannerError(ScannerErrorType(UnterminatedString))
 import Lox.Scanner.Internal.ScannerState(addError, addToken, checkForEnd, peek, ScannerState(lineNumber), slurpNextChar)
-import Lox.Scanner.Internal.Token(Token(String))
+import Lox.Scanner.Internal.Token(TokenType(String))
 
 import qualified Data.List as List
 

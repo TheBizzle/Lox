@@ -1,8 +1,8 @@
 module Lox.Parser.Internal.LoxParser(parse) where
 
 import Lox.Scanner.Token(
-    Token(Class, Comma, Else, EOF, Equal, For, Fun, If, LeftBrace, LeftParen, Less, Print, Return, RightBrace, RightParen, Semicolon, Var, While)
-  , TokenPlus(loc)
+    Token(loc)
+  , TokenType(Class, Comma, Else, EOF, Equal, For, Fun, If, LeftBrace, LeftParen, Less, Print, Return, RightBrace, RightParen, Semicolon, Var, While)
   )
 
 import Lox.Parser.Internal.AST(
@@ -17,7 +17,7 @@ import Lox.Parser.Internal.AST(
 import Lox.Parser.Internal.ExpressionParser(expression)
 
 import Lox.Parser.Internal.Parser(
-    atMost, cryAbout, dummyTP, multiError, one
+    atMost, cryAbout, dummyToken, multiError, one
   , Parsed(Backtrack, Errors, Parsed)
   , Parser, require, run, throwaway, variable
   )
@@ -31,10 +31,10 @@ import qualified Data.List.NonEmpty      as NE
 import qualified Lox.Parser.Internal.AST as AST
 
 
-parse :: [TokenPlus] -> Validation (NonEmpty ParserError) AST
+parse :: [Token] -> Validation (NonEmpty ParserError) AST
 parse = parser.run &> (
     \case
-      Backtrack       -> Failure $ NE.singleton $ ParserError Incomprehensible dummyTP
+      Backtrack       -> Failure $ NE.singleton $ ParserError Incomprehensible dummyToken
       Errors es       -> Failure es
       Parsed (ast, _) -> Success ast
   )
@@ -124,37 +124,37 @@ exprStatement =
 printStatement :: Parser Statement
 printStatement =
   do
-    printTP <- one Print
-    expr    <- expressionOrCry
+    token <- one Print
+    expr  <- expressionOrCry
     require Semicolon
-    pure $ PrintStatement printTP.loc expr
+    pure $ PrintStatement token.loc expr
 
 returnStatement :: Parser Statement
 returnStatement =
   do
-    returnTP <- one Return
-    exprM    <- optional expression
+    token <- one Return
+    exprM <- optional expression
     require Semicolon
-    pure $ ReturnStatement returnTP exprM
+    pure $ ReturnStatement token exprM
 
 forStatement :: Parser Statement
 forStatement =
   do
-    forTP <- one For
+    forToken <- one For
     require LeftParen
-    initV <- initializerOrBlockV
-    condV <- conditionOrBlockV
+    initV    <- initializerOrBlockV
+    condV    <- conditionOrBlockV
     require Semicolon
-    incV  <- incrementOrBlockV
-    rpTP  <- one RightParen
-    body  <- statementOrCry
+    incV     <- incrementOrBlockV
+    rpToken  <- one RightParen
+    body     <- statementOrCry
     let pairV    = (,) <$> initV <*> condV
-    let defaultF = NE.singleton $ ParserError UnfinishedStmt rpTP
+    let defaultF = NE.singleton $ ParserError UnfinishedStmt rpToken
     validation ((<> defaultF) &> multiError) (
       \(init, condM) ->
         validation (NE.singleton &> multiError) (
           \incM ->
-            pure $ buildLoop forTP init condM incM body
+            pure $ buildLoop forToken init condM incM body
         ) incV
       ) pairV
   where
@@ -179,10 +179,10 @@ forStatement =
             pure $ Block []
         junk =
           do
-            lbTP <- one LeftBrace
+            token <- one LeftBrace
             throwaway RightBrace
             throwaway Semicolon
-            pure $ Failure $ NE.singleton $ ParserError InvalidExpression lbTP
+            pure $ Failure $ NE.singleton $ ParserError InvalidExpression token
 
     conditionOrBlockV :: Parser (Validation (NonEmpty ParserError) (Maybe Expr))
     conditionOrBlockV = expr <|> junk <|> empty
@@ -194,9 +194,9 @@ forStatement =
             pure $ Success $ Just good
         junk =
           do
-            lbTP <- one LeftBrace
+            token <- one LeftBrace
             throwaway RightBrace
-            pure $ Failure $ NE.singleton $ ParserError InvalidExpression lbTP
+            pure $ Failure $ NE.singleton $ ParserError InvalidExpression token
 
     incrementOrBlockV :: Parser (Validation ParserError (Maybe Expr))
     incrementOrBlockV = expr <|> junk <|> empty
@@ -208,9 +208,9 @@ forStatement =
             pure $ Success $ Just good
         junk =
           do
-            lbTP <- one LeftBrace
+            token <- one LeftBrace
             throwaway RightBrace
-            pure $ Failure $ ParserError InvalidExpression lbTP
+            pure $ Failure $ ParserError InvalidExpression token
 
 ifStatement :: Parser Statement
 ifStatement =

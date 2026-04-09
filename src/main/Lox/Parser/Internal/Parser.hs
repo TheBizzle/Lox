@@ -1,5 +1,5 @@
 module Lox.Parser.Internal.Parser(
-    (=#>), anyOf, atMost, bail, convert, cryAbout, debug, dummyTP, errorWith, multiError, notFollowedBy, one
+    (=#>), anyOf, atMost, bail, convert, cryAbout, debug, dummyToken, errorWith, multiError, notFollowedBy, one
   , Parsed(Backtrack, Errors, Parsed)
   , Parser(Parser, run)
   , parserFrom, require, throwaway, variable, win
@@ -7,7 +7,7 @@ module Lox.Parser.Internal.Parser(
 
 import Control.Applicative(Alternative(empty))
 
-import Lox.Scanner.Token(SourceLoc(SourceLoc), Token(EOF, Identifier), TokenPlus(token, TokenPlus))
+import Lox.Scanner.Token(SourceLoc(SourceLoc), Token(Token, typ), TokenType(EOF, Identifier))
 
 import Lox.Parser.Internal.AST(Variable(Variable))
 
@@ -26,23 +26,23 @@ data Parsed a
   deriving Functor
 
 newtype Parser a =
-  Parser { run :: [TokenPlus] -> Parsed (a, [TokenPlus]) }
+  Parser { run :: [Token] -> Parsed (a, [Token]) }
   deriving Functor
 
 variable :: Parser Variable
 variable =
   parserFrom $
-    \tp -> case tp.token of
-      Identifier s -> win $ Variable s tp
+    \token -> case token.typ of
+      Identifier s -> win $ Variable s token
       _            -> bail
 
-(=#>) :: Token -> a -> (Token, a)
+(=#>) :: TokenType -> a -> (TokenType, a)
 (=#>) = (,)
 
-dummyTP :: TokenPlus
-dummyTP = TokenPlus EOF $ SourceLoc 0
+dummyToken :: Token
+dummyToken = Token EOF $ SourceLoc 0
 
-parserFrom :: (TokenPlus -> Parsed a) -> Parser a
+parserFrom :: (Token -> Parsed a) -> Parser a
 parserFrom f =
   Parser $ \case
     (h:t) -> map (, t) $ f h
@@ -54,40 +54,40 @@ cryAbout typ =
     errorWith $ ParserError typ $
       case tokens of
         (h:_) -> h
-        []    -> dummyTP
+        []    -> dummyToken
 
 multiError :: (NonEmpty ParserError) -> Parser a
 multiError es = Parser $ const $ Errors es
 
-anyOf :: [Token] -> Parser TokenPlus
+anyOf :: [TokenType] -> Parser Token
 anyOf tokens =
   parserFrom $
-    \tp ->
-      if tp.token `elem` tokens then
-        win tp
+    \token ->
+      if token.typ `elem` tokens then
+        win token
       else
         bail
 
-one :: Token -> Parser TokenPlus
+one :: TokenType -> Parser Token
 one token = anyOf [token]
 
-throwaway :: Token -> Parser ()
+throwaway :: TokenType -> Parser ()
 throwaway t = (const ()) <$> one t
 
-convert :: (Token, TokenPlus -> a) -> Parser a
+convert :: (TokenType, Token -> a) -> Parser a
 convert (t, mkResult) = mkResult <$> one t
 
 notFollowedBy :: Parser a -> Parser ()
 notFollowedBy (Parser p) =
-  Parser $ \tps ->
-    case p tps of
+  Parser $ \tokens ->
+    case p tokens of
       Parsed  _ -> bail
-      _         -> win ((), tps)
+      _         -> win ((), tokens)
 
-require :: Token -> Parser ()
+require :: TokenType -> Parser ()
 require x = throwaway x <|> cryAbout (Missing x)
 
-atMost :: ParserErrorType -> Int -> (a -> TokenPlus) -> Parser a -> Parser [a]
+atMost :: ParserErrorType -> Int -> (a -> Token) -> Parser a -> Parser [a]
 atMost pet 0 f p =
   (do
     baddie <- p
@@ -106,9 +106,9 @@ errorWith = NE.singleton &> Errors
 
 debug :: Text -> Parser ()
 debug label =
-  Parser $ \tps ->
-    let msg = label <> ": " <> (showText tps) in
-    win ((), traceShow msg tps)
+  Parser $ \tokens ->
+    let msg = label <> ": " <> (showText tokens) in
+    win ((), traceShow msg tokens)
 
 instance Applicative Parser where
   pure x = Parser $ \ts -> Parsed (x, ts)

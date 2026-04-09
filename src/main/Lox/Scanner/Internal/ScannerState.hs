@@ -3,14 +3,14 @@ module Lox.Scanner.Internal.ScannerState(addError, addToken, checkForEnd, peek, 
 import Control.Monad.State(get, modify, put)
 
 import Lox.Scanner.Internal.ScannerError(ScannerError(ScannerError), ScannerErrorType)
-import Lox.Scanner.Internal.Token(SourceLoc(SourceLoc), Token, TokenPlus(loc, token, TokenPlus))
+import Lox.Scanner.Internal.Token(SourceLoc(SourceLoc), Token(loc, Token, typ), TokenType)
 
 import qualified Data.Text.Word as TextW
 
 
 data ScannerState
   = ScannerState { source      :: Text
-                 , tokens      :: [TokenPlus]
+                 , tokens      :: [Token]
                  , errors      :: [ScannerError]
                  , minorErrors :: [ScannerError]
                  , current     :: Word
@@ -21,12 +21,12 @@ data ScannerState
 (<*@>) :: Applicative f => f a -> f b -> f (a, b)
 (<*@>) = liftA2 (,)
 
-addToken :: Token -> State ScannerState ()
-addToken token =
+addToken :: TokenType -> State ScannerState ()
+addToken typ =
   do
     state <- get
-    let tplus = TokenPlus { token = token, loc = SourceLoc state.lineNumber }
-    put $ state { tokens = state.tokens <> [tplus] }
+    let token = Token { typ = typ, loc = SourceLoc state.lineNumber }
+    put $ state { tokens = state.tokens <> [token] }
 
 addError :: ScannerErrorType -> State ScannerState ()
 addError errorType =

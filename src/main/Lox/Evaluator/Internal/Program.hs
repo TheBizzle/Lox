@@ -11,7 +11,7 @@ import Data.List.NonEmpty((<|), NonEmpty((:|)))
 import Data.Map(alter, lookup)
 import Data.Maybe(fromJust)
 
-import Lox.Scanner.Token(Token(Return, This, Var), TokenPlus(TokenPlus))
+import Lox.Scanner.Token(Token(Token), TokenType(Return, This, Var))
 
 import Lox.Parser.AST(
     Expr(Call, VarRef)
@@ -296,12 +296,12 @@ findInObject (Object clazz instID) propName =
 
 -- I find it very objectionable that the 'operator/equals_method' test requires me to make
 -- functions not equal to themselves like this.  --Jason B. (3/4/26)
-indexObject :: TokenPlus -> Object -> Text -> Evaluating
-indexObject tp object propName =
+indexObject :: Token -> Object -> Text -> Evaluating
+indexObject token object propName =
   do
     addr <- findInObject object propName
     case addr of
-      Nothing     -> return $ Failure $ NE.singleton $ EvalError (ObjectLacksKey propName) tp
+      Nothing     -> return $ Failure $ NE.singleton $ EvalError (ObjectLacksKey propName) token
       (Just addr) -> do
         var       <- get <&> (variables &> Map.lookup addr &> Maybe.fromJust)
         properVar <-
@@ -313,8 +313,8 @@ indexObject tp object propName =
             x -> return x
         return $ Success $ CF.Normal properVar
 
-indexSuper :: TokenPlus -> Variable -> Evaluating
-indexSuper superTP (Variable propName _) =
+indexSuper :: Token -> Variable -> Evaluating
+indexSuper superToken (Variable propName _) =
   do
     superM <- get <&> (getVar superName)
     maybe (error "`super` used outside of class.  The verifier should have caught this!") helper superM
@@ -323,7 +323,7 @@ indexSuper superTP (Variable propName _) =
     helper (ClassV s) = (lookupInSupers $ toSuperChain s) <&> (<&> CF.Normal)
     helper          _ = error "Not possible to resolve `super` to something other than a class or nil"
 
-    lookupInSupers supers = maybe (return $ Failure $ NE.singleton $ EvalError (ObjectLacksKey propName) superTP) returnSuperMethod fnM
+    lookupInSupers supers = maybe (return $ Failure $ NE.singleton $ EvalError (ObjectLacksKey propName) superToken) returnSuperMethod fnM
       where
         fnM =
           if propName /= initName then
@@ -340,14 +340,14 @@ indexSuper superTP (Variable propName _) =
         trueName         = "__super_" <> name.varName
         buildSuperMethod = defineFunction trueName (map varName args) statements
 
-initObject :: TokenPlus -> Evaluator -> Text -> [Value] -> Evaluating
-initObject tp evaluator className args =
+initObject :: Token -> Evaluator -> Text -> [Value] -> Evaluating
+initObject token evaluator className args =
   do
     program <- get
     case getVar className program of
-      Nothing               -> return $ Failure $ NE.singleton $ EvalError (ClassNotFound className) tp
+      Nothing               -> return $ Failure $ NE.singleton $ EvalError (ClassNotFound className) token
       (Just (ClassV clazz)) -> initialize clazz
-      (Just              x) -> return $ Failure $ NE.singleton $ EvalError (NotAClass x) tp
+      (Just              x) -> return $ Failure $ NE.singleton $ EvalError (NotAClass x) token
   where
     initialize clazz =
       do
@@ -388,9 +388,9 @@ initObject tp evaluator className args =
         -- to get back the same object that it was called on.  Dislike. --Jason B. (3/9/26)
         convertInit (AST.Function decl args body) =
           (AST.Function decl args $
-            [ (FunctionStatement (AST.Function (Variable "__init" (TokenPlus Var (err 0))) [] body))
-            , (ExpressionStatement (Call (VarRef (Variable "__init" (TokenPlus Var (err 1)))) (TokenPlus Var (err 2)) []))
-            , (ReturnStatement (TokenPlus Return (err 3)) (Just (AST.This (TokenPlus This (err 4)))))
+            [ (FunctionStatement (AST.Function (Variable "__init" (Token Var (err 0))) [] body))
+            , (ExpressionStatement (Call (VarRef (Variable "__init" (Token Var (err 1)))) (Token Var (err 2)) []))
+            , (ReturnStatement (Token Return (err 3)) (Just (AST.This (Token This (err 4)))))
             ]
           )
 

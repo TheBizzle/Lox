@@ -29,7 +29,7 @@ import Lox.Scanner.ScannerError(
     ScannerErrorType(InvalidNumberFormat, UnknownToken, UnterminatedString)
   )
 
-import Lox.Scanner.Token(SourceLoc(lineNumber), Token(EOF, LeftBrace, LeftParen), TokenPlus(loc, token))
+import Lox.Scanner.Token(SourceLoc(lineNumber), Token(loc, typ), TokenType(EOF, LeftBrace, LeftParen))
 
 import Lox.Verifier.VerifierError(
     VerifierError(offender, typ)
@@ -113,7 +113,7 @@ runProgram isREPL state program =
         return 0
 
 evalErrorAsText :: EvalError -> Text
-evalErrorAsText (EvalError typ tp) = suffix tp $ errorText typ
+evalErrorAsText (EvalError typ token) = suffix token $ errorText typ
   where
     suffix token s = s <> "\n[line " <> (showText token.loc.lineNumber) <> "]"
 
@@ -135,7 +135,7 @@ evalErrorAsText (EvalError typ tp) = suffix tp $ errorText typ
 parserErrorAsText :: ParserError -> Text
 parserErrorAsText error = line
   where
-    line = "[line " <> (showText error.offender.loc.lineNumber) <> "] Error at " <> (desc error.offender.token) <> (errorText error.typ)
+    line = "[line " <> (showText error.offender.loc.lineNumber) <> "] Error at " <> (desc error.offender.typ) <> (errorText error.typ)
     desc EOF = "end: "
     desc t   = "'" <> (showText t) <> "': "
     errorText ExpectedBraceBeforeBody  = "Expect '{' before function body."
@@ -168,7 +168,7 @@ scannerErrorAsText error = line
 verifierErrorAsText :: VerifierError -> Text
 verifierErrorAsText error = line
   where
-    line = "[line " <> (showText error.offender.loc.lineNumber) <> "] Error at " <> (desc error.offender.token) <> (errorText error.typ)
+    line = "[line " <> (showText error.offender.loc.lineNumber) <> "] Error at " <> (desc error.offender.typ) <> (errorText error.typ)
     desc EOF = "end: "
     desc t   = "'" <> (showText t) <> "': "
     errorText CannotInheritFromSelf      = "A class can't inherit from itself."

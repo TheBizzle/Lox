@@ -3,7 +3,7 @@ module Lox.Verifier.Internal.VerifierError(
   , VerifierError(offender, VerifierError, typ)
   ) where
 
-import Lox.Scanner.Token(TokenPlus)
+import Lox.Scanner.Token(Token)
 
 
 data VerifierErrorType
@@ -18,5 +18,5 @@ data VerifierErrorType
   deriving (Eq, Show)
 
 data VerifierError =
-  VerifierError { typ :: VerifierErrorType, offender :: TokenPlus }
+  VerifierError { typ :: VerifierErrorType, offender :: Token }
   deriving Show

@@ -1,9 +1,9 @@
 module Lox.Parser.Internal.ParserError(
     ParserError(offender, ParserError, typ)
-  , ParserErrorType(ExpectedBraceBeforeBody, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterArgs, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, Incomprehensible, InvalidAssign, InvalidExpression, Missing, ReservedName, token, TooMuchArguing, TooMuchParaming, UnfinishedStmt)
+  , ParserErrorType(ExpectedBraceBeforeBody, ExpectedDotAfterSuper, ExpectedIdentifier, ExpectedParenAfterArgs, ExpectedParenAfterParams, ExpectedPropertyName, ExpectedSuperMethodName, ExpectedSuperName, Incomprehensible, InvalidAssign, InvalidExpression, Missing, ReservedName, tokenType, TooMuchArguing, TooMuchParaming, UnfinishedStmt)
   ) where
 
-import Lox.Scanner.Token(Token, TokenPlus)
+import Lox.Scanner.Token(Token, TokenType)
 
 
 data ParserErrorType
@@ -18,7 +18,7 @@ data ParserErrorType
   | Incomprehensible
   | InvalidAssign
   | InvalidExpression
-  | Missing { token :: Token }
+  | Missing { tokenType :: TokenType }
   | ReservedName
   | TooMuchArguing
   | TooMuchParaming
@@ -26,5 +26,5 @@ data ParserErrorType
   deriving (Eq, Show)
 
 data ParserError =
-  ParserError { typ :: ParserErrorType, offender :: TokenPlus }
+  ParserError { typ :: ParserErrorType, offender :: Token }
   deriving Show

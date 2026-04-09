@@ -4,8 +4,8 @@ import Control.Monad.State(get, modify)
 
 import Lox.Scanner.Token(
     SourceLoc(SourceLoc)
-  , Token(Bang, BangEqual, Comma, Dot, Equal, EqualEqual, EOF, Greater, GreaterEqual, LeftBrace, LeftParen, Less, LessEqual, Minus, Plus, RightBrace, RightParen, Semicolon, Slash, Star)
-  , TokenPlus(TokenPlus)
+  , Token(Token)
+  , TokenType(Bang, BangEqual, Comma, Dot, Equal, EqualEqual, EOF, Greater, GreaterEqual, LeftBrace, LeftParen, Less, LessEqual, Minus, Plus, RightBrace, RightParen, Semicolon, Slash, Star)
   )
 
 import Lox.Scanner.Internal.Classify(isAlphabetic, isDigit)
@@ -20,12 +20,12 @@ import qualified Data.List as List
 
 type ScannerResult a = Validation (NonEmpty ScannerError) a
 
-scan :: Text -> Validation (NonEmpty ScannerError) ([ScannerError], [TokenPlus])
+scan :: Text -> Validation (NonEmpty ScannerError) ([ScannerError], [Token])
 scan code = map (state.minorErrors, ) result
   where
     (result, state) = runState scan_ $ ScannerState code [] [] [] 0 0 1
 
-scan_ :: State ScannerState (ScannerResult [TokenPlus])
+scan_ :: State ScannerState (ScannerResult [Token])
 scan_ =
   do
     isAtEnd <- checkForEnd
@@ -34,7 +34,7 @@ scan_ =
       scanToken
       scan_
     else do
-      modify $ \s -> s { tokens = s.tokens <> [TokenPlus EOF $ SourceLoc s.lineNumber] }
+      modify $ \s -> s { tokens = s.tokens <> [Token EOF $ SourceLoc s.lineNumber] }
       state <- get
       let errorsMaybe = state.errors |> List.reverse &> nonEmpty
       return $ maybe (Success state.tokens) Failure errorsMaybe

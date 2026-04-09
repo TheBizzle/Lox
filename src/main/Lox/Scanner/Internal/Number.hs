@@ -3,7 +3,7 @@ module Lox.Scanner.Internal.Number(slurpNumber) where
 import Lox.Scanner.Internal.Classify(isDigit)
 import Lox.Scanner.Internal.ScannerError(ScannerErrorType(InvalidNumberFormat))
 import Lox.Scanner.Internal.ScannerState(addError, addToken, peek, peek2, ScannerState, slurpNextChar)
-import Lox.Scanner.Internal.Token(Token(Number))
+import Lox.Scanner.Internal.Token(TokenType(Number))
 
 import qualified Data.List as List
 

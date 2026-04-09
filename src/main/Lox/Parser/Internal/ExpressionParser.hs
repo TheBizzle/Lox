@@ -1,8 +1,8 @@
 module Lox.Parser.Internal.ExpressionParser(expression, primary, unary) where
 
 import Lox.Scanner.Token(
-    Token(And, Bang, BangEqual, Comma, Dot, Equal, EqualEqual, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Nil, Number, Or, Plus, RightParen, This, TokenFalse, TokenTrue, Slash, Super, Star, String)
-  , TokenPlus(TokenPlus)
+    Token(Token)
+  , TokenType(And, Bang, BangEqual, Comma, Dot, Equal, EqualEqual, Greater, GreaterEqual, LeftParen, Less, LessEqual, Minus, Nil, Number, Or, Plus, RightParen, This, TokenFalse, TokenTrue, Slash, Super, Star, String)
   )
 
 import Lox.Parser.Internal.AST(
@@ -35,13 +35,13 @@ assignment = setOperation <|> assignOperation <|> logicalOr
   where
     assignOperation =
       do
-        target  <- logicalOr
-        equalTP <- one Equal
-        value   <- assignment
+        target <- logicalOr
+        token  <- one Equal
+        value  <- assignment
         case target of
           VarRef name  -> pure $ Assign name value
           Get obj name -> pure $ Set obj name value
-          _            -> Parser $ const $ errorWith $ ParserError InvalidAssign equalTP
+          _            -> Parser $ const $ errorWith $ ParserError InvalidAssign token
 
     setOperation =
       do
@@ -122,7 +122,7 @@ unary = unaryOperation <|> fnCall
         pure $ Unary operator operand
 
 data CallType
-  = Simple TokenPlus [Expr]
+  = Simple Token [Expr]
   | Method Variable
 
 fnCall :: Parser Expr
@@ -133,10 +133,10 @@ fnCall = call <|> primary
 
     simpleCall =
       do
-        parenTP   <- one LeftParen
+        token     <- one LeftParen
         arguments <- args    <|> pure []
         throwaway RightParen <|> cryAbout ExpectedParenAfterArgs
-        pure $ Simple parenTP arguments
+        pure $ Simple token arguments
 
     getMethod =
       do
@@ -154,8 +154,8 @@ fnCall = call <|> primary
     makeCalls p (ctype:is) = foldl (\acc ct -> mkCall acc ct) (mkCall p ctype) is
     makeCalls _         [] = error "Not possible!  `some` produces a list of at least length 1!"
 
-    mkCall acc (Simple lpTP args) = Call acc lpTP args
-    mkCall acc (Method var      ) = Get  acc var
+    mkCall acc (Simple lpt args) = Call acc lpt args
+    mkCall acc (Method var     ) = Get  acc var
 
 primary :: Parser Expr
 primary = number <|> string <|> true <|> false <|> nil <|> this <|> fullVariable <|> grouping <|> super
@@ -174,20 +174,20 @@ primary = number <|> string <|> true <|> false <|> nil <|> this <|> fullVariable
 
     super =
       do
-        superTP <- one Super
-        _       <- throwaway Dot <|> cryAbout ExpectedDotAfterSuper
-        var     <- variable      <|> cryAbout ExpectedSuperMethodName
-        pure $ AST.Super superTP var
+        token <- one Super
+        _     <- throwaway Dot <|> cryAbout ExpectedDotAfterSuper
+        var   <- variable      <|> cryAbout ExpectedSuperMethodName
+        pure $ AST.Super token var
 
     number = parserFrom helper
       where
-        helper tp@(TokenPlus (Number x) _) = win $ LiteralExpr (DoubleLit x) tp
-        helper _                           = bail
+        helper t@(Token (Number x) _) = win $ LiteralExpr (DoubleLit x) t
+        helper _                      = bail
 
     string = parserFrom helper
       where
-        helper tp@(TokenPlus (String s) _) = win $ LiteralExpr (StringLit s) tp
-        helper _                           = bail
+        helper t@(Token (String s) _) = win $ LiteralExpr (StringLit s) t
+        helper _                      = bail
 
 fullVariable :: Parser Expr
 fullVariable = VarRef <$> variable

@@ -8,7 +8,7 @@ module Lox.Parser.Internal.AST(
   , Variable(Variable, varName, varToken)
   ) where
 
-import Lox.Scanner.Token(SourceLoc, TokenPlus)
+import Lox.Scanner.Token(SourceLoc, Token)
 
 data AST
   = AST { statements :: [Statement] }
@@ -26,7 +26,7 @@ data Statement
   | FunctionStatement { func :: Function }
   | IfElse { antecedent :: Expr, consequent :: Statement, alternative :: Maybe Statement }
   | PrintStatement { loc :: SourceLoc, expr :: Expr }
-  | ReturnStatement { token :: TokenPlus, exprM :: Maybe Expr }
+  | ReturnStatement { token :: Token, exprM :: Maybe Expr }
   | WhileStatement { predicate :: Expr, body :: Statement }
   deriving (Eq, Show)
 
@@ -38,25 +38,25 @@ data Literal
   deriving (Eq, Show)
 
 data Variable
-  = Variable { varName :: Text, varToken :: TokenPlus }
+  = Variable { varName :: Text, varToken :: Token }
   deriving (Eq, Show)
 
 data Expr
   = Assign      { var :: Variable, value :: Expr }
-  | Binary      { left :: Expr, operator :: TokenPlus, right :: Expr }
-  | Call        { callee :: Expr, paren :: TokenPlus, arguments :: [Expr] }
+  | Binary      { left :: Expr, operator :: Token, right :: Expr }
+  | Call        { callee :: Expr, paren :: Token, arguments :: [Expr] }
   | Get         { object :: Expr, var :: Variable }
   | Grouping    { expression :: Expr }
-  | LiteralExpr { literal :: Literal, literalToken :: TokenPlus }
-  | Logical     { left :: Expr, operator :: TokenPlus, right :: Expr }
+  | LiteralExpr { literal :: Literal, literalToken :: Token }
+  | Logical     { left :: Expr, operator :: Token, right :: Expr }
   | Set         { object :: Expr, var :: Variable, value :: Expr }
-  | Super       { keyword :: TokenPlus, var :: Variable }
-  | This        { keyword :: TokenPlus }
-  | Unary       { operator :: TokenPlus, right :: Expr }
+  | Super       { keyword :: Token, var :: Variable }
+  | This        { keyword :: Token }
+  | Unary       { operator :: Token, right :: Expr }
   | VarRef      { var :: Variable }
   deriving (Eq, Show)
 
-exprToToken :: Expr -> TokenPlus
+exprToToken :: Expr -> Token
 exprToToken a@(Assign      _      _      ) = a.var.varToken
 exprToToken   (Binary      left   _     _) = exprToToken left
 exprToToken   (Call        callee _     _) = exprToToken callee

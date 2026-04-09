@@ -1,6 +1,6 @@
 module Lox.Evaluator.Internal.Type(Type(AnyT, BooleanT, NumberT, StringT), typecheck) where
 
-import Lox.Scanner.Token(Token(Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Minus, Plus, Print, Slash, Star))
+import Lox.Scanner.Token(TokenType(Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Minus, Plus, Print, Slash, Star))
 
 import Lox.Evaluator.Internal.Value(Value(BooleanV, NumberV, StringV))
 
@@ -17,7 +17,7 @@ instance Show Type where
   show  NumberT = "number"
   show  StringT = "string"
 
-typecheck :: Token -> [Value] -> [Maybe (Type, Value)]
+typecheck :: TokenType -> [Value] -> [Maybe (Type, Value)]
 typecheck Bang         [v]    = [check    AnyT v]
 typecheck BangEqual    [v, w] = [check    AnyT v, check    AnyT w]
 typecheck EqualEqual   [v, w] = [check    AnyT v, check    AnyT w]

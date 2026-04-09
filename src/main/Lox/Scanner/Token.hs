@@ -3,6 +3,6 @@ module Lox.Scanner.Token(module Lox.Scanner.Internal.Token) where
 
 import Lox.Scanner.Internal.Token(
     SourceLoc(lineNumber, SourceLoc)
-  , Token(..)
-  , TokenPlus(loc, token, TokenPlus)
+  , Token(loc, Token, typ)
+  , TokenType(..)
   )

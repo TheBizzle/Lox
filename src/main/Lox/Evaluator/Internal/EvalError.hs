@@ -3,7 +3,7 @@ module Lox.Evaluator.Internal.EvalError(
   , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlySetObj, ClassNotFound, gotNum, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperMustBeAClass, TopLevelReturn, UnknownVariable, varName, wantedNum)
   ) where
 
-import Lox.Scanner.Token(TokenPlus)
+import Lox.Scanner.Token(Token)
 
 import Lox.Evaluator.Internal.Value(Value)
 
@@ -26,5 +26,5 @@ data EvalErrorType
   deriving Show
 
 data EvalError
-  = EvalError { typ :: EvalErrorType, culprit :: TokenPlus }
+  = EvalError { typ :: EvalErrorType, culprit :: Token }
   deriving Show

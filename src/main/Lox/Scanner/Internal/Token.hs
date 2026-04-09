@@ -1,4 +1,4 @@
-module Lox.Scanner.Internal.Token(SourceLoc(lineNumber, SourceLoc), Token(..), TokenPlus(loc, token, TokenPlus)) where
+module Lox.Scanner.Internal.Token(SourceLoc(lineNumber, SourceLoc), Token(loc, Token, typ), TokenType(..)) where
 
 import qualified Data.Text as Text
 
@@ -7,14 +7,14 @@ data SourceLoc
   = SourceLoc { lineNumber :: Word }
   deriving (Eq, Show)
 
-data TokenPlus =
-  TokenPlus { token :: Token, loc :: SourceLoc }
+data Token =
+  Token { typ :: TokenType, loc :: SourceLoc }
   deriving Eq
 
-instance Show TokenPlus where
-  show (TokenPlus t (SourceLoc ln)) = (show t) <> "_L" <> (show ln)
+instance Show Token where
+  show (Token tt (SourceLoc ln)) = (show tt) <> "_L" <> (show ln)
 
-data Token
+data TokenType
   = And
   | Bang
   | BangEqual
@@ -56,7 +56,7 @@ data Token
   | While
   deriving Eq
 
-instance Show Token where
+instance Show TokenType where
   show And            = "and"
   show Bang           = "!"
   show BangEqual      = "!="
