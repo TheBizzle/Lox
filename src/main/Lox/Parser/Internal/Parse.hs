@@ -1,5 +1,5 @@
 module Lox.Parser.Internal.Parse(
-    (=#>), atMost, bail, convert, cryAbout, debug, dummyTP, errorWith, multiError, notFollowedBy, one, oneOf
+    (=#>), anyOf, atMost, bail, convert, cryAbout, debug, dummyTP, errorWith, multiError, notFollowedBy, one
   , Parsed(Backtrack, Errors, Parsed)
   , Parser(Parser, run)
   , parserFrom, require, throwaway, variable, win
@@ -59,8 +59,8 @@ cryAbout typ =
 multiError :: (NonEmpty ParserError) -> Parser a
 multiError es = Parser $ const $ Errors es
 
-oneOf :: [Token] -> Parser TokenPlus
-oneOf tokens =
+anyOf :: [Token] -> Parser TokenPlus
+anyOf tokens =
   parserFrom $
     \tp ->
       if tp.token `elem` tokens then
@@ -69,7 +69,7 @@ oneOf tokens =
         bail
 
 one :: Token -> Parser TokenPlus
-one token = oneOf [token]
+one token = anyOf [token]
 
 throwaway :: Token -> Parser ()
 throwaway t = (const ()) <$> one t

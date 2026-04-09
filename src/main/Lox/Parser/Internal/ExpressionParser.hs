@@ -13,7 +13,7 @@ import Lox.Parser.Internal.AST(
   )
 
 import Lox.Parser.Internal.Parse(
-    (=#>), atMost, bail, convert, cryAbout, errorWith, notFollowedBy, one, oneOf
+    (=#>), anyOf, atMost, bail, convert, cryAbout, errorWith, notFollowedBy, one
   , Parser(Parser)
   , parserFrom
   , throwaway, variable, win
@@ -78,7 +78,7 @@ equality = eqOperation <|> comparison
     eqOperation =
       do
         operator1 <- comparison
-        operand   <- oneOf [BangEqual, EqualEqual]
+        operand   <- anyOf [BangEqual, EqualEqual]
         operator2 <- equality
         pure $ Binary operator1 operand operator2
 
@@ -88,7 +88,7 @@ comparison = compOperation <|> term
     compOperation =
       do
         operator1 <- term
-        operand   <- oneOf [Greater, GreaterEqual, Less, LessEqual]
+        operand   <- anyOf [Greater, GreaterEqual, Less, LessEqual]
         operator2 <- comparison
         pure $ Binary operator1 operand operator2
 
@@ -98,7 +98,7 @@ term = termOperation <|> factor
     termOperation =
       do
         operator1 <- factor
-        operand   <- oneOf [Minus, Plus]
+        operand   <- anyOf [Minus, Plus]
         operator2 <- term
         pure $ Binary operator1 operand operator2
 
@@ -108,7 +108,7 @@ factor = factorOperation <|> unary
     factorOperation =
       do
         operator1 <- unary
-        operand   <- oneOf [Slash, Star]
+        operand   <- anyOf [Slash, Star]
         operator2 <- factor
         pure $ Binary operator1 operand operator2
 
@@ -117,7 +117,7 @@ unary = unaryOperation <|> fnCall
   where
     unaryOperation =
       do
-        operator <- oneOf [Bang, Minus]
+        operator <- anyOf [Bang, Minus]
         operand  <- unary
         pure $ Unary operator operand
 
