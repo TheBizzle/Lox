@@ -138,9 +138,6 @@ parserErrorAsText error = line
     line = "[line " <> (showText error.offender.loc.lineNumber) <> "] Error at " <> (desc error.offender.token) <> (errorText error.typ)
     desc EOF = "end: "
     desc t   = "'" <> (showText t) <> "': "
-    errorText ReservedName             = "Expect variable name."
-    errorText TooMuchArguing           = "Can't have more than 255 arguments."
-    errorText TooMuchParaming          = "Can't have more than 255 parameters."
     errorText ExpectedBraceBeforeBody  = "Expect '{' before function body."
     errorText ExpectedDotAfterSuper    = "Expect '.' after 'super'."
     errorText ExpectedIdentifier       = "Expect variable name."
@@ -152,10 +149,13 @@ parserErrorAsText error = line
     errorText Incomprehensible         = "Expected something here (this shouldn't be able to happen)"
     errorText InvalidAssign            = "Invalid assignment target."
     errorText InvalidExpression        = "Expect expression."
-    errorText UnfinishedStmt           = "Expect ';' after expression."
-    errorText (Missing LeftParen)      = "No matching '('"
     errorText (Missing LeftBrace)      = "No matching '{'"
+    errorText (Missing LeftParen)      = "No matching '('"
     errorText (Missing t)              = "Expected '" <> (showText t) <> "'"
+    errorText ReservedName             = "Expect variable name."
+    errorText TooMuchArguing           = "Can't have more than 255 arguments."
+    errorText TooMuchParaming          = "Can't have more than 255 parameters."
+    errorText UnfinishedStmt           = "Expect ';' after expression."
 
 scannerErrorAsText :: ScannerError -> Text
 scannerErrorAsText error = line
