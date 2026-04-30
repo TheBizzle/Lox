@@ -91,8 +91,7 @@ findErrorInClass classVar superVarM methods =
         pop  = modify $ \s -> s { isInClass = False }
 
     registerClass (Variable name _) =
-      do
-        modify $ \s -> s { classNames = Set.insert name s.classNames }
+      modify $ \s -> s { classNames = Set.insert name s.classNames }
 
 findErrorInDecl :: Variable -> Expr -> Verification
 findErrorInDecl decl initial =
