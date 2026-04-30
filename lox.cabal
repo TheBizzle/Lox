@@ -73,6 +73,9 @@ Library
     Lox.Scanner.Internal.ScannerState,
     Lox.Scanner.Internal.String,
     Lox.Scanner.Internal.Token,
+    Lox.Verifier.Internal.BlockVerifier,
+    Lox.Verifier.Internal.Common,
+    Lox.Verifier.Internal.ExprVerifier,
     Lox.Verifier.Internal.Verifier,
     Lox.Verifier.Internal.VerifierError
   Build-Depends:
