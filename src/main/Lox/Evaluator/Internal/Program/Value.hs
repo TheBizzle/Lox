@@ -1,4 +1,4 @@
-module Lox.Evaluator.Internal.Value(
+module Lox.Evaluator.Internal.Program.Value(
     Class(baseEnv, Class, cName, initFnM, methodFns, superclassM)
   , Function(argNames, env, Function, idNum, name, owner)
   , Object(instanceID, myClass, Object)
@@ -9,7 +9,7 @@ import Control.DeepSeq(NFData, rnf)
 
 import Text.Printf(printf)
 
-import Lox.Evaluator.Internal.Scope(Environment, ScopeAddress)
+import Lox.Evaluator.Internal.Program.Scope(Environment, ScopeAddress)
 
 import qualified Lox.Parser.AST as AST
 import qualified Data.Text      as Text

@@ -1,14 +1,16 @@
-module Lox.Evaluator.Internal.Eval.Common(asBool, asObject, fail, lose, nothing, onSuccessEval, onSuccessEval2, onSuccessEval2Seq, succeed, win) where
+module Lox.Evaluator.Internal.Eval.Common(
+    asBool, asObject, fail, lose, nothing, onSuccessEval, onSuccessEval2, onSuccessEval2Seq, succeed, win
+  ) where
 
-import Lox.Evaluator.Internal.ControlFlow(ControlFlow(Normal))
-import Lox.Evaluator.Internal.EvalError(EvalError)
-import Lox.Evaluator.Internal.Program(Evaluating, Prog)
-import Lox.Evaluator.Internal.Value(Value(BooleanV, Nada, NilV, ObjectV))
+import Lox.Evaluator.Internal.Program.ControlFlow(ControlFlow(Normal))
+import Lox.Evaluator.Internal.Program.EvalError(EvalError)
+import Lox.Evaluator.Internal.Program.Program(Evaluating, Prog)
+import Lox.Evaluator.Internal.Program.Value(Value(BooleanV, Nada, NilV, ObjectV))
 
 import qualified Data.List          as List
 import qualified Data.List.NonEmpty as NE
 
-import qualified Lox.Evaluator.Internal.Value as V
+import qualified Lox.Evaluator.Internal.Program.Value as V
 
 
 type Result t  = Validation (NonEmpty EvalError) t

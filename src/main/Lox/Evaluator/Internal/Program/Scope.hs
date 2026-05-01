@@ -1,4 +1,4 @@
-module Lox.Evaluator.Internal.Scope(
+module Lox.Evaluator.Internal.Program.Scope(
     Environment
   , Scope(address, environ, Scope)
   , ScopeAddress(n, ScopeAddress)

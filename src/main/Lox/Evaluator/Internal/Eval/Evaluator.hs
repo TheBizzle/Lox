@@ -4,20 +4,20 @@ import Control.Monad.State(modify)
 
 import Lox.Parser.AST(AST(statements), Function(fnDecl), Statement(FunctionStatement), Variable(varName))
 
-import Lox.Evaluator.Internal.EvalError(
+import Lox.Evaluator.Internal.Program.EvalError(
     EvalError(EvalError)
   , EvalErrorType(TopLevelReturn)
   )
 
-import Lox.Evaluator.Internal.Program(Evaluating, Evaluated)
-import Lox.Evaluator.Internal.Variable(declareVar)
-import Lox.Evaluator.Internal.Value(Value(Nada))
+import Lox.Evaluator.Internal.Program.Program(Evaluating, Evaluated)
+import Lox.Evaluator.Internal.Program.Variable(declareVar)
+import Lox.Evaluator.Internal.Program.Value(Value(Nada))
 
 import Lox.Evaluator.Internal.Eval.Statement(runStatements)
 
 import qualified Data.List.NonEmpty as NE
 
-import qualified Lox.Evaluator.Internal.ControlFlow as CF
+import qualified Lox.Evaluator.Internal.Program.ControlFlow as CF
 
 
 eval :: AST -> Evaluated

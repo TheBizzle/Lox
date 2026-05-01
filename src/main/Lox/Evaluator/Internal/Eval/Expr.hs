@@ -15,29 +15,29 @@ import Lox.Parser.AST(
   , Variable(Variable, varName)
   )
 
-import Lox.Evaluator.Internal.Function(runFunction)
-import Lox.Evaluator.Internal.OOP(assignIntoObject, classArity, indexObject, indexSuper, initObject)
-import Lox.Evaluator.Internal.Program(Evaluating)
+import Lox.Evaluator.Internal.Program.EvalError(
+    EvalError(EvalError)
+  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlySetObj, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, NotCallable, UnknownVariable)
+  )
 
-import Lox.Evaluator.Internal.Value(
+import Lox.Evaluator.Internal.Program.Function(runFunction)
+import Lox.Evaluator.Internal.Program.OOP(assignIntoObject, classArity, indexObject, indexSuper, initObject)
+import Lox.Evaluator.Internal.Program.Program(Evaluating)
+
+import Lox.Evaluator.Internal.Program.Value(
     argNames
   , Class(cName)
   , Function(idNum)
   , Value(BooleanV, ClassV, FunctionV, NilV, NumberV, StringV)
   )
 
-import Lox.Evaluator.Internal.Variable(getVar, setVar)
-
-import Lox.Evaluator.Internal.EvalError(
-    EvalError(EvalError)
-  , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlySetObj, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, NotCallable, UnknownVariable)
-  )
+import Lox.Evaluator.Internal.Program.Variable(getVar, setVar)
 
 import Lox.Evaluator.Internal.Eval.Common(
     asBool, asObject, fail, lose, onSuccessEval, onSuccessEval2, onSuccessEval2Seq, succeed, win
   )
 
-import qualified Lox.Evaluator.Internal.ControlFlow as CF
+import qualified Lox.Evaluator.Internal.Program.ControlFlow as CF
 
 
 type EvalStmt = Statement -> Evaluating

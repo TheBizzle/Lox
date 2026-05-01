@@ -11,18 +11,18 @@ import Lox.Parser.AST(
   , Variable(Variable, varName)
   )
 
-import Lox.Evaluator.Internal.EvalError(
+import Lox.Evaluator.Internal.Program.EvalError(
     EvalError(EvalError)
-  , EvalErrorType(SuperMustBeAClass, TopLevelReturn, UnknownVariable)
+  , EvalErrorType(SuperMustBeAClass, UnknownVariable)
   )
 
-import Lox.Evaluator.Internal.Effect(Effect(Print), runEffect)
-import Lox.Evaluator.Internal.Function(defineFunction)
-import Lox.Evaluator.Internal.GC(transferOwnership)
-import Lox.Evaluator.Internal.OOP(defineClass)
-import Lox.Evaluator.Internal.Program(Evaluating)
-import Lox.Evaluator.Internal.Value(Value(ClassV, Nada, NilV))
-import Lox.Evaluator.Internal.Variable(currentEnvironment, declareVar, getVar, popScope, pushScope)
+import Lox.Evaluator.Internal.Program.Effect(Effect(Print), runEffect)
+import Lox.Evaluator.Internal.Program.Function(defineFunction)
+import Lox.Evaluator.Internal.Program.GC(transferOwnership)
+import Lox.Evaluator.Internal.Program.OOP(defineClass)
+import Lox.Evaluator.Internal.Program.Program(Evaluating)
+import Lox.Evaluator.Internal.Program.Value(Value(ClassV, Nada, NilV))
+import Lox.Evaluator.Internal.Program.Variable(currentEnvironment, declareVar, getVar, popScope, pushScope)
 
 import Lox.Evaluator.Internal.Eval.Common(
     asBool, lose, nothing, onSuccessEval, succeed, win
@@ -30,7 +30,7 @@ import Lox.Evaluator.Internal.Eval.Common(
 
 import Lox.Evaluator.Internal.Eval.Expr(evalExpr)
 
-import qualified Lox.Evaluator.Internal.ControlFlow as CF
+import qualified Lox.Evaluator.Internal.Program.ControlFlow as CF
 
 
 runStatements :: [Statement] -> Evaluating

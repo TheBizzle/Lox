@@ -1,5 +1,6 @@
-module Lox.Evaluator.Internal.OOP(assignIntoObject, classArity, defineClass, indexObject, indexSuper, initObject) where
--- (toSuperChain)
+module Lox.Evaluator.Internal.Program.OOP(
+    assignIntoObject, classArity, defineClass, indexObject, indexSuper, initObject
+  ) where
 
 import Control.Monad.State(get, gets, modify)
 
@@ -13,34 +14,34 @@ import Lox.Parser.AST(
   , Variable(Variable, varName)
   )
 
-import Lox.Evaluator.Internal.Program(
+import Lox.Evaluator.Internal.Program.Program(
     Evaluating, Evaluator, Program
   , ProgramState(instanceScopes, lastScopeAddr, nextClosureID, nextInstanceID, scopes, variables)
   )
 
-import Lox.Evaluator.Internal.EvalError(
+import Lox.Evaluator.Internal.Program.EvalError(
     EvalError(EvalError)
   , EvalErrorType(ClassNotFound, NotAClass, ObjectLacksKey)
   )
 
-import Lox.Evaluator.Internal.Function(buildFunction, defineFunction, runFunction)
-import Lox.Evaluator.Internal.GC(borrowIfFn)
+import Lox.Evaluator.Internal.Program.Function(buildFunction, defineFunction, runFunction)
+import Lox.Evaluator.Internal.Program.GC(borrowIfFn)
 
-import Lox.Evaluator.Internal.Scope(
+import Lox.Evaluator.Internal.Program.Scope(
     Environment
   , Scope(address, environ)
   , ScopeAddress(n, ScopeAddress)
   , VarAddress(VarAddress)
   )
 
-import Lox.Evaluator.Internal.Value(
+import Lox.Evaluator.Internal.Program.Value(
     Class(baseEnv, Class, cName, initFnM, methodFns, superclassM)
   , Function(idNum)
   , Object(instanceID, myClass, Object)
   , Value(ClassV, function, FunctionV, Nada, ObjectV)
   )
 
-import Lox.Evaluator.Internal.Variable(currentScope, declareVar, declareVarM, getVar, predictVarAddr, pushScope)
+import Lox.Evaluator.Internal.Program.Variable(currentScope, declareVar, declareVarM, getVar, predictVarAddr, pushScope)
 
 import qualified Data.List          as List
 import qualified Data.List.NonEmpty as NE
@@ -49,7 +50,7 @@ import qualified Data.Maybe         as Maybe
 
 import qualified Lox.Parser.AST as AST
 
-import qualified Lox.Evaluator.Internal.ControlFlow as CF
+import qualified Lox.Evaluator.Internal.Program.ControlFlow as CF
 
 
 initName :: Text

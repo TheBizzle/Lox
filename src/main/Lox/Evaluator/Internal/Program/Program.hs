@@ -1,4 +1,4 @@
-module Lox.Evaluator.Internal.Program(
+module Lox.Evaluator.Internal.Program.Program(
     empty, Evaluated, Evaluating, Evaluator, FnID, Func, Prog, Program
   , ProgramState(closures, fnBorrowers, functions, instanceScopes, lastScopeAddr, nextClosureID, nextFnNum, nextInstanceID, ProgramState, scopes, variables)
   ) where
@@ -8,14 +8,14 @@ import Control.Monad.State(StateT)
 
 import Lox.Parser.AST(Statement)
 
-import Lox.Evaluator.Internal.EvalError(EvalError)
-import Lox.Evaluator.Internal.Scope(Scope(Scope), ScopeAddress(ScopeAddress), VarAddress)
-import Lox.Evaluator.Internal.Value(Value)
+import Lox.Evaluator.Internal.Program.EvalError(EvalError)
+import Lox.Evaluator.Internal.Program.Scope(Scope(Scope), ScopeAddress(ScopeAddress), VarAddress)
+import Lox.Evaluator.Internal.Program.Value(Value)
 
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map           as Map
 
-import qualified Lox.Evaluator.Internal.ControlFlow as CF
+import qualified Lox.Evaluator.Internal.Program.ControlFlow as CF
 
 
 type FnID       = Word

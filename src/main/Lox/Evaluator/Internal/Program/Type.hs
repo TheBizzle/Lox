@@ -1,8 +1,8 @@
-module Lox.Evaluator.Internal.Type(Type(AnyT, BooleanT, NumberT, StringT), typecheck) where
+module Lox.Evaluator.Internal.Program.Type(Type(AnyT, BooleanT, NumberT, StringT), typecheck) where
 
 import Lox.Scanner.Token(TokenType(Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, Minus, Minus, Plus, Print, Slash, Star))
 
-import Lox.Evaluator.Internal.Value(Value(BooleanV, NumberV, StringV))
+import Lox.Evaluator.Internal.Program.Value(Value(BooleanV, NumberV, StringV))
 
 
 data Type

@@ -1,4 +1,4 @@
 {-# OPTIONS_GHC -fno-warn-missing-import-lists #-}
-module Lox.Evaluator.Function(module Lox.Evaluator.Internal.Function) where
+module Lox.Evaluator.Function(module Lox.Evaluator.Internal.Program.Function) where
 
-import Lox.Evaluator.Internal.Function(definePrimitiveFunc)
+import Lox.Evaluator.Internal.Program.Function(definePrimitiveFunc)

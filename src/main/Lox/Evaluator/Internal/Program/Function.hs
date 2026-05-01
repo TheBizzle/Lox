@@ -1,23 +1,25 @@
-module Lox.Evaluator.Internal.Function(buildFunction, defineFunction, definePrimitiveFunc, runFunction) where
+module Lox.Evaluator.Internal.Program.Function(
+    buildFunction, defineFunction, definePrimitiveFunc, runFunction
+  ) where
 
 import Control.Monad.State(get, gets, modify)
 
 import Lox.Parser.AST(Statement)
 
-import Lox.Evaluator.Internal.Program(
+import Lox.Evaluator.Internal.Program.Program(
     Evaluating, Evaluator, FnID, Func, Program
   , ProgramState(closures, functions, nextFnNum)
   )
 
-import Lox.Evaluator.Internal.Scope(Environment, Scope(address, environ))
-import Lox.Evaluator.Internal.Value(Function(Function), Value(FunctionV, Nada))
-import Lox.Evaluator.Internal.Variable(currentScope, declareVar, popScope, pushScope, setVar)
+import Lox.Evaluator.Internal.Program.Scope(Environment, Scope(address, environ))
+import Lox.Evaluator.Internal.Program.Value(Function(Function), Value(FunctionV, Nada))
+import Lox.Evaluator.Internal.Program.Variable(currentScope, declareVar, popScope, pushScope, setVar)
 
 import qualified Data.List as List
 import qualified Data.Map  as Map
 import qualified Data.Set  as Set
 
-import qualified Lox.Evaluator.Internal.ControlFlow as CF
+import qualified Lox.Evaluator.Internal.Program.ControlFlow as CF
 
 
 buildFunction :: Text -> [Text] -> [Statement] -> Program Function

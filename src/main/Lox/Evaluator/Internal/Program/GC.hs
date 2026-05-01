@@ -1,20 +1,20 @@
-module Lox.Evaluator.Internal.GC(borrowIfFn, cleanupScope, transferOwnership) where
+module Lox.Evaluator.Internal.Program.GC(borrowIfFn, cleanupScope, transferOwnership) where
 
 import Control.Monad.State(get, modify)
 
-import Lox.Evaluator.Internal.Program(
+import Lox.Evaluator.Internal.Program.Program(
     Program
   , ProgramState(closures, fnBorrowers, functions, scopes, variables)
   )
 
-import Lox.Evaluator.Internal.Scope(
+import Lox.Evaluator.Internal.Program.Scope(
     Environment, Scope(environ), ScopeAddress
   , VarAddress(VarAddress)
   , Scope(address)
   , VarAddress(scopeAddr, VarAddress)
   )
 
-import Lox.Evaluator.Internal.Value(
+import Lox.Evaluator.Internal.Program.Value(
     Function(idNum, name)
   , Value(function, FunctionV)
   )

@@ -1,23 +1,25 @@
-module Lox.Evaluator.Internal.Variable(currentEnvironment, currentScope, declareVar, declareVarM, getVar, popScope, predictVarAddr, pushScope, setVar) where
+module Lox.Evaluator.Internal.Program.Variable(
+    currentEnvironment, currentScope, declareVar, declareVarM, getVar, popScope, predictVarAddr, pushScope, setVar
+  ) where
 
 import Control.Monad.State(get, gets, modify)
 
 import Data.List.NonEmpty((<|))
 import Data.Map(lookup)
 
-import Lox.Evaluator.Internal.GC(borrowIfFn, cleanupScope)
+import Lox.Evaluator.Internal.Program.GC(borrowIfFn, cleanupScope)
 
-import Lox.Evaluator.Internal.Program(
+import Lox.Evaluator.Internal.Program.Program(
     Program
   , ProgramState(lastScopeAddr, scopes, variables)
   )
 
-import Lox.Evaluator.Internal.Scope(
+import Lox.Evaluator.Internal.Program.Scope(
     Environment, Scope(address, environ, Scope), ScopeAddress(n, ScopeAddress)
   , VarAddress(VarAddress, scopeAddr)
   )
 
-import Lox.Evaluator.Internal.Value(Value)
+import Lox.Evaluator.Internal.Program.Value(Value)
 
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map           as Map
