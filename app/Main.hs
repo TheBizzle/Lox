@@ -3,8 +3,6 @@ module Main(main) where
 import Control.DeepSeq(force)
 import Control.Monad.State(execStateT, runStateT)
 
-import GHC.Real(realToFrac)
-
 import System.Environment(getArgs)
 import System.Exit(exitWith, ExitCode(ExitFailure))
 import System.IO(stderr)

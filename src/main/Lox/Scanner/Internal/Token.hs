@@ -79,7 +79,7 @@ instance Show TokenType where
   show LessEqual      = "<="
   show Minus          = "-"
   show Nil            = "nil"
-  show (Number x)     = x |> showText &> ((id &&& Text.stripSuffix ".0") &> (\(a, b) -> maybe a id b)) &> asString
+  show (Number x)     = x |> showText &> ((id &&& Text.stripSuffix ".0") &> (\(a, b) -> b `orElse` a)) &> asString
   show Or             = "or"
   show Plus           = "+"
   show Print          = "print"

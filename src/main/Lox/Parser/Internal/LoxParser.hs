@@ -99,7 +99,7 @@ varDeclaration =
     initialM <- optional $ do
       throwaway Equal
       expressionOrCry
-    let initial = maybe (LiteralExpr NilLit name.varToken) id initialM
+    let initial = initialM `orElse` (LiteralExpr NilLit name.varToken)
     require Semicolon
     pure $ DeclareVar name initial
 
@@ -161,7 +161,7 @@ forStatement =
     buildLoop forT init condM incM body =
         Block [init, loop]
       where
-        cond     = maybe (LiteralExpr (BooleanLit True) forT) id condM
+        cond     = condM `orElse` (LiteralExpr (BooleanLit True) forT)
         inc      = maybeToList $ map ExpressionStatement incM
         fullBody = Block $ [body] <> inc
         loop     = WhileStatement cond fullBody

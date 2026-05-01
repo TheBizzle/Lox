@@ -5,12 +5,12 @@
 
 packages:
 - completed:
-    hackage: bizzlelude-4.20.2.0.1@sha256:5e84ac443f41030c918c5cf1ddf1c3c3acdc9c385aaf10ed908022d3c118ca01,7378
+    hackage: bizzlelude-4.20.2.0.2@sha256:ca1f1db0254da9b3eeca58d4a4ffa3592c405d2cf5b086b1c26ec0b594dd2f59,7366
     pantry-tree:
-      sha256: ac601e92c3212f9e45573f9eb30bbe9b6df302b99c2f957b526520496c640d07
+      sha256: 3d4ce8ec9e126919fa6bc84eb06ab23a6119567e9faca53eb7bd65625e0e12b3
       size: 533
   original:
-    hackage: bizzlelude-4.20.2.0.1@sha256:5e84ac443f41030c918c5cf1ddf1c3c3acdc9c385aaf10ed908022d3c118ca01,7378
+    hackage: bizzlelude-4.20.2.0.2@sha256:ca1f1db0254da9b3eeca58d4a4ffa3592c405d2cf5b086b1c26ec0b594dd2f59,7366
 snapshots:
 - completed:
     sha256: 92becf9417de918f477cc79583b70700cbead6c5028fc4c4415f04fab5fb5354
