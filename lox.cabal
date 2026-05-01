@@ -8,7 +8,7 @@ Homepage:            https://github.com/TheBizzle
 Category:            Web
 Synopsis:            An implementation of the jlox programming language
 Description:         An implementation of the jlox programming language, from Robert Nystrom's book Crafting Interpreters
-Stability:           Experimental
+Stability:           Stable
 Build-type:          Simple
 
 Source-Repository head
