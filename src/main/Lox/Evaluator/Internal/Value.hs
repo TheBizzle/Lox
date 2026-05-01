@@ -9,7 +9,7 @@ import Control.DeepSeq(NFData, rnf)
 
 import Text.Printf(printf)
 
-import Lox.Evaluator.Internal.Data(Environment, ScopeAddress)
+import Lox.Evaluator.Internal.Scope(Environment, ScopeAddress)
 
 import qualified Lox.Parser.AST as AST
 import qualified Data.Text      as Text

@@ -25,9 +25,12 @@ import Lox.Evaluator.Internal.EvalError(
   , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlySetObj, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, NotCallable, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
   )
 
-import Lox.Evaluator.Internal.Program(
-    arity, assignIntoObject, currentEnvironment, declareVar, defineClass, defineFunction, failOrM, getVar, indexObject, indexSuper, initObject, popScope, Program, pushScope, runEffect, runFunction, setVar, transferOwnership
-  )
+import Lox.Evaluator.Internal.Effect(runEffect)
+import Lox.Evaluator.Internal.Function(defineFunction, runFunction)
+import Lox.Evaluator.Internal.GC(transferOwnership)
+import Lox.Evaluator.Internal.OOP(assignIntoObject, classArity, defineClass, indexObject, indexSuper, initObject)
+import Lox.Evaluator.Internal.Program(Program)
+import Lox.Evaluator.Internal.Variable(currentEnvironment, declareVar, getVar, popScope, pushScope, setVar)
 
 import qualified Data.List          as List
 import qualified Data.List.NonEmpty as NE
@@ -301,6 +304,11 @@ asBool :: Value -> Bool
 asBool NilV             = False
 asBool (BooleanV False) = False
 asBool _                = True
+
+arity :: Value -> Maybe Word
+arity (FunctionV _ fn _) = fn |> V.argNames &> length &> fromIntegral &> Just
+arity (ClassV         c) = c  |> classArity &> Just
+arity _                  = Nothing
 
 onSuccessEval :: Result CF.ControlFlow -> (Value -> Evaluating) -> Evaluating
 onSuccessEval vali f = vali `failOrM` runIfNormal

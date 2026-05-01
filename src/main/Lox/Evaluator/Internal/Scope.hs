@@ -1,4 +1,4 @@
-module Lox.Evaluator.Internal.Data(
+module Lox.Evaluator.Internal.Scope(
     Environment
   , Scope(address, environ, Scope)
   , ScopeAddress(n, ScopeAddress)
@@ -7,8 +7,6 @@ module Lox.Evaluator.Internal.Data(
 
 import Control.DeepSeq(NFData, rnf)
 
-
-type Environment = Map Text VarAddress
 
 newtype ScopeAddress
   = ScopeAddress { n :: Word }
@@ -23,6 +21,8 @@ data VarAddress
 
 instance NFData VarAddress where
   rnf (VarAddress vn addr) = rnf vn `seq` rnf addr
+
+type Environment = Map Text VarAddress
 
 data Scope
   = Scope { environ :: Environment, address :: ScopeAddress }

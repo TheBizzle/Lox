@@ -12,7 +12,8 @@ import Lox.Evaluator.EvalError(
   , EvalErrorType(ArityMismatch, CanOnlyGetObj, CanOnlySetObj, ClassNotFound, NotAClass, NotCallable, NotImplemented, ObjectLacksKey, OperandMustBeNumber, OperandsMustBeNumbers, OperandsMustBeNumsOrStrs, SuperMustBeAClass, TopLevelReturn, UnknownVariable)
   )
 
-import Lox.Evaluator.Program(definePrimitiveFunc, Program, ProgramState)
+import Lox.Evaluator.Function(definePrimitiveFunc)
+import Lox.Evaluator.Program(Program, ProgramState)
 import Lox.Evaluator.Value(Value(Nada, NumberV))
 
 import Lox.Interpreter(interpret, LoxFailure(ParserFailure, ScannerFailure, VerifierFailure))

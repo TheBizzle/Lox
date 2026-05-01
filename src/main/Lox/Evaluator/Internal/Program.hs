@@ -1,52 +1,20 @@
 module Lox.Evaluator.Internal.Program(
-    arity, assignIntoObject, currentEnvironment, declareVar, defineClass, defineFunction, definePrimitiveFunc, empty, failOrM, getVar, indexObject, indexSuper, initObject, popScope, pushScope, runEffect, runFunction, setVar, transferOwnership
-  , Program
-  , ProgramState(scopes, ProgramState)
+    empty, Evaluated, Evaluating, Evaluator, FnID, Func, Program
+  , ProgramState(closures, fnBorrowers, functions, instanceScopes, lastScopeAddr, nextClosureID, nextFnNum, nextInstanceID, ProgramState, scopes, variables)
   ) where
 
 import Control.DeepSeq(NFData, rnf)
-import Control.Monad.State(get, gets, modify, StateT)
+import Control.Monad.State(StateT)
 
-import Data.List.NonEmpty((<|), NonEmpty((:|)))
-import Data.Map(alter, lookup)
-import Data.Maybe(fromJust)
+import Lox.Parser.AST(Statement)
 
-import Lox.Scanner.Token(Token(Token), TokenType(Return, This, Var))
+import Lox.Evaluator.Internal.EvalError(EvalError)
+import Lox.Evaluator.Internal.Scope(Scope(Scope), ScopeAddress(ScopeAddress), VarAddress)
+import Lox.Evaluator.Internal.Value(Value)
 
-import Lox.Parser.AST(
-    Expr(Call, VarRef)
-  , Statement(ExpressionStatement, FunctionStatement, ReturnStatement)
-  , Variable(Variable, varName)
-  )
-
-import Lox.Evaluator.Internal.Data(
-    Environment
-  , Scope(address, environ, Scope)
-  , ScopeAddress(n, ScopeAddress)
-  , VarAddress(scopeAddr, VarAddress)
-  )
-
-import Lox.Evaluator.Internal.Effect(Effect(Print))
-import Lox.Evaluator.Internal.EvalError(
-    EvalError(EvalError)
-  , EvalErrorType(ClassNotFound, NotAClass, ObjectLacksKey)
-  )
-
-import Lox.Evaluator.Internal.Value(
-    Class(baseEnv, Class, cName, initFnM, methodFns, superclassM)
-  , Function(argNames, Function, idNum, name)
-  , Object(instanceID, myClass, Object)
-  , Value(ClassV, function, FunctionV, Nada, ObjectV)
-  )
-
-import qualified Data.List          as List
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map           as Map
-import qualified Data.Maybe         as Maybe
-import qualified Data.Set           as Set
-import qualified Data.Text.IO       as TIO
 
-import qualified Lox.Parser.AST                     as AST
 import qualified Lox.Evaluator.Internal.ControlFlow as CF
 
 
@@ -59,21 +27,27 @@ type Evaluating = Prog CF.ControlFlow
 type Evaluator  = Statement -> Evaluating
 type Func       = Evaluator -> [Value] -> Evaluating
 
-type ClassScopes = Map Text Scope
-
 instance Show Func where
   show _ = "<underlying_function>"
 
+type ClassScopes = Map Text Scope
 
-arity :: Value -> Maybe Word
-arity (FunctionV _ fn _) = fn |> argNames &> length &> fromIntegral &> Just
-arity (ClassV         c) = c  |> classArity &> Just
-arity _                  = Nothing
-
-classArity :: Class -> Word
-classArity (Class _            _ (Just fn) _ _) = fn |> AST.params &> length &> fromIntegral
-classArity (Class _ (Just super)         _ _ _) = classArity super
-classArity (Class _            _         _ _ _) = 0
+empty :: ProgramState
+empty =
+    ProgramState {
+      variables      = Map.empty
+    , closures       = Map.empty
+    , functions      = Map.empty
+    , fnBorrowers    = Map.empty
+    , nextFnNum      = 0
+    , scopes         = (NE.singleton $ Scope Map.empty defaultAddr)
+    , lastScopeAddr  = defaultAddr
+    , instanceScopes = Map.empty
+    , nextInstanceID = 0
+    , nextClosureID  = 0
+    }
+  where
+    defaultAddr = ScopeAddress 0
 
 data ProgramState
   = ProgramState { variables      :: Map VarAddress Value      -- The central registry of all variables' values
@@ -93,418 +67,3 @@ instance NFData ProgramState where
     rnf (ProgramState vs cs fns xfs nfn ss lsa cse ncsn ncid) =
       rnf vs `seq` rnf cs `seq` rnf fns `seq` rnf xfs `seq` rnf nfn `seq` rnf ss `seq` rnf lsa `seq`
         rnf cse `seq` rnf ncsn `seq` rnf ncid
-
-initName :: Text
-initName = "init"
-
-superName :: Text
-superName = "super"
-
-thisName :: Text
-thisName = "this"
-
-empty :: ProgramState
-empty =
-    ProgramState {
-      variables      = Map.empty
-    , closures       = Map.empty
-    , functions      = Map.empty
-    , fnBorrowers    = Map.empty
-    , nextFnNum      = 0
-    , scopes         = (NE.singleton $ Scope Map.empty defaultAddr)
-    , lastScopeAddr  = defaultAddr
-    , instanceScopes = Map.empty
-    , nextInstanceID = 0
-    , nextClosureID  = 0
-    }
-  where
-    defaultAddr = ScopeAddress 0
-
-assignIntoObject :: Object -> Text -> Value -> Evaluating
-assignIntoObject object propName value =
-  do
-    addr <- findInObject object propName
-    handleAddrM addr
-    (mainScope, _, _) <- extractScopeInfo object.myClass.cName object.instanceID
-    borrowIfFn mainScope.address value
-    return $ Success $ CF.Normal value
-  where
-    handleAddrM :: Maybe VarAddress -> Program ()
-    handleAddrM Nothing     = declareIt object propName value
-    handleAddrM (Just addr) = updateIt value addr
-
-    declareIt :: Object -> Text -> Value -> Program ()
-    declareIt object propName value =
-      do
-        let cName                             = object.myClass.cName
-        (mainScope, classScopes, instScopes) <- extractScopeInfo cName object.instanceID
-        let varAddr                           = VarAddress propName mainScope.address
-        let newScope                          = mainScope { environ = Map.insert propName varAddr mainScope.environ }
-        let newClassScopes                    = Map.insert cName newScope classScopes
-        let newInstScopes                     = Map.insert object.instanceID newClassScopes instScopes
-        modify $ \p -> p { instanceScopes = newInstScopes
-                         , variables      = Map.insert varAddr value p.variables
-                         }
-
-    updateIt :: Value -> VarAddress -> Program ()
-    updateIt value addr =
-      modify $ \p -> p { variables = Map.insert addr value p.variables }
-
-    extractScopeInfo cName instID =
-      do
-        instScopes      <- gets instanceScopes
-        let classScopes  = fromJust $ Map.lookup instID instScopes
-        let mainScope    = fromJust $ Map.lookup cName  classScopes
-        return (mainScope, classScopes, instScopes)
-
-borrowIfFn :: ScopeAddress -> Value -> Program ()
-borrowIfFn address (FunctionV _ fn _) = _borrowFn address fn
-borrowIfFn       _                  _ = return ()
-
-_borrowFn :: ScopeAddress -> Function -> Program ()
-_borrowFn address fn =
-  do
-    prog            <- get
-    let newXferreds  = Map.alter insertOrSingleton fn.idNum prog.fnBorrowers
-    modify $ \p -> p { fnBorrowers = newXferreds }
-  where
-    insertOrSingleton (Just set) = Just $ Set.insert    newAddr set
-    insertOrSingleton    Nothing = Just $ Set.singleton newAddr
-    newAddr                      = VarAddress fn.name address
-
-cleanupScope :: Scope -> ProgramState -> ProgramState
-cleanupScope scope program = program { variables = cleanedVars, closures = cleanedClosures, functions = cleanedFunctions, fnBorrowers = cleanedXFns }
-  where
-    locals :: Environment
-    locals          = Map.filter (scopeAddr &> (== scope.address)) scope.environ
-    (fAs, xAs)      = Map.partition checkIsFunction     locals
-    (tAs, dyingFAs) = Map.partition checkWasTransferred fAs
-
-    -- Clean up all of my local vars that haven't been closed over
-    closedOverAs = Map.keysSet $ Map.filter (not . Set.null) program.closures
-    dyingVAs     = (Set.fromList $ Map.elems xAs) `Set.difference` closedOverAs
-    cleanedVars  = Set.foldr Map.delete program.variables dyingVAs
-
-    -- If it was transferred to me, remove it from the list of transferreds
-    xedToMeFns  = Map.filter (scopeAddr &> (== scope.address)) tAs
-    cleanedXFns = foldr unborrow program.fnBorrowers $ Map.elems xedToMeFns
-
-    -- If it was transferred to me and isn't still available at its defining address, delete it entirely
-    -- Also, remove all of my local functions' closures from the list of transferreds
-    dyingXFns        = Map.filterWithKey (\_ addr -> not $ Map.member addr cleanedVars) xedToMeFns
-    dyingXFnIDs      = Set.fromList $ map toFnID $ Map.elems dyingXFns
-    dyingLocalFnIDs  = Set.fromList $ map toFnID $ Map.elems dyingFAs
-    dyingFnIDs       = dyingXFnIDs `Set.union` dyingLocalFnIDs
-    cleanedClosures  = Map.mapMaybe (pruneSet dyingFnIDs) program.closures
-    cleanedFunctions = Set.foldr Map.delete program.functions dyingFnIDs
-
-    checkIsFunction = checkVar isFunction noBueno
-      where
-        isFunction (FunctionV _ _ _) = True
-        isFunction                 _ = False
-        noBueno                      = "You can't possibly be cleaning up a variable that's already been cleaned up...."
-
-    checkWasTransferred = checkVar wasTransferred noBueno
-      where
-        wasTransferred (FunctionV _ fn _) = maybe False (not . Set.null) $ Map.lookup fn.idNum program.fnBorrowers
-        wasTransferred                  _ = error "Not possible!  We already proved these are only functions!"
-        noBueno                           = "You can't possibly be checking a function that's already been cleaned up...."
-
-    toFnID = checkVar (function &> idNum) "You can't possibly be getting the FnID of a function that's already been cleaned up...."
-
-    unborrow varID borroweds = Map.alter f (toFnID varID) borroweds
-      where
-        f (Just set) = Just $ Set.delete varID set
-        f    Nothing = error "Shouldn't be possible to unborrow something that's not borrowed."
-
-    checkVar :: (Value -> a) -> Text -> VarAddress -> a
-    checkVar conversion errorMsg = (flip Map.lookup program.variables) &> maybe (error errorMsg) conversion
-
-defineClass :: Text -> Maybe Class -> [AST.Function] -> Program Class
-defineClass className superClassM functions =
-  do
-    program       <- get
-    let basestEnv  = (currentScope program).environ
-    let baseEnv    = Map.insert className (predictVarAddr className program) basestEnv
-    let clz        = Class className superClassM (listToMaybe init) methods baseEnv
-    modify $ declareVar className $ ClassV clz
-    return clz
-  where
-    (init, methods) = List.partition (AST.fnDecl &> varName &> (== initName)) functions
-
-defineFunction :: Text -> [Text] -> [Statement] -> Program Function
-defineFunction name argNames body =
-  do
-    modify $ declareVar name Nada
-    fn <- buildFunction name argNames body
-    setVar name $ FunctionV False fn Nothing
-    return fn
-
-buildFunction :: Text -> [Text] -> [Statement] -> Program Function
-buildFunction name argNames body =
-  do
-    envir <- gets $ currentScope &> environ
-    _defineFunction name argNames $ inner envir
-  where
-    inner :: Environment -> Func
-    inner envir eval args =
-      do
-        modify $ pushScope envir
-        let bindings = argNames `List.zip` args
-        modify $ \w -> foldr (uncurry declareVar) w bindings
-        resultV <- foldM (whileNormal eval) (Success $ CF.Normal Nada) body
-        modify popScope
-        return $ second convert resultV
-
-    whileNormal f (Success (CF.Normal _)) s = f s
-    whileNormal _ (Success             x) _ = return $ Success x
-    whileNormal _                       x _ = return x
-
-    convert (CF.Normal   _) = CF.Normal Nada
-    convert (CF.Return _ x) = CF.Normal x
-    convert               x = x
-
-definePrimitiveFunc :: Text -> [Text] -> Func -> Program ()
-definePrimitiveFunc name args func =
-  do
-    fn <- _defineFunction name args func
-    modify $ declareVar name $ FunctionV True fn Nothing
-
-_defineFunction :: Text -> [Text] -> Func -> Program Function
-_defineFunction name argNames func =
-  do
-    program          <- get
-    let scope         = currentScope program
-    let fnNum         = program.nextFnNum
-    let upsert        = alter (orEmpty &> (Set.insert fnNum) &> Just)
-    let newClosures   = Map.foldr upsert program.closures scope.environ
-    let fn            = Function name argNames scope.environ fnNum scope.address
-    let newFunctions  = Map.insert fnNum func program.functions
-    modify $ \p -> p { closures = newClosures, functions = newFunctions, nextFnNum = fnNum + 1 }
-    return fn
-  where
-    orEmpty setM = maybe Set.empty id setM
-    -- Possible optimization: Read through the statements and figure out which variables truly need to be closed over.
-    -- Jason B. (12/25/25)
-
-findInObject :: Object -> Text -> Program (Maybe VarAddress)
-findInObject (Object clazz instID) propName =
-  do
-    envChain   <- toEnvChain clazz instID
-    let addrMs  = map (Map.lookup propName) envChain
-    return $ join $ find isJust addrMs
-
--- I find it very objectionable that the 'operator/equals_method' test requires me to make
--- functions not equal to themselves like this.  --Jason B. (3/4/26)
-indexObject :: Token -> Object -> Text -> Evaluating
-indexObject token object propName =
-  do
-    addr <- findInObject object propName
-    case addr of
-      Nothing     -> return $ Failure $ NE.singleton $ EvalError (ObjectLacksKey propName) token
-      (Just addr) -> do
-        var       <- get <&> (variables &> Map.lookup addr &> Maybe.fromJust)
-        properVar <-
-          case var of
-            (FunctionV isN f _) -> do
-              cid <- gets nextClosureID
-              modify $ \p -> p { nextClosureID = p.nextClosureID + 1}
-              return $ FunctionV isN f $ Just cid
-            x -> return x
-        return $ Success $ CF.Normal properVar
-
-indexSuper :: Token -> Variable -> Evaluating
-indexSuper superToken (Variable propName _) =
-  do
-    superM <- get <&> (getVar superName)
-    maybe (error "`super` used outside of class.  The verifier should have caught this!") helper superM
-  where
-    helper       Nada = error "`super` used in class without a superclass.  The verifier should have caught this!"
-    helper (ClassV s) = (lookupInSupers $ toSuperChain s) <&> (<&> CF.Normal)
-    helper          _ = error "Not possible to resolve `super` to something other than a class or nil"
-
-    lookupInSupers supers = maybe (return $ Failure $ NE.singleton $ EvalError (ObjectLacksKey propName) superToken) returnSuperMethod fnM
-      where
-        fnM =
-          if propName /= initName then
-            find (AST.fnDecl &> varName &> (== propName)) $ supers >>= methodFns
-          else
-            (listToMaybe supers) >>= initFnM
-
-    returnSuperMethod (AST.Function name args statements) =
-      do
-        methodM <- get <&> (getVar trueName)
-        fnV     <- maybe (buildSuperMethod <&> (\f -> FunctionV False f Nothing)) return methodM
-        return $ Success fnV
-      where
-        trueName         = "__super_" <> name.varName
-        buildSuperMethod = defineFunction trueName (map varName args) statements
-
-initObject :: Token -> Evaluator -> Text -> [Value] -> Evaluating
-initObject token evaluator className args =
-  do
-    program <- get
-    case getVar className program of
-      Nothing               -> return $ Failure $ NE.singleton $ EvalError (ClassNotFound className) token
-      (Just (ClassV clazz)) -> initialize clazz
-      (Just              x) -> return $ Failure $ NE.singleton $ EvalError (NotAClass x) token
-  where
-    initialize clazz =
-      do
-        thisAddr <- gets $ \p -> VarAddress thisName $ ScopeAddress $ p.lastScopeAddr.n + 1
-        modify $ \p -> p { variables = Map.insert thisAddr Nada p.variables } -- Temp value; see below
-
-        instID      <- gets nextInstanceID
-        let classes  = toSuperChain clazz
-        let obj      = Object clazz instID
-        let objV     = ObjectV obj
-        modify $ \p -> p { variables      = Map.insert thisAddr objV p.variables
-                         , nextInstanceID = instID + 1
-                         }
-        forM_ classes $ fillInClass thisAddr instID
-
-        initializerAddrM <- findInObject obj initName
-        initializerM     <- gets $ \p -> initializerAddrM >>= (flip Map.lookup p.variables)
-        forM_ initializerM $ \initializer -> runFunction evaluator initializer.function.idNum args
-
-        return $ Success $ CF.Normal objV
-
-    fillInClass :: VarAddress -> Word -> Class -> Program ()
-    fillInClass thisAddr instID clazz =
-      do
-        modify $ pushScope $ Map.insert thisName thisAddr clazz.baseEnv
-
-        declareVarM superName $ maybe Nada ClassV clazz.superclassM
-
-        method2s <- mapM                 buildFn                clazz.methodFns
-        init2M   <- mapM (convertInit &> buildFn) $ maybeToList clazz.initFnM
-
-        modify $ \p -> p { scopes = (((NE.head p.scopes) { environ = Map.empty }) :| (NE.tail p.scopes)) }
-        forM_ (method2s <> init2M) (\(name, fn) -> declareVarM name $ FunctionV False fn Nothing)
-
-        modify $ popInstanceScope clazz.cName instID
-      where
-        -- Yikes.  So I guess he wants us to be able to call the constructor on an instance as a method, and
-        -- to get back the same object that it was called on.  Dislike. --Jason B. (3/9/26)
-        convertInit (AST.Function decl args body) =
-          (AST.Function decl args $
-            [ (FunctionStatement (AST.Function (Variable "__init" (Token Var (err 0))) [] body))
-            , (ExpressionStatement (Call (VarRef (Variable "__init" (Token Var (err 1)))) (Token Var (err 2)) []))
-            , (ReturnStatement (Token Return (err 3)) (Just (AST.This (Token This (err 4)))))
-            ]
-          )
-
-        err :: Int -> a
-        err n = error $ "I did a bad thing" <> (showText n)
-
-    buildFn :: AST.Function -> Program (Text, Function)
-    buildFn (AST.Function decl args body) = (buildFunction decl.varName (map varName args) body) <&> (decl.varName, )
-
-runFunction :: Evaluator -> FnID -> [Value] -> Evaluating
-runFunction evaluator idNum args =
-  do
-    underlyingM    <- gets $ \s -> Map.lookup idNum s.functions
-    let underlying  = maybe (error whinerMsg) id underlyingM
-    underlying evaluator args
-  where
-    whinerMsg = "Critical error!  You should never be able to run a non-existent function: " <> (showText idNum)
-
-runEffect :: Effect -> Evaluated
-runEffect (Print x) = (liftIO $ TIO.putStrLn x) $> (Success Nada)
-
-transferOwnership :: Value -> Program ()
-transferOwnership value =
-  do
-    prog           <- get
-    let parentAddr  = (neSecond prog.scopes).address
-    borrowIfFn parentAddr value
-  where
-    neSecond ne =
-      case NE.tail ne of
-        (h:_) -> h
-        []    -> error "Not possible!  You can't call `return` from the top scope!"
-
-currentEnvironment :: Program Environment
-currentEnvironment = get <&> (currentScope &> environ)
-
-currentScope :: ProgramState -> Scope
-currentScope = scopes &> NE.head
-
-popScope :: ProgramState -> ProgramState
-popScope program = (cleanupScope myScope program) { scopes = newScopes }
-  where
-    (myScope, tailMNE) = NE.uncons program.scopes
-    newScopes          = maybe (error whinerMsg) id tailMNE
-    whinerMsg          = "Critical error!  You should never be able to pop the global scope!"
-
-popInstanceScope :: Text -> Word -> ProgramState -> ProgramState
-popInstanceScope className instanceID program =
-    program { scopes         = newScopes
-            , instanceScopes = newInstScopes
-            }
-  where
-    (myScope, tailMNE) = NE.uncons program.scopes
-    newScopes          = maybe (error whinerMsg) id tailMNE
-    whinerMsg          = "Critical error!  The top scope cannot possibly be a class scope, nor is it even poppable!"
-    newInstScopes      = Map.alter (maybe Map.empty id &> Map.insert className myScope &> Just) instanceID program.instanceScopes
-
-pushScope :: Environment -> ProgramState -> ProgramState
-pushScope env program = program { scopes = newScope <| program.scopes, lastScopeAddr = newAddr }
-  where
-    newAddr  = ScopeAddress $ program.lastScopeAddr.n + 1
-    newScope = Scope env newAddr
-
-lookupVarAddr :: Text -> ProgramState -> Maybe VarAddress
-lookupVarAddr varName = currentScope &> environ &> (lookup varName)
-
-declareVarM :: Text -> Value -> Program ()
-declareVarM varName value = modify $ declareVar varName value
-
-declareVar :: Text -> Value -> ProgramState -> ProgramState
-declareVar varName value program = program { variables = newVars, scopes = newScopes }
-  where
-    (oldScope, tailML) = NE.uncons program.scopes
-    varAddr            = predictVarAddr varName program
-    newScope           = oldScope { environ = Map.insert varName varAddr oldScope.environ }
-    newScopes          = maybe (NE.singleton newScope) (NE.cons newScope) tailML
-    newVars            = Map.alter (const $ Just value) varAddr program.variables
-
-getVar :: Text -> ProgramState -> Maybe Value
-getVar varName program = program |> (lookupVarAddr varName) &> getValue
-  where
-    getValue = (>>= (flip lookup program.variables))
-
-predictVarAddr :: Text -> ProgramState -> VarAddress
-predictVarAddr varName program = VarAddress varName (currentScope program).address
-
-setVar :: Text -> Value -> Program ()
-setVar varName value =
-  do
-    varAddr <- gets $ (lookupVarAddr varName) &> maybe (error whinerMsg) id
-    borrowIfFn varAddr.scopeAddr value
-    modify $ \p -> p { variables = Map.insert varAddr value p.variables }
-  where
-    whinerMsg = "Critical error!  It is impossible to set a variable that hasn't been declared: " <> varName
-
-pruneSet :: Ord a => Set a -> Set a -> Maybe (Set a)
-pruneSet baddies current =
-  if not $ Set.null res then
-    Just res
-  else
-    Nothing
-  where
-    res = current `Set.difference` baddies
-
-toEnvChain :: Class -> Word -> Program [Environment]
-toEnvChain clazz instID =
-  do
-    instScopes   <- gets instanceScopes
-    let instEnvs  = fromJust $ Map.lookup instID instScopes
-    let envs      = fromJust $ mapM (cName &> flip Map.lookup instEnvs &> (map environ)) $ toSuperChain clazz
-    return envs
-
-toSuperChain :: Class -> [Class]
-toSuperChain s = s : (maybe [] toSuperChain $ s.superclassM)
-
-failOrM :: Monad m => Validation f s1 -> (s1 -> m (Validation f s2)) -> m (Validation f s2)
-v `failOrM` vm = validation (Failure &> return) vm v
