@@ -1,5 +1,5 @@
 module Lox.Evaluator.Internal.Program(
-    empty, Evaluated, Evaluating, Evaluator, FnID, Func, Program
+    empty, Evaluated, Evaluating, Evaluator, FnID, Func, Prog, Program
   , ProgramState(closures, fnBorrowers, functions, instanceScopes, lastScopeAddr, nextClosureID, nextFnNum, nextInstanceID, ProgramState, scopes, variables)
   ) where
 

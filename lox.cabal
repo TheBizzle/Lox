@@ -55,8 +55,11 @@ Library
   Other-Modules:
     Lox.Evaluator.Internal.ControlFlow,
     Lox.Evaluator.Internal.Effect,
+    Lox.Evaluator.Internal.Eval.Common,
+    Lox.Evaluator.Internal.Eval.Evaluator,
+    Lox.Evaluator.Internal.Eval.Expr,
+    Lox.Evaluator.Internal.Eval.Statement,
     Lox.Evaluator.Internal.EvalError,
-    Lox.Evaluator.Internal.Evaluator,
     Lox.Evaluator.Internal.Function,
     Lox.Evaluator.Internal.GC,
     Lox.Evaluator.Internal.OOP,
