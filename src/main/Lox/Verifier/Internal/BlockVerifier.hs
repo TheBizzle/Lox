@@ -137,7 +137,7 @@ findErrorInReturn keyword exprM =
           return succeed
 
 crawl :: (a -> Verification) -> [a] -> Verification
-crawl f = map f &> (foldl (|*>) $ return succeed)
+crawl f = map f &> (foldl' (|*>) $ return succeed)
 
 stackFrame :: Verification -> Verification
 stackFrame fv = push *> fv <* pop
