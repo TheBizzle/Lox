@@ -151,8 +151,8 @@ fnCall = call <|> primary
         argies <- atMost TooMuchArguing 254 exprToToken $ (throwaway Comma) *> expression
         pure $ arg1:argies
 
-    makeCalls p (ctype:is) = foldl' mkCall (mkCall p ctype) is
-    makeCalls _         [] = error "Not possible!  `some` produces a list of at least length 1!"
+    makeCalls _ []   = error "Not possible!  `some` produces a list of at least length 1!"
+    makeCalls p invs = foldl' mkCall p invs
 
     mkCall acc (Simple lpt args) = Call acc lpt args
     mkCall acc (Method var     ) = Get  acc var
