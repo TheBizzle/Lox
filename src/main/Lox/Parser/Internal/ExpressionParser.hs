@@ -57,60 +57,60 @@ logicalOr = orOperation <|> logicalAnd
   where
     orOperation =
       do
-        operator1 <- logicalAnd
-        operand   <- one Or
-        operator2 <- logicalOr
-        pure $ Logical operator1 operand operator2
+        operand1 <- logicalAnd
+        operator <- one Or
+        operand2 <- logicalOr
+        pure $ Logical operand1 operator operand2
 
 logicalAnd :: Parser Expr
 logicalAnd = andOperation <|> equality
   where
     andOperation =
       do
-        operator1 <- equality
-        operand   <- one And
-        operator2 <- logicalAnd
-        pure $ Logical operator1 operand operator2
+        operand1 <- equality
+        operator <- one And
+        operand2 <- logicalAnd
+        pure $ Logical operand1 operator operand2
 
 equality :: Parser Expr
 equality = eqOperation <|> comparison
   where
     eqOperation =
       do
-        operator1 <- comparison
-        operand   <- anyOf [BangEqual, EqualEqual]
-        operator2 <- equality
-        pure $ Binary operator1 operand operator2
+        operand1 <- comparison
+        operator <- anyOf [BangEqual, EqualEqual]
+        operand2 <- equality
+        pure $ Binary operand1 operator operand2
 
 comparison :: Parser Expr
 comparison = compOperation <|> term
   where
     compOperation =
       do
-        operator1 <- term
-        operand   <- anyOf [Greater, GreaterEqual, Less, LessEqual]
-        operator2 <- comparison
-        pure $ Binary operator1 operand operator2
+        operand1 <- term
+        operator <- anyOf [Greater, GreaterEqual, Less, LessEqual]
+        operand2 <- comparison
+        pure $ Binary operand1 operator operand2
 
 term :: Parser Expr
 term = termOperation <|> factor
   where
     termOperation =
       do
-        operator1 <- factor
-        operand   <- anyOf [Minus, Plus]
-        operator2 <- term
-        pure $ Binary operator1 operand operator2
+        operand1 <- factor
+        operator <- anyOf [Minus, Plus]
+        operand2 <- term
+        pure $ Binary operand1 operator operand2
 
 factor :: Parser Expr
 factor = factorOperation <|> unary
   where
     factorOperation =
       do
-        operator1 <- unary
-        operand   <- anyOf [Slash, Star]
-        operator2 <- factor
-        pure $ Binary operator1 operand operator2
+        operand1 <- unary
+        operator <- anyOf [Slash, Star]
+        operand2 <- factor
+        pure $ Binary operand1 operator operand2
 
 unary :: Parser Expr
 unary = unaryOperation <|> fnCall
