@@ -39,7 +39,6 @@ buildFunction name argNames body =
         return $ second convert resultV
 
     whileNormal f (Success (CF.Normal _)) s = f s
-    whileNormal _ (Success             x) _ = return $ Success x
     whileNormal _                       x _ = return x
 
     convert (CF.Normal   _) = CF.Normal Nada
