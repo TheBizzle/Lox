@@ -8,4 +8,5 @@
 /.projections.json
 
 /.stack-work/
+/*.cabal
 /target/
