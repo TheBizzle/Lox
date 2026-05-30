@@ -2,8 +2,6 @@ module Lox.Verifier.Internal.ExprVerifier(findErrorInExpr) where
 
 import Control.Monad.State(gets)
 
-import Data.List.NonEmpty(NonEmpty((:|)))
-
 import Lox.Parser.AST(Variable(varName, varToken))
 
 import Lox.Scanner.Token(Token)

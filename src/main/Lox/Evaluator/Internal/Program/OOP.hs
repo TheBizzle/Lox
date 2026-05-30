@@ -4,8 +4,6 @@ module Lox.Evaluator.Internal.Program.OOP(
 
 import Control.Monad.State(get, gets, modify)
 
-import Data.List.NonEmpty(NonEmpty((:|)))
-
 import Lox.Scanner.Token(Token(Token), TokenType(Return, This, Var))
 
 import Lox.Parser.AST(
